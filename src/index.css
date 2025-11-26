@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Aurora Society Design System - Luxury Premium Interface
+All colors MUST be HSL. */
+
+@layer base {
+  :root {
+    /* Aurora Society Color Palette */
+    --background: 0 0% 3%;
+    --foreground: 45 100% 85%;
+
+    --card: 0 0% 5%;
+    --card-foreground: 45 100% 85%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 45 100% 85%;
+
+    --primary: 45 85% 65%;
+    --primary-foreground: 0 0% 3%;
+
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 45 100% 85%;
+
+    --muted: 0 0% 10%;
+    --muted-foreground: 45 50% 65%;
+
+    --accent: 45 90% 60%;
+    --accent-foreground: 0 0% 3%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 45 100% 85%;
+
+    --border: 45 30% 20%;
+    --input: 0 0% 10%;
+    --ring: 45 100% 70%;
+
+    --radius: 0.75rem;
+
+    /* Aurora Society Custom Tokens */
+    --gold: 45 100% 70%;
+    --gold-light: 45 100% 80%;
+    --gold-dark: 45 100% 55%;
+    --black-deep: 0 0% 3%;
+    --black-medium: 0 0% 8%;
+    --black-light: 0 0% 12%;
+    --navy-blue: 220 60% 25%;
+    --navy-blue-light: 220 80% 12%;
+    
+    /* Gradients */
+    --gradient-gold: linear-gradient(135deg, hsl(45 100% 70%) 0%, hsl(45 90% 60%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 3%) 0%, hsl(0 0% 8%) 100%);
+    --gradient-overlay: linear-gradient(135deg, hsl(0 0% 3% / 0.9) 0%, hsl(0 0% 8% / 0.8) 100%);
+    
+    /* Shadows */
+    --shadow-gold: 0 4px 20px hsl(45 100% 70% / 0.3);
+    --shadow-elegant: 0 8px 32px hsl(0 0% 0% / 0.4);
+    --shadow-premium: 0 12px 48px hsl(45 100% 70% / 0.2);
+    
+    /* Animations */
+    --transition-luxury: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark mode uses same luxury theme */
+    --background: 0 0% 3%;
+    --foreground: 45 100% 85%;
+    --card: 0 0% 5%;
+    --card-foreground: 45 100% 85%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 45 100% 85%;
+    --primary: 45 85% 65%;
+    --primary-foreground: 0 0% 3%;
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 45 100% 85%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 45 50% 65%;
+    --accent: 45 90% 60%;
+    --accent-foreground: 0 0% 3%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 45 100% 85%;
+    --border: 45 30% 20%;
+    --input: 0 0% 10%;
+    --ring: 45 100% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-serif;
+    font-family: 'Playfair Display', 'Georgia', serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+    font-family: 'Playfair Display', 'Georgia', serif;
+    letter-spacing: 0.025em;
+  }
+}
+
+@layer components {
+  .gradient-gold {
+    background: var(--gradient-gold);
+  }
+  
+  .gradient-dark {
+    background: var(--gradient-dark);
+  }
+  
+  .shadow-gold {
+    box-shadow: var(--shadow-gold);
+  }
+  
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+  
+  .shadow-premium {
+    box-shadow: var(--shadow-premium);
+  }
+  
+  .transition-luxury {
+    transition: var(--transition-luxury);
+  }
+  
+  .aurora-glow {
+    position: relative;
+  }
+  
+  .aurora-glow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-gold);
+    opacity: 0;
+    border-radius: inherit;
+    transition: var(--transition-luxury);
+    z-index: -1;
+  }
+  
+  .aurora-glow:hover::before {
+    opacity: 0.1;
+  }
+  
+  .field-modified {
+    outline: 2px solid hsl(30 100% 65%) !important;
+    outline-offset: -2px !important;
+  }
+}

@@ -1,0 +1,4 @@
+project_id = "lwfqselpqlliaxduxihu"
+
+[functions.analyze-id-card]
+verify_jwt = false
