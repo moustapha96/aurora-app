@@ -302,7 +302,11 @@ const MemberCard = () => {
             />
           </div>
           
-          {profile.honorific_title && <p className="text-gold/60 text-sm mb-2">{profile.honorific_title}</p>}
+          {profile.honorific_title && (
+            <p className="text-gold/60 text-sm mb-2">
+              {getHonorificTitleTranslation(profile.honorific_title, language, t)}
+            </p>
+          )}
           <h1 className="text-3xl font-serif text-gold mb-1">{profile.first_name?.toUpperCase() || 'ALEXANDRE'}</h1>
           <h2 className="text-3xl font-serif text-gold mb-2">{profile.last_name?.toUpperCase() || 'DU ROCHE'}</h2>
           {profile.job_function && <p className="text-gold/80 mb-1">{profile.job_function}</p>}

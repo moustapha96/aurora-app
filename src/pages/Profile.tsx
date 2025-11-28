@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Briefcase, Users, Heart, Globe, Settings, Crown, Gem, LogOut, Edit } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getHonorificTitleTranslation } from "@/lib/honorificTitles";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ConnectionRequests } from "@/components/ConnectionRequests";
@@ -10,7 +11,7 @@ import { WealthBadge } from "@/components/WealthBadge";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { id } = useParams();
   const location = useLocation();
   const [profile, setProfile] = useState<any>(null);
@@ -224,7 +225,9 @@ const Profile = () => {
           </div>
           
           {profile.honorific_title && (
-            <p className="text-xl font-serif text-gold/90 mb-2">{profile.honorific_title}</p>
+            <p className="text-xl font-serif text-gold/90 mb-2">
+              {getHonorificTitleTranslation(profile.honorific_title, language, t)}
+            </p>
           )}
           <h1 className="text-3xl font-serif text-gold mb-1">{profile.first_name?.toUpperCase() || ''}</h1>
           <h2 className="text-3xl font-serif text-gold mb-2">{profile.last_name?.toUpperCase() || ''}</h2>

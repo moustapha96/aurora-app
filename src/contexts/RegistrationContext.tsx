@@ -19,8 +19,10 @@ interface RegistrationData {
 interface RegistrationContextType {
   registrationData: RegistrationData | null;
   avatarPreview: string | null;
+  idCardPreview: string | null;
   setRegistrationData: (data: RegistrationData | null) => void;
   setAvatarPreview: (preview: string | null) => void;
+  setIdCardPreview: (preview: string | null) => void;
   clearRegistrationData: () => void;
 }
 
@@ -29,10 +31,12 @@ const RegistrationContext = createContext<RegistrationContextType | undefined>(u
 export const RegistrationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [registrationData, setRegistrationData] = useState<RegistrationData | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [idCardPreview, setIdCardPreview] = useState<string | null>(null);
 
   const clearRegistrationData = () => {
     setRegistrationData(null);
     setAvatarPreview(null);
+    setIdCardPreview(null);
   };
 
   return (
@@ -40,8 +44,10 @@ export const RegistrationProvider: React.FC<{ children: ReactNode }> = ({ childr
       value={{
         registrationData,
         avatarPreview,
+        idCardPreview,
         setRegistrationData,
         setAvatarPreview,
+        setIdCardPreview,
         clearRegistrationData,
       }}
     >

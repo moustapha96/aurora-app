@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Upload, X, Loader2 } from "lucide-react";
 
 interface FamilyContent {
@@ -33,6 +34,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FamilyContent>({
     defaultValues: content
   });
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [portraitFile, setPortraitFile] = useState<File | null>(null);
@@ -279,7 +281,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
               </div>
 
               <div>
-                <Label htmlFor="personal_quote">Citation personnelle</Label>
+                <Label htmlFor="personal_quote">{t('personalQuote')}</Label>
                 <Input 
                   id="personal_quote" 
                   {...register("personal_quote")}

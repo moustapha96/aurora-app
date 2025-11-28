@@ -9,6 +9,7 @@ import { FamilyContentEditor } from "@/components/FamilyContentEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getHonorificTitleTranslation } from "@/lib/honorificTitles";
 import alexandrePortrait from "@/assets/alexandre-portrait.jpg";
 import maisonIleRe from "@/assets/maison-ile-re.jpg";
 import atelierLittoral from "@/assets/atelier-littoral.jpg";
@@ -17,7 +18,7 @@ import dinerPrive from "@/assets/diner-prive.jpg";
 const FamilySocial = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [editorOpen, setEditorOpen] = useState(false);
   const [profile, setProfile] = useState<any>(null);
@@ -181,7 +182,11 @@ const FamilySocial = () => {
             <div className="flex items-start justify-between">
               <div>
                 <CardTitle className="text-3xl mb-2">{profile ? `${profile.first_name} ${profile.last_name}` : "Membre"}</CardTitle>
-                <CardDescription className="text-lg text-foreground/80">{profile?.honorific_title || profile?.job_function || "Membre"}</CardDescription>
+                <CardDescription className="text-lg text-foreground/80">
+                  {profile?.honorific_title 
+                    ? getHonorificTitleTranslation(profile.honorific_title, language, t)
+                    : profile?.job_function || "Membre"}
+                </CardDescription>
               </div>
               <div className="flex flex-col gap-2">
                 {profile?.is_founder && (

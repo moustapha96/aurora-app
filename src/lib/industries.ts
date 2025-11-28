@@ -27,3 +27,10 @@ export const INDUSTRIES = [
 ] as const;
 
 export type Industry = typeof INDUSTRIES[number];
+
+/**
+ * Convert industry name to translation key
+ */
+export const getIndustryTranslationKey = (industry: string): string => {
+  return `industry_${industry.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+};

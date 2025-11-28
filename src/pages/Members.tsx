@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, ArrowLeft, Crown, Heart, Diamond, BadgeDollarSign, SlidersHorizontal, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getHonorificTitleTranslation } from "@/lib/honorificTitles";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -130,7 +131,9 @@ const MemberCard = ({ member, onClick, status, isSelected, t }: { member: Member
           {/* Informations du membre */}
           <div className="text-center space-y-2">
             {member.honorific_title && (
-              <p className="text-xs text-gold/60 font-medium uppercase tracking-wide">{member.honorific_title}</p>
+              <p className="text-xs text-gold/60 font-medium uppercase tracking-wide">
+                {getHonorificTitleTranslation(member.honorific_title, language, t)}
+              </p>
             )}
             <h3 className="text-lg font-serif text-gold group-hover:text-gold/80 transition-colors line-clamp-1">
               {member.name}
@@ -194,7 +197,7 @@ const Members = () => {
   const { settings } = useSettings();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [connectionStatus, setConnectionStatus] = useState<{ [key: string]: "pending" | "connected" }>({});
@@ -812,18 +815,21 @@ const Members = () => {
               {/* Other filters */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-black/30 border border-gold/20 rounded-lg">
                 <div>
-                  <label className="text-gold/70 text-sm mb-2 block">Secteur d'activité</label>
+                  <label className="text-gold/70 text-sm mb-2 block">{t('activityDomain')}</label>
                   <Select value={industryFilter} onValueChange={setIndustryFilter}>
                     <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
-                      <SelectValue placeholder="Tous les secteurs" />
+                      <SelectValue placeholder={t('activityDomain')} />
                     </SelectTrigger>
                     <SelectContent className="bg-black border-gold/20 max-h-[300px]">
-                      <SelectItem value="all">Tous les secteurs</SelectItem>
-                      {INDUSTRIES.map(industry => (
-                        <SelectItem key={industry} value={industry} className="text-gold hover:bg-gold/10 focus:bg-gold/10">
-                          {industry}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="all">{t('activityDomain')}</SelectItem>
+                      {INDUSTRIES.map(industry => {
+                        const translationKey = `industry_${industry.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+                        return (
+                          <SelectItem key={industry} value={industry} className="text-gold hover:bg-gold/10 focus:bg-gold/10">
+                            {t(translationKey) || industry}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -971,7 +977,7 @@ const Members = () => {
               <DialogHeader>
                 {selectedMember.honorific_title && (
                   <p className="text-center text-sm font-serif text-primary/80 mb-1">
-                    {selectedMember.honorific_title}
+                    {getHonorificTitleTranslation(selectedMember.honorific_title, language, t)}
                   </p>
                 )}
                 <DialogTitle className="text-2xl font-serif text-primary">

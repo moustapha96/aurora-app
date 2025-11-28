@@ -33,7 +33,7 @@ const Login = () => {
   });
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { registrationData, avatarPreview, clearRegistrationData } = useRegistration();
+  const { registrationData, avatarPreview, idCardPreview, clearRegistrationData } = useRegistration();
   const { refetch: checkAdmin } = useAdmin();
   const { settings } = useSettings();
 
@@ -130,6 +130,7 @@ const Login = () => {
 
       if (authData.user) {
         let avatarUrl = null;
+        let idCardUrl = null;
 
         // Upload avatar if present
         if (avatarPreview) {
@@ -152,6 +153,30 @@ const Login = () => {
             }
           } catch (uploadErr) {
             console.error('Error uploading avatar:', uploadErr);
+          }
+        }
+
+        // Upload ID card if present
+        if (idCardPreview) {
+          try {
+            // Convert base64 to blob
+            const response = await fetch(idCardPreview);
+            const blob = await response.blob();
+            const fileName = `${authData.user.id}-id-card-${Date.now()}.jpg`;
+            const filePath = `id-cards/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('id-cards')
+              .upload(filePath, blob, { upsert: true });
+
+            if (!uploadError) {
+              const { data: urlData } = supabase.storage
+                .from('id-cards')
+                .getPublicUrl(filePath);
+              idCardUrl = urlData.publicUrl;
+            }
+          } catch (uploadErr) {
+            console.error('Error uploading ID card:', uploadErr);
           }
         }
 
@@ -191,6 +216,7 @@ const Login = () => {
           p_wealth_unit: registrationData.wealthUnit || null,
           p_wealth_amount: registrationData.wealthAmount || null,
           p_avatar_url: avatarUrl,
+          p_id_card_url: idCardUrl,
         });
 
         if (profileError) {
@@ -220,7 +246,7 @@ const Login = () => {
         
         // Handle email verification requirement
         if (settings.requireEmailVerification && !authData.user?.email_confirmed_at) {
-          toast.success("Compte créé ! Veuillez vérifier votre email pour continuer.");
+          toast.success(t('accountCreated'));
           navigate("/verify-email");
           return;
         }
@@ -234,7 +260,7 @@ const Login = () => {
             });
             
             if (isAdmin === true) {
-              toast.success("Compte créé avec succès!");
+              toast.success(t('accountCreatedSuccess'));
               checkAdmin();
               navigate("/admin/dashboard");
               return;
@@ -245,12 +271,12 @@ const Login = () => {
           }
         }
         
-        toast.success("Compte créé avec succès!");
+        toast.success(t('accountCreatedSuccess'));
         navigate("/member-card");
       }
     } catch (error: any) {
       console.error('Registration error:', error);
-      toast.error(`Erreur lors de l'inscription: ${error.message}`);
+      toast.error(`${t('registrationError')}: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -269,7 +295,7 @@ const Login = () => {
       if (!rateLimitCheck.allowed) {
         const retryMessage = formatRetryMessage(rateLimitCheck.retryAfter);
         const lockoutMessage = settings.lockoutDuration 
-          ? `Votre compte est verrouillé. Réessayez dans ${settings.lockoutDuration} minutes.`
+          ? t('accountLocked').replace('{minutes}', settings.lockoutDuration.toString())
           : '';
         const errorMessage = rateLimitCheck.message || lockoutMessage ||
           (retryMessage 
@@ -438,12 +464,12 @@ const Login = () => {
                 <p className="font-medium">{t('passwordRequirements')}:</p>
                 <ul className="list-disc list-inside space-y-0.5 ml-2">
                   {[
-                    t('passwordMinLength') || "Au moins 6 caractères",
-                    t('passwordUppercase') || "Au moins une majuscule (A-Z)",
-                    t('passwordLowercase') || "Au moins une minuscule (a-z)",
-                    t('passwordDigit') || "Au moins un chiffre (0-9)",
-                    t('passwordSpecial') || "Au moins un caractère spécial (!@#$%^&*...)",
-                  ].map((req, index) => (
+                    `${t('passwordMinLength')}: ${settings.passwordMinLength || 6}`,
+                    settings.passwordRequireUppercase ? t('passwordUppercase') : null,
+                    t('passwordLowercase'),
+                    settings.passwordRequireNumbers ? t('passwordDigit') : null,
+                    settings.passwordRequireSpecialChars ? t('passwordSpecial') : null,
+                  ].filter(Boolean).map((req, index) => (
                     <li key={index}>{req}</li>
                   ))}
                 </ul>

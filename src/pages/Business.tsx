@@ -7,11 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 import { BusinessContentEditor } from "@/components/BusinessContentEditor";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getCurrencySymbol } from "@/lib/currencySymbols";
+import { getHonorificTitleTranslation } from "@/lib/honorificTitles";
 
 const Business = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
@@ -156,7 +157,9 @@ const Business = () => {
 
   const businessProfile = {
     name: `${profile.first_name} ${profile.last_name}`,
-    title: profile.honorific_title || profile.job_function || "CEO",
+    title: profile.honorific_title 
+      ? getHonorificTitleTranslation(profile.honorific_title, language, t)
+      : profile.job_function || "CEO",
     company: profile.activity_domain || "Entreprise",
     location: "Paris, France",
     netWorth: formatWealth(),

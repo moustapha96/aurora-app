@@ -12,6 +12,7 @@ import { useLanguage, languages } from "@/contexts/LanguageContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { INDUSTRIES } from "@/lib/industries";
 import { COUNTRIES } from "@/lib/countries";
+import { HONORIFIC_TITLES } from "@/lib/honorificTitles";
 
 const EditProfile = () => {
   const navigate = useNavigate();
@@ -286,17 +287,37 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="honorificTitle" className="text-gold/80">Titre Honorifique (optionnel)</Label>
-            <Input
-              id="honorificTitle"
-              value={formData.honorificTitle}
-              onChange={(e) => setFormData({ ...formData, honorificTitle: e.target.value })}
-              className={`bg-black/50 border-gold/20 ${
-                isFieldModified('honorificTitle') 
-                  ? 'bg-[hsl(var(--navy-blue))]/30 border-[hsl(var(--navy-blue-light))]' 
-                  : 'text-gold'
-              }`}
-            />
+            <Label htmlFor="honorificTitle" className="text-gold/80">
+              {t('honorificTitle') || 'Titre Honorifique'} ({t('optional') || 'optionnel'})
+            </Label>
+            <Select
+              value={formData.honorificTitle || ""}
+              onValueChange={(value) => setFormData({ ...formData, honorificTitle: value })}
+            >
+              <SelectTrigger 
+                className={`bg-black/50 border-gold/20 ${
+                  isFieldModified('honorificTitle') 
+                    ? 'bg-[hsl(var(--navy-blue))]/30 border-[hsl(var(--navy-blue-light))]' 
+                    : 'text-gold'
+                }`}
+              >
+                <SelectValue placeholder={t('selectTitle') || 'Sélectionnez votre titre'} />
+              </SelectTrigger>
+              <SelectContent className="bg-black border-gold/30 z-50 max-h-[300px] overflow-y-auto">
+                <SelectItem value="" className="text-gold hover:bg-gold/10">
+                  {t('none') || 'Aucun'}
+                </SelectItem>
+                {HONORIFIC_TITLES.map((titleKey) => (
+                  <SelectItem 
+                    key={titleKey} 
+                    value={titleKey} 
+                    className="text-gold hover:bg-gold/10"
+                  >
+                    {t(`title_${titleKey}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -314,7 +335,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="jobFunction" className="text-gold/80">Fonction (optionnel)</Label>
+            <Label htmlFor="jobFunction" className="text-gold/80">{t('jobFunction')} ({t('optional')})</Label>
             <Input
               id="jobFunction"
               value={formData.jobFunction}
@@ -328,7 +349,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="activityDomain" className="text-gold/80">Secteur d'activité (optionnel)</Label>
+            <Label htmlFor="activityDomain" className="text-gold/80">{t('activityDomain')} ({t('optional')})</Label>
             <Select
               value={formData.activityDomain}
               onValueChange={(value) => setFormData({ ...formData, activityDomain: value })}
@@ -338,18 +359,21 @@ const EditProfile = () => {
                   ? 'bg-[hsl(var(--navy-blue))]/30 border-[hsl(var(--navy-blue-light))] text-gold' 
                   : 'text-gold'
               }`}>
-                <SelectValue placeholder="Sélectionnez un secteur" />
+                <SelectValue placeholder={t('activityDomain')} />
               </SelectTrigger>
               <SelectContent className="bg-black border-gold/20">
-                {INDUSTRIES.map((industry) => (
-                  <SelectItem 
-                    key={industry} 
-                    value={industry}
-                    className="text-gold hover:bg-gold/10 focus:bg-gold/10"
-                  >
-                    {industry}
-                  </SelectItem>
-                ))}
+                {INDUSTRIES.map((industry) => {
+                  const translationKey = `industry_${industry.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+                  return (
+                    <SelectItem 
+                      key={industry} 
+                      value={industry}
+                      className="text-gold hover:bg-gold/10 focus:bg-gold/10"
+                    >
+                      {t(translationKey) || industry}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -429,7 +453,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="personalQuote" className="text-gold/80">Citation Personnelle (optionnel)</Label>
+            <Label htmlFor="personalQuote" className="text-gold/80">{t('personalQuote')} ({t('optional')})</Label>
             <Textarea
               id="personalQuote"
               value={formData.personalQuote}

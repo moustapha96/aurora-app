@@ -15,15 +15,18 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Upload } from "lucide-react";
 import { useRegistration } from "@/contexts/RegistrationContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { HONORIFIC_TITLES } from "@/lib/honorificTitles";
 
 const Register = () => {
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
-  const { setRegistrationData, setAvatarPreview: setContextAvatarPreview } = useRegistration();
+  const { setRegistrationData, setAvatarPreview: setContextAvatarPreview, setIdCardPreview: setContextIdCardPreview } = useRegistration();
   const { settings, loading: settingsLoading } = useSettings();
   const [loading, setLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [idCardFile, setIdCardFile] = useState<File | null>(null);
+  const [idCardPreview, setIdCardPreview] = useState<string>("");
   const [formData, setFormData] = useState({
     referralCode: "",
     firstName: "",
@@ -60,6 +63,7 @@ const Register = () => {
       const file = e.target?.files?.[0];
       if (file) {
         setLoading(true);
+        setIdCardFile(file);
         toast.info(t('analyzingIdCard') || t('loading'));
         
         try {
@@ -68,6 +72,10 @@ const Register = () => {
           reader.onloadend = async () => {
             try {
               const base64Image = reader.result as string;
+              
+              // Save preview for later upload
+              setIdCardPreview(base64Image);
+              
               console.log('Calling analyze-id-card function...');
               
               // Call edge function to analyze ID card
@@ -134,6 +142,11 @@ const Register = () => {
       // Store avatar in context if present
       if (avatarPreview) {
         setContextAvatarPreview(avatarPreview);
+      }
+      
+      // Store ID card in context if present
+      if (idCardPreview) {
+        setContextIdCardPreview(idCardPreview);
       }
       
       // Store registration data in context for the next step
@@ -261,15 +274,32 @@ const Register = () => {
           {/* ID Scanner */}
           <div className="space-y-2">
             <Label className="text-gold/80 text-sm font-serif">{t('idCard') || 'Carte d\'Identité'}</Label>
-            <Button
-              type="button"
-              onClick={handleScanId}
-              variant="outline"
-              className="w-full border-gold/30 text-gold hover:bg-gold/10"
-            >
-              <Scan className="w-4 h-4 mr-2" />
-              {t('scanIdCard') || 'Scanner la Carte d\'Identité'}
-            </Button>
+            <div className="flex items-center gap-4">
+              {idCardPreview && (
+                <div className="relative">
+                  <img 
+                    src={idCardPreview} 
+                    alt="ID Card preview" 
+                    className="h-20 w-32 object-cover rounded border border-gold/30"
+                  />
+                </div>
+              )}
+              <Button
+                type="button"
+                onClick={handleScanId}
+                variant="outline"
+                className={`flex-1 border-gold/30 text-gold hover:bg-gold/10 ${idCardPreview ? '' : 'w-full'}`}
+              >
+                <Scan className="w-4 h-4 mr-2" />
+                {idCardPreview 
+                  ? (t('changeIdCard') || 'Changer la Carte d\'Identité')
+                  : (t('scanIdCard') || 'Scanner la Carte d\'Identité')
+                }
+              </Button>
+            </div>
+            {idCardPreview && (
+              <p className="text-xs text-gold/60">{t('idCardUploaded') || 'Carte d\'identité téléchargée'}</p>
+            )}
           </div>
 
           {/* Name */}
@@ -314,16 +344,16 @@ const Register = () => {
               <SelectTrigger className="bg-black border-gold/30 text-gold z-40">
                 <SelectValue placeholder={t('selectTitle') || 'Sélectionnez votre titre'} />
               </SelectTrigger>
-              <SelectContent className="bg-black border-gold/30 z-50">
-                <SelectItem value="prince" className="text-gold hover:bg-gold/10">Prince</SelectItem>
-                <SelectItem value="eminence" className="text-gold hover:bg-gold/10">Éminence</SelectItem>
-                <SelectItem value="emir" className="text-gold hover:bg-gold/10">Émir</SelectItem>
-                <SelectItem value="duc" className="text-gold hover:bg-gold/10">Duc</SelectItem>
-                <SelectItem value="comte" className="text-gold hover:bg-gold/10">Comte</SelectItem>
-                <SelectItem value="baron" className="text-gold hover:bg-gold/10">Baron</SelectItem>
-                <SelectItem value="sir" className="text-gold hover:bg-gold/10">Sir</SelectItem>
-                <SelectItem value="dr" className="text-gold hover:bg-gold/10">Dr</SelectItem>
-                <SelectItem value="prof" className="text-gold hover:bg-gold/10">Professeur</SelectItem>
+              <SelectContent className="bg-black border-gold/30 z-50 max-h-[300px] overflow-y-auto">
+                {HONORIFIC_TITLES.map((titleKey) => (
+                  <SelectItem 
+                    key={titleKey} 
+                    value={titleKey} 
+                    className="text-gold hover:bg-gold/10"
+                  >
+                    {t(`title_${titleKey}`)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -363,28 +393,28 @@ const Register = () => {
           {/* Job Function */}
           <div className="space-y-2">
             <Label htmlFor="jobFunction" className="text-gold/80 text-sm font-serif">
-              {t('jobFunction') || 'Fonction/Activité'}
+              {t('jobFunction')}
             </Label>
             <Input
               id="jobFunction"
               value={formData.jobFunction}
               onChange={(e) => setFormData(prev => ({ ...prev, jobFunction: e.target.value }))}
               className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-              placeholder={t('jobFunction') || 'CEO, PDG, Directeur...'}
+              placeholder={t('jobFunction')}
             />
           </div>
 
           {/* Activity Domain */}
           <div className="space-y-2">
             <Label htmlFor="activityDomain" className="text-gold/80 text-sm font-serif">
-              {t('activityDomain') || 'Domaine d\'Activité'}
+              {t('activityDomain')}
             </Label>
             <Input
               id="activityDomain"
               value={formData.activityDomain}
               onChange={(e) => setFormData(prev => ({ ...prev, activityDomain: e.target.value }))}
               className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-              placeholder={t('activityDomain') || 'Finance, Viticole, Digital...'}
+              placeholder={t('activityDomain')}
             />
           </div>
 
@@ -438,7 +468,7 @@ const Register = () => {
           {/* Personal Quote */}
           <div className="space-y-2">
             <Label htmlFor="personalQuote" className="text-gold/80 text-sm font-serif">
-              {t('personalQuote') || 'Citation Personnelle'} ({t('optional') || 'facultatif'})
+              {t('personalQuote')} ({t('optional')})
             </Label>
             <Input
               id="personalQuote"
@@ -494,6 +524,18 @@ const Register = () => {
           >
             {loading ? t('loading') : t('continue')}
           </Button>
+
+          {/* Login Button */}
+          <div className="mt-4 text-center">
+            <Button
+              type="button"
+              variant="link"
+              onClick={() => navigate("/login")}
+              className="text-gold/60 hover:text-gold text-sm"
+            >
+              {t('signIn')}
+            </Button>
+          </div>
         </form>
       </div>
     </div>
