@@ -13,6 +13,16 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: "../build",
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Handle dynamic imports for tesseract.js
+        manualChunks: undefined,
+      },
+    },
+  },
+  optimizeDeps: {
+    // Exclude tesseract.js from pre-bundling since it's loaded dynamically
+    exclude: ['tesseract.js'],
   },
   plugins: [
     react(),

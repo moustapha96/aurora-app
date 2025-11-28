@@ -13,14 +13,28 @@ export interface ExtractedData {
  * Extract text from image using Tesseract.js (client-side OCR)
  * This is a fallback when Edge Function is not available
  */
+/**
+ * Extract text from image using Tesseract.js (client-side OCR)
+ * This is a fallback when Edge Function is not available
+ * Note: tesseract.js is loaded dynamically to avoid build issues
+ */
 export const extractTextWithTesseract = async (
   imageBase64: string
 ): Promise<ExtractedData> => {
   try {
-    // Dynamically import Tesseract.js to avoid loading it if not needed
-    const Tesseract = await import('tesseract.js');
+    // Dynamically import Tesseract.js using a function to avoid static analysis
+    // This prevents Rollup from trying to resolve it at build time
+    const tesseractModule = 'tesseract.js';
+    const Tesseract = await import(/* @vite-ignore */ tesseractModule);
     
-    const { data: { text } } = await Tesseract.default.recognize(imageBase64, 'fra+eng', {
+    // Handle both default export and named export
+    const TesseractModule = Tesseract.default || Tesseract;
+    
+    if (!TesseractModule || typeof TesseractModule.recognize !== 'function') {
+      throw new Error('Tesseract.js is not properly loaded');
+    }
+    
+    const { data: { text } } = await TesseractModule.recognize(imageBase64, 'fra+eng', {
       logger: (m) => {
         if (m.status === 'recognizing text') {
           console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
@@ -31,8 +45,12 @@ export const extractTextWithTesseract = async (
     // Parse the extracted text to find names
     const parsed = parseExtractedText(text);
     return parsed;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Tesseract OCR error:', error);
+    // If it's a module not found error, provide a helpful message
+    if (error?.code === 'MODULE_NOT_FOUND' || error?.message?.includes('Cannot find module')) {
+      throw new Error('Tesseract.js OCR is not available. Please use the Edge Function or fill in manually.');
+    }
     throw error;
   }
 };
