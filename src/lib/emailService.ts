@@ -18,6 +18,8 @@ export interface EmailOptions {
 /**
  * Send email using Edge Function or Supabase email service
  * The actual implementation depends on your email infrastructure
+ * Returns true if email was sent or queued, false on error
+ * This function never throws - errors are logged but don't block operations
  */
 export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
   try {
@@ -37,13 +39,29 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
     });
 
     if (error) {
-      console.error('Error sending email:', error);
+      // Log error but don't throw - email failures shouldn't block operations
+      console.warn('Email sending failed (non-blocking):', error.message || error);
+      
+      // Check if it's a function not found error (development/local)
+      if (error.message?.includes('Failed to send a request') || 
+          error.message?.includes('Edge Function') ||
+          error.name === 'FunctionsFetchError') {
+        console.warn('Edge Function "send-email" may not be deployed. Email not sent.');
+      }
+      
       return false;
     }
 
-    return true;
-  } catch (error) {
-    console.error('Error in sendEmail:', error);
+    // Check if there's a warning in the response (SMTP not configured, etc.)
+    if (data?.warning) {
+      console.warn('Email service warning:', data.warning);
+    }
+
+    // Return true if success or if email was queued (even if not actually sent)
+    return data?.success !== false;
+  } catch (error: any) {
+    // Catch all errors and log but don't throw
+    console.warn('Error in sendEmail (non-blocking):', error?.message || error);
     return false;
   }
 };

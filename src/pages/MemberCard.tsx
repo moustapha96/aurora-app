@@ -9,6 +9,7 @@ import { AuroraLogo } from "@/components/AuroraLogo";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WealthBadge } from "@/components/WealthBadge";
+import { getHonorificTitleTranslation } from "@/lib/honorificTitles";
 
 const MemberCard = () => {
   const navigate = useNavigate();

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLanguage, languages } from "@/contexts/LanguageContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Globe, Scan, Crown } from "lucide-react";
@@ -16,9 +16,13 @@ import { Upload } from "lucide-react";
 import { useRegistration } from "@/contexts/RegistrationContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { HONORIFIC_TITLES } from "@/lib/honorificTitles";
+import { extractTextFromImage } from "@/lib/ocrExtractor";
+import { ReferralCodeInput } from "@/components/ReferralCodeInput";
+import { INDUSTRIES, getIndustryTranslationKey } from "@/lib/industries";
 
 const Register = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { language, setLanguage, t } = useLanguage();
   const { setRegistrationData, setAvatarPreview: setContextAvatarPreview, setIdCardPreview: setContextIdCardPreview } = useRegistration();
   const { settings, loading: settingsLoading } = useSettings();
@@ -27,8 +31,10 @@ const Register = () => {
   const [avatarPreview, setAvatarPreview] = useState<string>("");
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
   const [idCardPreview, setIdCardPreview] = useState<string>("");
+  const [extractedData, setExtractedData] = useState<{ firstName?: string; lastName?: string } | null>(null);
+  const [referralCodeValid, setReferralCodeValid] = useState(false);
   const [formData, setFormData] = useState({
-    referralCode: "",
+    referralCode: searchParams.get('ref') || "",
     firstName: "",
     lastName: "",
     honorificTitle: "",
@@ -76,35 +82,81 @@ const Register = () => {
               // Save preview for later upload
               setIdCardPreview(base64Image);
               
-              console.log('Calling analyze-id-card function...');
+              console.log('Starting text extraction from ID card...');
               
-              // Call edge function to analyze ID card
-              const { data, error } = await supabase.functions.invoke('analyze-id-card', {
-                body: { imageBase64: base64Image }
-              });
-
-              console.log('Function response:', { data, error });
-
-              if (error) {
-                console.error('Function error:', error);
-                throw error;
+              // Try to extract text using Edge Function first, fallback to Tesseract.js
+              let extractedResult = null;
+              let extractionError = null;
+              
+              try {
+                // Use the OCR extractor utility with automatic fallback
+                extractedResult = await extractTextFromImage(base64Image, supabase, false);
+                console.log('Extraction successful:', extractedResult);
+              } catch (err: any) {
+                console.warn('Text extraction failed:', err);
+                extractionError = err;
+                // Image is still saved, user can fill manually
+                toast.warning(t('extractionFailed') || 'L\'extraction automatique a échoué, mais l\'image a été enregistrée. Vous pouvez remplir manuellement.');
               }
 
-              if (data.firstName || data.lastName) {
-                console.log('Extracted data:', data);
-                setFormData(prev => ({
-                  ...prev,
-                  firstName: data.firstName || prev.firstName,
-                  lastName: data.lastName || prev.lastName
-                }));
-                toast.success(t('success'));
+              // Helper function to format name (capitalize first letter of each word)
+              const formatName = (name: string): string => {
+                if (!name) return '';
+                return name
+                  .trim()
+                  .split(/\s+/)
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                  .join(' ');
+              };
+
+              // Process extracted data if available
+              if (extractedResult) {
+                const extractedFirstName = extractedResult.firstName ? formatName(extractedResult.firstName) : '';
+                const extractedLastName = extractedResult.lastName ? formatName(extractedResult.lastName) : '';
+
+                if (extractedFirstName || extractedLastName) {
+                  console.log('Extracted data:', { firstName: extractedFirstName, lastName: extractedLastName });
+                  
+                  // Store extracted data for display
+                  setExtractedData({
+                    firstName: extractedFirstName,
+                    lastName: extractedLastName
+                  });
+                  
+                  // Update form data - prioritize extracted data over existing
+                  setFormData(prev => ({
+                    ...prev,
+                    firstName: extractedFirstName || prev.firstName,
+                    lastName: extractedLastName || prev.lastName
+                  }));
+
+                  // Show success message with details
+                  const extractedFields = [];
+                  if (extractedFirstName) extractedFields.push(t('firstName'));
+                  if (extractedLastName) extractedFields.push(t('lastName'));
+                  
+                  toast.success(
+                    extractedFields.length > 0 
+                      ? `${t('success')}: ${extractedFields.join(', ')} ${t('extracted') || 'extraits'}`
+                      : t('success')
+                  );
+                } else {
+                  console.warn('No name data extracted from ID card');
+                  setExtractedData(null);
+                  if (extractedResult.rawText) {
+                    // If we have raw text but couldn't parse names, show info
+                    toast.info(t('extractionPartial') || 'Texte extrait mais noms non identifiés. Veuillez remplir manuellement.');
+                  } else {
+                    toast.warning(t('noDataExtracted') || 'Aucune donnée extraite de la carte d\'identité');
+                  }
+                }
               } else {
-                console.warn('No data extracted');
-                toast.warning(t('error'));
+                // No data extracted, clear extracted data
+                setExtractedData(null);
               }
             } catch (innerError: any) {
               console.error('Inner error:', innerError);
-              toast.error(t('error'));
+              toast.error(innerError?.message || t('error'));
             } finally {
               setLoading(false);
             }
@@ -112,14 +164,14 @@ const Register = () => {
           
           reader.onerror = () => {
             console.error('File reader error');
-            toast.error(t('error'));
+            toast.error(t('errorReadingFile') || 'Erreur lors de la lecture du fichier');
             setLoading(false);
           };
           
           reader.readAsDataURL(file);
         } catch (error: any) {
           console.error('Error analyzing ID card:', error);
-          toast.error(t('error'));
+          toast.error(error?.message || t('error'));
           setLoading(false);
         }
       }
@@ -259,16 +311,24 @@ const Register = () => {
 
           {/* Referral Code */}
           <div className="space-y-2">
-            <Label htmlFor="referralCode" className="text-gold/80 text-sm font-serif">
-              {t('referralCode') || 'Code de Parrainage'}
-            </Label>
-            <Input
-              id="referralCode"
+            <ReferralCodeInput
               value={formData.referralCode}
-              onChange={(e) => setFormData(prev => ({ ...prev, referralCode: e.target.value }))}
-              className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-              placeholder={t('enterCode') || t('referralCode')}
+              onChange={(value) => setFormData(prev => ({ ...prev, referralCode: value }))}
+              onValidationChange={(isValid, referrerName) => {
+                setReferralCodeValid(isValid);
+                if (isValid && referrerName) {
+                  toast.success(`${t('referralCodeValid') || 'Code valide'} : ${referrerName}`);
+                }
+              }}
+              label={`${t('referralCode') || 'Code de Parrainage'} (${t('optional') || 'Optionnel'})`}
+              placeholder={t('enterCode') || 'AUR-XXX-XXX'}
+              className="w-full"
             />
+            {formData.referralCode && !referralCodeValid && formData.referralCode.length >= 3 && (
+              <p className="text-xs text-gold/50">
+                {t('referralCodeHelp') || 'Le code sera validé automatiquement'}
+              </p>
+            )}
           </div>
 
           {/* ID Scanner */}
@@ -276,29 +336,70 @@ const Register = () => {
             <Label className="text-gold/80 text-sm font-serif">{t('idCard') || 'Carte d\'Identité'}</Label>
             <div className="flex items-center gap-4">
               {idCardPreview && (
-                <div className="relative">
+                <div className="relative group">
                   <img 
                     src={idCardPreview} 
                     alt="ID Card preview" 
-                    className="h-20 w-32 object-cover rounded border border-gold/30"
+                    className="h-32 w-48 object-cover rounded border border-gold/30"
                   />
+                  {/* Overlay with extracted data on hover */}
+                  {extractedData && (extractedData.firstName || extractedData.lastName) && (
+                    <div className="absolute inset-0 bg-black/80 rounded border border-gold/50 p-3 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="text-xs text-gold space-y-1.5">
+                        <p className="font-semibold text-gold text-sm mb-2">{t('extractedData') || 'Données extraites:'}</p>
+                        {extractedData.firstName && (
+                          <p className="text-gold/90">
+                            <span className="font-medium">{t('firstName')}:</span> {extractedData.firstName}
+                          </p>
+                        )}
+                        {extractedData.lastName && (
+                          <p className="text-gold/90">
+                            <span className="font-medium">{t('lastName')}:</span> {extractedData.lastName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               <Button
                 type="button"
                 onClick={handleScanId}
                 variant="outline"
+                disabled={loading}
                 className={`flex-1 border-gold/30 text-gold hover:bg-gold/10 ${idCardPreview ? '' : 'w-full'}`}
               >
-                <Scan className="w-4 h-4 mr-2" />
-                {idCardPreview 
-                  ? (t('changeIdCard') || 'Changer la Carte d\'Identité')
-                  : (t('scanIdCard') || 'Scanner la Carte d\'Identité')
-                }
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+                    {t('analyzingIdCard') || t('loading')}
+                  </>
+                ) : (
+                  <>
+                    <Scan className="w-4 h-4 mr-2" />
+                    {idCardPreview 
+                      ? (t('changeIdCard') || 'Changer la Carte d\'Identité')
+                      : (t('scanIdCard') || 'Scanner la Carte d\'Identité')
+                    }
+                  </>
+                )}
               </Button>
             </div>
             {idCardPreview && (
-              <p className="text-xs text-gold/60">{t('idCardUploaded') || 'Carte d\'identité téléchargée'}</p>
+              <div className="space-y-1">
+                <p className="text-xs text-gold/60">{t('idCardUploaded') || 'Carte d\'identité téléchargée'}</p>
+                {extractedData && (extractedData.firstName || extractedData.lastName) && (
+                  <div className="text-xs text-gold/90 bg-gold/10 border border-gold/20 rounded p-2.5 space-y-1.5">
+                    <p className="font-semibold text-gold mb-1">{t('extractedData') || 'Données extraites:'}</p>
+                    {extractedData.firstName && (
+                      <p><span className="font-medium">{t('firstName')}:</span> {extractedData.firstName}</p>
+                    )}
+                    {extractedData.lastName && (
+                      <p><span className="font-medium">{t('lastName')}:</span> {extractedData.lastName}</p>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -409,13 +510,28 @@ const Register = () => {
             <Label htmlFor="activityDomain" className="text-gold/80 text-sm font-serif">
               {t('activityDomain')}
             </Label>
-            <Input
-              id="activityDomain"
+            <Select
               value={formData.activityDomain}
-              onChange={(e) => setFormData(prev => ({ ...prev, activityDomain: e.target.value }))}
-              className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-              placeholder={t('activityDomain')}
-            />
+              onValueChange={(value) => setFormData(prev => ({ ...prev, activityDomain: value }))}
+            >
+              <SelectTrigger className="bg-black border-gold/30 text-gold z-40">
+                <SelectValue placeholder={t('activityDomain') || 'Sélectionnez un domaine'} />
+              </SelectTrigger>
+              <SelectContent className="bg-black border-gold/30 z-50 max-h-[300px] overflow-y-auto">
+                {INDUSTRIES.map((industry) => {
+                  const translationKey = getIndustryTranslationKey(industry);
+                  return (
+                    <SelectItem 
+                      key={industry} 
+                      value={industry} 
+                      className="text-gold hover:bg-gold/10"
+                    >
+                      {t(translationKey) || industry}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Wealth Level */}

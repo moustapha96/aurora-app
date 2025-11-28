@@ -188,7 +188,7 @@ const Login = () => {
           const unit = registrationData.wealthUnit;
           
           // Convertir en milliards d'euros
-          wealthInBillions = convertToEuros(amount, currency, unit).toString();
+          wealthInBillions = convertToEuros(amount, currency, unit as "M" | "Md").toString();
         }
 
         // Créer le profil en utilisant la fonction SQL (bypass RLS)
@@ -199,7 +199,7 @@ const Login = () => {
           username: username
         });
 
-        const { error: profileError } = await supabase.rpc('create_profile', {
+        const { error: profileError } = await (supabase.rpc as any)('create_profile', {
           p_id: authData.user.id,
           p_first_name: registrationData.firstName,
           p_last_name: registrationData.lastName,
@@ -225,6 +225,26 @@ const Login = () => {
         }
 
         console.log('Profile created successfully');
+
+        // Create referral relationship if code was provided
+        if (registrationData.referralCode && registrationData.referralCode.trim() !== '') {
+          try {
+            const { data: referralResult, error: referralError } = await (supabase.rpc as any)('validate_and_create_referral', {
+              p_referral_code: registrationData.referralCode.toUpperCase().trim(),
+              p_new_user_id: authData.user.id
+            }) as { data: any; error: any };
+
+            if (referralError) {
+              console.warn('Referral creation error (non-blocking):', referralError);
+              // Don't block registration if referral fails
+            } else if (referralResult && typeof referralResult === 'object' && referralResult.success) {
+              console.log('Referral relationship created successfully');
+            }
+          } catch (referralErr: any) {
+            console.warn('Referral creation failed (non-blocking):', referralErr);
+            // Continue with registration even if referral fails
+          }
+        }
 
         // Send email notification if enabled
         if (settings.emailOnNewUser) {

@@ -55,7 +55,7 @@ type Member = {
 };
 
 // Composant LinkedIn-style pour les cartes membres
-const MemberCard = ({ member, onClick, status, isSelected, t }: { member: Member; onClick: () => void; status?: string; isSelected?: boolean; t: (key: string) => string }) => {
+const MemberCard = ({ member, onClick, status, isSelected, t, language }: { member: Member; onClick: () => void; status?: string; isSelected?: boolean; t: (key: string) => string; language: string }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   
@@ -923,6 +923,7 @@ const Members = () => {
                 status={connectionStatus[member.name]}
                 isSelected={selectedMemberId === member.id}
                 t={t}
+                language={language}
               />
             ))
           )}

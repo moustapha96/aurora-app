@@ -19,8 +19,9 @@ export const MaintenanceMode: React.FC<MaintenanceModeProps> = ({ children }) =>
     return <>{children}</>;
   }
 
-  // Don't block login page (admins need to be able to log in)
-  if (location.pathname === '/login') {
+  // Don't block essential pages (login, register, verify-email, member-card for new users)
+  const allowedPaths = ['/login', '/register', '/verify-email', '/member-card'];
+  if (allowedPaths.includes(location.pathname)) {
     return <>{children}</>;
   }
 

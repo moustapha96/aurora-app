@@ -44,6 +44,7 @@ import AdminContent from "./pages/admin/Content";
 import AdminLogs from "./pages/admin/Logs";
 import AdminReports from "./pages/admin/Reports";
 import Contact from "./pages/Contact";
+import Referrals from "./pages/Referrals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -81,6 +82,7 @@ const App = () => (
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/payment" element={<Payment />} />
               <Route path="/messages" element={<Messages />} />
+              <Route path="/referrals" element={<Referrals />} />
               <Route path="/create-test-members" element={<CreateTestMembers />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/settings" element={<Settings />} />

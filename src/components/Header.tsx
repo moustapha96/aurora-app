@@ -85,6 +85,7 @@ export const Header = () => {
     { path: "/personal", label: t('personal'), icon: Crown },
     { path: "/family", label: t('family'), icon: Heart },
     { path: "/network", label: t('network'), icon: NetworkIcon },
+    { path: "/referrals", label: t('myReferralNetwork') || 'Parrainage', icon: NetworkIcon },
     { path: "/members", label: t('members'), icon: Users },
   ];
 
