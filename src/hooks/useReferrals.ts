@@ -219,18 +219,16 @@ export const useReferrals = (userId?: string) => {
         .select('*')
         .eq('referred_id', userId)
         .eq('status', 'completed')
-        .single();
+        // Using maybeSingle() avoids a 406 error when there is no row
+        .maybeSingle();
 
-      if (referralError) {
-        if (referralError.code === 'PGRST116') {
-          // No rows returned - user has no referrer
-          return null;
-        }
-        throw referralError;
+      // No referrer found for this user
+      if (!referralData) {
+        return null;
       }
 
-      if (!referralData || !referralData.referrer_id) {
-        return null;
+      if (referralError) {
+        throw referralError;
       }
 
       // Then, get the referrer's profile

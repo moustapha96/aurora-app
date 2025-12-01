@@ -183,8 +183,8 @@ const Referrals = () => {
               </CardContent>
             </Card>
 
-            {/* Statistics */}
-            {stats && (
+          
+            {/* {stats && (
               <Card className="bg-black/50 border-gold/20">
                 <CardHeader>
                   <CardTitle className="text-gold flex items-center gap-2">
@@ -193,23 +193,58 @@ const Referrals = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gold/80">{t('totalReferrals') || 'Total parrainages'}</span>
-                      <span className="text-2xl font-bold text-gold">{stats.total_referrals || 0}</span>
+                  <div className="space-y-4">
+                    
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gold/80">
+                          {t('totalReferrals') || 'Total parrainages'}
+                        </span>
+                        <span className="text-2xl font-bold text-gold">
+                          {stats.total_referrals || 0}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gold/60">
+                        {t('totalReferralsHelp') ||
+                          "Nombre total de personnes que vous avez parrainées depuis le début."}
+                      </p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gold/80">{t('thisMonth') || 'Ce mois'}</span>
-                      <span className="text-xl font-semibold text-gold">{stats.referrals_this_month || 0}</span>
+
+                  
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gold/80">
+                          {t('thisMonth') || 'Ce mois'}
+                        </span>
+                        <span className="text-xl font-semibold text-gold">
+                          {stats.referrals_this_month || 0}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gold/60">
+                        {t('thisMonthReferralsHelp') ||
+                          "Nombre de nouveaux filleuls que vous avez invités ce mois‑ci."}
+                      </p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gold/80">{t('thisYear') || 'Cette année'}</span>
-                      <span className="text-xl font-semibold text-gold">{stats.referrals_this_year || 0}</span>
+
+                  
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gold/80">
+                          {t('thisYear') || 'Cette année'}
+                        </span>
+                        <span className="text-xl font-semibold text-gold">
+                          {stats.referrals_this_year || 0}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gold/60">
+                        {t('thisYearReferralsHelp') ||
+                          "Total de vos filleuls pour l'année en cours (janvier à décembre)."}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            )}
+            )} */}
 
             {/* My Referrer */}
             {!loadingReferrer && referrer && (
