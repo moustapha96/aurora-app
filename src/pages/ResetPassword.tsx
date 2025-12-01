@@ -10,7 +10,7 @@ import { Eye, EyeOff, Lock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { validatePassword, getPasswordRequirements } from "@/lib/passwordValidator";
-
+import logo from "@/assets/logo.png";
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -141,8 +141,8 @@ const ResetPassword = () => {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
         <div className="text-center max-w-md mx-auto w-full">
-          <AuroraLogo size="lg" className="mx-auto mb-8" />
-          
+          {/* <AuroraLogo size="lg" className="mx-auto mb-8" /> */}
+          <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
           <h1 className="text-4xl md:text-5xl font-serif text-gold mb-2 tracking-wide">
             AURORA
           </h1>

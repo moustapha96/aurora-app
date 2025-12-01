@@ -44,7 +44,7 @@ interface SettingsContextType {
 
 const defaultSettings: AppSettings = {
   siteName: 'Aurora Society',
-  siteDescription: 'Exclusive network for high-net-worth individuals',
+  siteDescription: 'Une plateforme sociale exclusive dédiée à l\'élite mondiale. Réseau, conciergerie de luxe, étiquette et voyages d\'exception.',
   maintenanceMode: false,
   allowRegistrations: true,
   requireEmailVerification: true,

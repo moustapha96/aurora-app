@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
+import logo from "@/assets/logo.png";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -79,7 +80,8 @@ const Index = () => {
       {/* Main Content Centered */}
       <div className="text-center max-w-md mx-auto flex-1 flex flex-col items-center justify-center">
         {/* Logo */}
-        <AuroraLogo size="lg" className="mx-auto mb-8" />
+        {/* <AuroraLogo size="lg" className="mx-auto mb-8" /> */}
+        <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
         
         {/* Title */}
         <h1 className="text-4xl md:text-5xl font-serif text-gold mb-2 tracking-wide">

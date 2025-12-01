@@ -22,45 +22,107 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     // Exclude tesseract.js from pre-bundling since it's loaded dynamically
-    exclude: ['tesseract.js'],
+    exclude: ["tesseract.js"],
   },
   plugins: [
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "placeholder.svg", "robots.txt"],
+      injectRegister: "auto",
+      strategies: "generateSW",
+
+      // Tous les assets présents dans /public
+      includeAssets: [
+        "favicon.ico",
+        "placeholder.svg",
+        "robots.txt",
+        "aurora-favicon-16.png",
+        "aurora-favicon-32.png",
+        "aurora-favicon-48.png",
+        "aurora-icon-180-apple-touch.png",
+        "aurora-icon-192-pwa.png",
+        "aurora-icon-256.png",
+        "aurora-icon-384.png",
+        "aurora-icon-512-pwa.png",
+      ],
+
       manifest: {
         name: "Aurora Society - Société Exclusive Premium",
         short_name: "Aurora Society",
-        description: "Une plateforme sociale exclusive dédiée à l'élite mondiale. Réseau, conciergerie de luxe, étiquette et voyages d'exception.",
+        description:
+          "Une plateforme sociale exclusive dédiée à l'élite mondiale. Réseau, conciergerie de luxe, étiquette et voyages d'exception.",
         theme_color: "#000000",
-        background_color: "#ffffff",
+        background_color: "#000000",
         display: "standalone",
+        display_override: ["standalone", "browser"],
         orientation: "portrait",
         scope: "/",
         start_url: "/",
         icons: [
+          // favicons PNG
           {
-            src: "/favicon.ico",
-            sizes: "64x64 32x32 24x24 16x16",
-            type: "image/x-icon",
+            src: "/aurora-favicon-16.png",
+            sizes: "16x16",
+            type: "image/png",
           },
           {
-            src: "/pwa-192x192.png",
+            src: "/aurora-favicon-32.png",
+            sizes: "32x32",
+            type: "image/png",
+          },
+          {
+            src: "/aurora-favicon-48.png",
+            sizes: "48x48",
+            type: "image/png",
+          },
+
+          // Apple touch icon
+          {
+            src: "/aurora-icon-180-apple-touch.png",
+            sizes: "180x180",
+            type: "image/png",
+          },
+
+          // PWA / Android
+          {
+            src: "/aurora-icon-192-pwa.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any maskable",
           },
           {
-            src: "/pwa-512x512.png",
+            src: "/aurora-icon-256.png",
+            sizes: "256x256",
+            type: "image/png",
+          },
+          {
+            src: "/aurora-icon-384.png",
+            sizes: "384x384",
+            type: "image/png",
+          },
+          {
+            src: "/aurora-icon-512-pwa.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any maskable",
           },
         ],
       },
+
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        navigateFallback: "index.html",
         runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "aurora-pages-cache",
+              networkTimeoutSeconds: 10,
+            },
+          },
+          // Google Fonts (CSS)
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",
@@ -68,13 +130,14 @@ export default defineConfig(({ mode }) => ({
               cacheName: "google-fonts-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],
               },
             },
           },
+          // Google Fonts (fonts)
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
             handler: "CacheFirst",
@@ -82,7 +145,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "gstatic-fonts-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -90,7 +153,9 @@ export default defineConfig(({ mode }) => ({
             },
           },
         ],
+        cleanupOutdatedCaches: true,
       },
+
       devOptions: {
         enabled: false,
       },

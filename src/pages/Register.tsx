@@ -19,6 +19,8 @@ import { HONORIFIC_TITLES } from "@/lib/honorificTitles";
 import { extractTextFromImage } from "@/lib/ocrExtractor";
 import { ReferralCodeInput } from "@/components/ReferralCodeInput";
 import { INDUSTRIES, getIndustryTranslationKey } from "@/lib/industries";
+import logo from "@/assets/logo.png";
+
 
 const Register = () => {
   const navigate = useNavigate();
@@ -226,7 +228,8 @@ const Register = () => {
         <Card className="bg-[hsl(var(--navy-blue-light))] border-gold/20 max-w-md w-full">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <AuroraLogo />
+              {/* <AuroraLogo /> */}
+              <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
             </div>
             <CardTitle className="text-gold text-2xl font-serif">
               Inscriptions Désactivées
@@ -276,7 +279,8 @@ const Register = () => {
 
       <div className="w-full max-w-2xl mx-auto">
         <div className="text-center mb-8">
-          <AuroraLogo size="md" className="mx-auto mb-6" />
+          {/* <AuroraLogo size="md" className="mx-auto mb-6" /> */}
+          <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
           <h1 className="text-3xl md:text-4xl font-serif text-gold mb-2 tracking-wide">
             AURORA SOCIETY
           </h1>

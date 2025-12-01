@@ -16,7 +16,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { validatePassword } from "@/lib/passwordValidator";
 import { checkRateLimit, formatRetryMessage, resetRateLimit } from "@/lib/rateLimiting";
 import { initializeSession } from "@/lib/sessionManager";
-
+import logo from "@/assets/logo.png";
 // Schema will be created inside component to access t function
 
 const Login = () => {
@@ -404,8 +404,8 @@ const Login = () => {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
         <div className="text-center max-w-md mx-auto w-full">
-          <AuroraLogo size="lg" className="mx-auto mb-8" />
-          
+          {/* <AuroraLogo size="lg" className="mx-auto mb-8" /> */}
+          <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
           <h1 className="text-4xl md:text-5xl font-serif text-gold mb-2 tracking-wide">
             AURORA
           </h1>
@@ -514,8 +514,9 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
       <div className="text-center max-w-md mx-auto w-full">
-        <AuroraLogo size="lg" className="mx-auto mb-8" />
-        
+        {/* <AuroraLogo size="lg" className="mx-auto mb-8" /> */}
+        <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
+          
         <h1 className="text-4xl md:text-5xl font-serif text-gold mb-2 tracking-wide">
           AURORA
         </h1>

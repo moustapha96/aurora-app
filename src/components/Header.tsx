@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAdmin } from "@/hooks/useAdmin";
 import { LayoutDashboard } from "lucide-react";
+import logo from "@/assets/logo.png";
 import {
   Select,
   SelectContent,
@@ -112,7 +113,8 @@ export const Header = () => {
               <SheetContent side="left" className="w-[280px] sm:w-[320px]">
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-2">
-                    <AuroraLogo size="sm" />
+                    {/* <AuroraLogo size="sm" /> */}
+                    <img src={logo} alt="Logo" className="w-16 h-16" />
                     <div>
                       <h1 className="text-lg font-serif text-primary">{settings.siteName || 'AURORA'}</h1>
                       <p className="text-xs text-muted-foreground tracking-widest">
@@ -137,7 +139,7 @@ export const Header = () => {
                     );
                   })}
                   <div className="pt-4 border-t">
-                   
+
                     {isAuthenticated && (
                       <>
                         {/* User Role in Mobile Menu */}
@@ -168,7 +170,7 @@ export const Header = () => {
                           <MessageSquare className="w-4 h-4" />
                           {t('messages') || 'Messages'}
                         </Button>
-                      
+
                         <Button
                           variant="ghost"
                           className="w-full justify-start gap-3"
@@ -197,7 +199,8 @@ export const Header = () => {
               onClick={() => navigate("/")}
               className="flex items-center space-x-2 sm:space-x-3 hover:opacity-80 transition-opacity flex-shrink-0"
             >
-              <AuroraLogo size="sm" />
+              {/* <AuroraLogo size="sm" /> */}
+              <img src={logo} alt="Logo" className="w-14 h-14" />
               <div className="hidden sm:block">
                 <h1 className="text-lg sm:text-xl font-serif text-primary">{settings.siteName || 'AURORA'}</h1>
                 <p className="text-xs text-muted-foreground tracking-widest">
@@ -227,7 +230,7 @@ export const Header = () => {
               </nav>
             )}
           </div>
-          
+
           {/* Right: User Actions */}
           <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             {/* Language Selector */}
@@ -245,8 +248,8 @@ export const Header = () => {
               </SelectTrigger>
               <SelectContent className="bg-background border-border">
                 {languages.map((lang) => (
-                  <SelectItem 
-                    key={lang.code} 
+                  <SelectItem
+                    key={lang.code}
                     value={lang.code}
                     className="text-foreground focus:bg-accent focus:text-accent-foreground"
                   >
@@ -256,7 +259,7 @@ export const Header = () => {
                 ))}
               </SelectContent>
             </Select>
-            
+
             {/* Public Actions */}
             {/* <Button 
               variant="ghost" 
@@ -282,8 +285,8 @@ export const Header = () => {
                 )}
                 {/* Admin Access Button */}
                 {!adminLoading && isAdmin && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => navigate("/admin/dashboard")}
                     className="hidden sm:flex items-center gap-2 border-gold/30 text-gold hover:bg-gold/10 bg-gold/5"
@@ -293,9 +296,9 @@ export const Header = () => {
                     <span className="hidden lg:inline">{t('adminDashboard') || 'Admin'}</span>
                   </Button>
                 )}
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => navigate("/messages")}
                   title={t('messages') || 'Messages'}
                 >
@@ -310,18 +313,18 @@ export const Header = () => {
                 >
                   <Settings className="w-5 h-5" />
                 </Button> */}
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => navigate("/edit-profile")}
                   className="hidden sm:flex"
                   title={t('profile') || 'Profil'}
                 >
                   <User className="w-5 h-5" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={handleLogout}
                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   title={t('logout') || 'Déconnexion'}
