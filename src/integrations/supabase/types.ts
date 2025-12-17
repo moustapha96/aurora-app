@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string | null
+          new_data: Json | null
+          old_data: Json | null
+          operation: string
+          record_id: string | null
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          operation: string
+          record_id?: string | null
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          operation?: string
+          record_id?: string | null
+          table_name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      admin_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       artwork_collection: {
         Row: {
           acquisition: string
@@ -65,12 +128,15 @@ export type Database = {
       business_content: {
         Row: {
           achievements_text: string | null
+          bio_executive: string | null
           company_description: string | null
           company_logo_url: string | null
           company_name: string | null
           company_photos: string[] | null
           created_at: string
           id: string
+          onboarding_completed: boolean | null
+          onboarding_mode: string | null
           portfolio_text: string | null
           position_title: string | null
           updated_at: string
@@ -79,12 +145,15 @@ export type Database = {
         }
         Insert: {
           achievements_text?: string | null
+          bio_executive?: string | null
           company_description?: string | null
           company_logo_url?: string | null
           company_name?: string | null
           company_photos?: string[] | null
           created_at?: string
           id?: string
+          onboarding_completed?: boolean | null
+          onboarding_mode?: string | null
           portfolio_text?: string | null
           position_title?: string | null
           updated_at?: string
@@ -93,17 +162,131 @@ export type Database = {
         }
         Update: {
           achievements_text?: string | null
+          bio_executive?: string | null
           company_description?: string | null
           company_logo_url?: string | null
           company_name?: string | null
           company_photos?: string[] | null
           created_at?: string
           id?: string
+          onboarding_completed?: boolean | null
+          onboarding_mode?: string | null
           portfolio_text?: string | null
           position_title?: string | null
           updated_at?: string
           user_id?: string
           vision_text?: string | null
+        }
+        Relationships: []
+      }
+      business_press: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          distinction_type: string | null
+          id: string
+          source: string
+          title: string
+          updated_at: string
+          url: string | null
+          user_id: string
+          year: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          distinction_type?: string | null
+          id?: string
+          source: string
+          title: string
+          updated_at?: string
+          url?: string | null
+          user_id: string
+          year?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          distinction_type?: string | null
+          id?: string
+          source?: string
+          title?: string
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+          year?: string | null
+        }
+        Relationships: []
+      }
+      business_projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      business_timeline: {
+        Row: {
+          company: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+          year: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          year: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          year?: string
         }
         Relationships: []
       }
@@ -313,6 +496,132 @@ export type Database = {
         }
         Relationships: []
       }
+      family_board: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number | null
+          expertise: string | null
+          id: string
+          image_url: string | null
+          member_name: string
+          organization: string | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          expertise?: string | null
+          id?: string
+          image_url?: string | null
+          member_name: string
+          organization?: string | null
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          expertise?: string | null
+          id?: string
+          image_url?: string | null
+          member_name?: string
+          organization?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      family_close: {
+        Row: {
+          birth_year: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          member_name: string
+          occupation: string | null
+          relation_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          birth_year?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          member_name: string
+          occupation?: string | null
+          relation_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          birth_year?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          member_name?: string
+          occupation?: string | null
+          relation_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      family_commitments: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          organization: string | null
+          start_year: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          organization?: string | null
+          start_year?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          organization?: string | null
+          start_year?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       family_content: {
         Row: {
           anecdotes_text: string | null
@@ -322,10 +631,11 @@ export type Database = {
           gallery_photos: Json | null
           id: string
           network_text: string | null
+          onboarding_completed: boolean | null
+          onboarding_mode: string | null
           personal_quote: string | null
           philanthropy_text: string | null
           portrait_url: string | null
-          pdf_documents: Json | null
           residences_text: string | null
           updated_at: string
           user_id: string
@@ -338,10 +648,11 @@ export type Database = {
           gallery_photos?: Json | null
           id?: string
           network_text?: string | null
+          onboarding_completed?: boolean | null
+          onboarding_mode?: string | null
           personal_quote?: string | null
           philanthropy_text?: string | null
           portrait_url?: string | null
-          pdf_documents?: Json | null
           residences_text?: string | null
           updated_at?: string
           user_id: string
@@ -354,11 +665,168 @@ export type Database = {
           gallery_photos?: Json | null
           id?: string
           network_text?: string | null
+          onboarding_completed?: boolean | null
+          onboarding_mode?: string | null
           personal_quote?: string | null
           philanthropy_text?: string | null
           portrait_url?: string | null
-          pdf_documents?: Json | null
           residences_text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      family_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      family_heritage: {
+        Row: {
+          banner_image_url: string | null
+          created_at: string
+          heritage_description: string | null
+          id: string
+          legacy_vision: string | null
+          motto: string | null
+          updated_at: string
+          user_id: string
+          values_text: string | null
+        }
+        Insert: {
+          banner_image_url?: string | null
+          created_at?: string
+          heritage_description?: string | null
+          id?: string
+          legacy_vision?: string | null
+          motto?: string | null
+          updated_at?: string
+          user_id: string
+          values_text?: string | null
+        }
+        Update: {
+          banner_image_url?: string | null
+          created_at?: string
+          heritage_description?: string | null
+          id?: string
+          legacy_vision?: string | null
+          motto?: string | null
+          updated_at?: string
+          user_id?: string
+          values_text?: string | null
+        }
+        Relationships: []
+      }
+      family_influential: {
+        Row: {
+          context: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          person_name: string
+          relationship: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          person_name: string
+          relationship?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          person_name?: string
+          relationship?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      family_lineage: {
+        Row: {
+          birth_year: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          generation: string
+          id: string
+          image_url: string | null
+          member_name: string
+          origin_location: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          birth_year?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          generation: string
+          id?: string
+          image_url?: string | null
+          member_name: string
+          origin_location?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          birth_year?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          generation?: string
+          id?: string
+          image_url?: string | null
+          member_name?: string
+          origin_location?: string | null
+          title?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -393,6 +861,96 @@ export type Database = {
           id?: string
           influence_access?: boolean | null
           personal_access?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      identity_verifications: {
+        Row: {
+          created_at: string
+          document_country: string | null
+          document_type: string | null
+          first_name_extracted: string | null
+          id: string
+          jumio_account_id: string | null
+          jumio_workflow_execution_id: string | null
+          last_name_extracted: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          verification_result: Json | null
+          verification_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_country?: string | null
+          document_type?: string | null
+          first_name_extracted?: string | null
+          id?: string
+          jumio_account_id?: string | null
+          jumio_workflow_execution_id?: string | null
+          last_name_extracted?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          verification_result?: Json | null
+          verification_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_country?: string | null
+          document_type?: string | null
+          first_name_extracted?: string | null
+          id?: string
+          jumio_account_id?: string | null
+          jumio_workflow_execution_id?: string | null
+          last_name_extracted?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verification_result?: Json | null
+          verification_type?: string | null
+        }
+        Relationships: []
+      }
+      landing_preferences: {
+        Row: {
+          created_at: string
+          custom_description: string | null
+          custom_headline: string | null
+          id: string
+          show_contact_button: boolean | null
+          show_location: boolean | null
+          show_quote: boolean | null
+          show_wealth_badge: boolean | null
+          template: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custom_description?: string | null
+          custom_headline?: string | null
+          id?: string
+          show_contact_button?: boolean | null
+          show_location?: boolean | null
+          show_quote?: boolean | null
+          show_wealth_badge?: boolean | null
+          template?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custom_description?: string | null
+          custom_headline?: string | null
+          id?: string
+          show_contact_button?: boolean | null
+          show_location?: boolean | null
+          show_quote?: boolean | null
+          show_wealth_badge?: boolean | null
+          template?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -432,6 +990,558 @@ export type Database = {
           },
         ]
       }
+      network_ambitions: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          timeline: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          timeline?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          timeline?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      network_clubs: {
+        Row: {
+          club_type: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          role: string | null
+          since_year: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          club_type?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          role?: string | null
+          since_year?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          club_type?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          role?: string | null
+          since_year?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      network_content: {
+        Row: {
+          created_at: string
+          id: string
+          onboarding_completed: boolean | null
+          onboarding_mode: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          onboarding_completed?: boolean | null
+          onboarding_mode?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          onboarding_completed?: boolean | null
+          onboarding_mode?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      network_events: {
+        Row: {
+          created_at: string
+          date: string | null
+          description: string | null
+          display_order: number | null
+          event_type: string | null
+          id: string
+          image_url: string | null
+          location: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string | null
+          description?: string | null
+          display_order?: number | null
+          event_type?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string | null
+          description?: string | null
+          display_order?: number | null
+          event_type?: string | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      network_influence: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          metric: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          value: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          metric?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          value?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          metric?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
+      network_media: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          media_type: string | null
+          platform: string | null
+          privacy_level: string | null
+          title: string
+          updated_at: string
+          url: string | null
+          user_id: string
+          year: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          media_type?: string | null
+          platform?: string | null
+          privacy_level?: string | null
+          title: string
+          updated_at?: string
+          url?: string | null
+          user_id: string
+          year?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          media_type?: string | null
+          platform?: string | null
+          privacy_level?: string | null
+          title?: string
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+          year?: string | null
+        }
+        Relationships: []
+      }
+      network_media_posture: {
+        Row: {
+          created_at: string
+          id: string
+          posture_text: string | null
+          privacy_level: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          posture_text?: string | null
+          privacy_level?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          posture_text?: string | null
+          privacy_level?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      network_philanthropy: {
+        Row: {
+          cause: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          organization: string | null
+          role: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cause?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          organization?: string | null
+          role?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cause?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          organization?: string | null
+          role?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      network_social_links: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          platform: string
+          privacy_level: string | null
+          updated_at: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          platform: string
+          privacy_level?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          platform?: string
+          privacy_level?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_art_culture: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_collections: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_content: {
+        Row: {
+          created_at: string
+          id: string
+          onboarding_completed: boolean | null
+          onboarding_mode: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          onboarding_completed?: boolean | null
+          onboarding_mode?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          onboarding_completed?: boolean | null
+          onboarding_mode?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_gastronomie: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_luxe: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      personal_voyages: {
+        Row: {
+          created_at: string
+          description: string | null
+          destination: string
+          display_order: number | null
+          id: string
+          image_url: string | null
+          period: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          destination: string
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          period?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          destination?: string
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          period?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activity_domain: string | null
@@ -442,19 +1552,17 @@ export type Database = {
           first_name: string
           honorific_title: string | null
           id: string
+          identity_verified: boolean | null
+          identity_verified_at: string | null
           is_founder: boolean | null
           is_patron: boolean | null
           job_function: string | null
           last_name: string
-          mobile_phone: string
           personal_quote: string | null
           referral_code: string | null
           updated_at: string | null
           username: string | null
-          wealth_amount: string | null
-          wealth_billions: string | null
-          wealth_currency: string | null
-          wealth_unit: string | null
+          webauthn_enabled: boolean | null
         }
         Insert: {
           activity_domain?: string | null
@@ -465,19 +1573,17 @@ export type Database = {
           first_name: string
           honorific_title?: string | null
           id: string
+          identity_verified?: boolean | null
+          identity_verified_at?: string | null
           is_founder?: boolean | null
           is_patron?: boolean | null
           job_function?: string | null
           last_name: string
-          mobile_phone: string
           personal_quote?: string | null
           referral_code?: string | null
           updated_at?: string | null
           username?: string | null
-          wealth_amount?: string | null
-          wealth_billions?: string | null
-          wealth_currency?: string | null
-          wealth_unit?: string | null
+          webauthn_enabled?: boolean | null
         }
         Update: {
           activity_domain?: string | null
@@ -488,15 +1594,46 @@ export type Database = {
           first_name?: string
           honorific_title?: string | null
           id?: string
+          identity_verified?: boolean | null
+          identity_verified_at?: string | null
           is_founder?: boolean | null
           is_patron?: boolean | null
           job_function?: string | null
           last_name?: string
-          mobile_phone?: string
           personal_quote?: string | null
           referral_code?: string | null
           updated_at?: string | null
           username?: string | null
+          webauthn_enabled?: boolean | null
+        }
+        Relationships: []
+      }
+      profiles_private: {
+        Row: {
+          created_at: string | null
+          mobile_phone: string | null
+          updated_at: string | null
+          user_id: string
+          wealth_amount: string | null
+          wealth_billions: string | null
+          wealth_currency: string | null
+          wealth_unit: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          mobile_phone?: string | null
+          updated_at?: string | null
+          user_id: string
+          wealth_amount?: string | null
+          wealth_billions?: string | null
+          wealth_currency?: string | null
+          wealth_unit?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          mobile_phone?: string | null
+          updated_at?: string | null
+          user_id?: string
           wealth_amount?: string | null
           wealth_billions?: string | null
           wealth_currency?: string | null
@@ -550,6 +1687,9 @@ export type Database = {
           description: string
           display_order: number | null
           id: string
+          image_url: string | null
+          sport_type: string | null
+          subtitle: string | null
           title: string
           updated_at: string
           user_id: string
@@ -560,6 +1700,9 @@ export type Database = {
           description: string
           display_order?: number | null
           id?: string
+          image_url?: string | null
+          sport_type?: string | null
+          subtitle?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -570,6 +1713,9 @@ export type Database = {
           description?: string
           display_order?: number | null
           id?: string
+          image_url?: string | null
+          sport_type?: string | null
+          subtitle?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -590,6 +1736,36 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      webauthn_credentials: {
+        Row: {
+          created_at: string
+          credential_id: string
+          device_name: string | null
+          id: string
+          last_used_at: string | null
+          public_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credential_id: string
+          device_name?: string | null
+          id?: string
+          last_used_at?: string | null
+          public_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credential_id?: string
+          device_name?: string | null
+          id?: string
+          last_used_at?: string | null
+          public_key?: string
           user_id?: string
         }
         Relationships: []

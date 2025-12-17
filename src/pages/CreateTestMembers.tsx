@@ -18,10 +18,10 @@ const CreateTestMembers = () => {
       if (error) throw error;
       
       setResults(data);
-      toast.success(t('success'));
+      toast.success("Membres de test créés avec succès!");
     } catch (error: any) {
       console.error('Error creating test members:', error);
-      toast.error(t('error'));
+      toast.error("Erreur lors de la création des membres");
     } finally {
       setLoading(false);
     }
@@ -38,20 +38,20 @@ const CreateTestMembers = () => {
             className="text-gold/60 hover:text-gold mr-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            {t('back')}
+            Retour
           </Button>
           <h1 className="text-4xl font-serif text-gold tracking-wide">
-            {t('createTestMembers')}
+            Créer les Membres de Test
           </h1>
         </div>
 
         <div className="bg-black/50 border border-gold/20 rounded-lg p-8 space-y-6">
           <div className="space-y-4">
             <h2 className="text-2xl font-serif text-gold">
-              {t('testAccounts')}
+              9 Comptes de Test
             </h2>
             <p className="text-gold/70">
-              {t('testAccountsDescription')}
+              Cette fonction va créer 9 comptes utilisateurs réels pour les membres fictifs:
             </p>
             <ul className="space-y-2 text-gold/60 ml-4">
               <li>• Alexandre du Roche</li>
@@ -65,10 +65,10 @@ const CreateTestMembers = () => {
               <li>• Catherine Mitchell</li>
             </ul>
             <p className="text-gold/70 mt-4">
-              <strong>{t('passwordForAllAccounts')}:</strong> Test1234!
+              <strong>Mot de passe pour tous les comptes:</strong> Test1234!
             </p>
             <p className="text-gold/60 text-sm">
-              {t('emailFormat')}
+              Les emails suivent le format: prenom.nom@aurora.com
             </p>
           </div>
 
@@ -77,12 +77,12 @@ const CreateTestMembers = () => {
             disabled={loading}
             className="w-full bg-gold text-black hover:bg-gold/90"
           >
-            {loading ? t('loading') : t('createMembers')}
+            {loading ? "Création en cours..." : "Créer les Membres"}
           </Button>
 
           {results && (
             <div className="mt-6 p-4 bg-black/30 border border-gold/20 rounded-lg">
-              <h3 className="text-gold mb-4">{t('results')}:</h3>
+              <h3 className="text-gold mb-4">Résultats:</h3>
               <div className="space-y-2">
                 {results.results?.map((result: any, idx: number) => (
                   <div

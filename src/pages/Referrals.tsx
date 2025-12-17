@@ -1,486 +1,304 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { useReferrals, Referral, ReferralStats } from '@/hooks/useReferrals';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { supabase } from '@/integrations/supabase/client';
-import { 
-  Users, 
-  Copy, 
-  CheckCircle2, 
-  TrendingUp, 
-  Calendar,
-  UserPlus,
-  Award,
-  ArrowLeft,
-  Share2,
-  Link,
-  Mail,
-  MessageCircle
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Copy, Check, Users, Gift, Share2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Header } from "@/components/Header";
+
+interface ReferredMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  createdAt: string;
+}
 
 const Referrals = () => {
   const navigate = useNavigate();
-  const { t } = useLanguage();
-  const { 
-    referrals, 
-    stats, 
-    referralCode, 
-    loading, 
-    error,
-    getReferrer,
-    refresh 
-  } = useReferrals();
-  
+  const { toast } = useToast();
+  const [referralCode, setReferralCode] = useState<string>("");
+  const [referredMembers, setReferredMembers] = useState<ReferredMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [referrer, setReferrer] = useState<any>(null);
-  const [loadingReferrer, setLoadingReferrer] = useState(true);
-  const [maxReferrals, setMaxReferrals] = useState<number>(2);
 
-  const currentReferralsCount = referrals.length;
-  const remainingSlots = Math.max(0, maxReferrals - currentReferralsCount);
-
-  // Charger la limite maximale depuis les paramètres système
   useEffect(() => {
-    const loadMaxReferrals = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', 'max_referrals_per_user')
-          .maybeSingle();
-
-        if (!error && data) {
-          const limit = parseInt(data.value, 10);
-          if (!isNaN(limit) && limit > 0) {
-            setMaxReferrals(limit);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading max referrals setting:', error);
-      }
-    };
-    loadMaxReferrals();
+    loadReferralData();
   }, []);
 
-  const getSharePayload = () => {
-    const shareText = `${t('referralInvite') || 'Rejoignez-moi sur Aurora Society avec mon code de parrainage'}: ${referralCode}`;
-    const shareUrl = `${window.location.origin}/register?ref=${referralCode}`;
-    return { shareText, shareUrl };
+  const loadReferralData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/login");
+        return;
+      }
+
+      // Get user's profile with referral code
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("referral_code")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Generate referral code if not exists
+      let code = profile?.referral_code;
+      if (!code) {
+        code = generateReferralCode();
+        await supabase
+          .from("profiles")
+          .update({ referral_code: code })
+          .eq("id", user.id);
+      }
+      setReferralCode(code);
+
+      // Get members who used this referral code
+      const { data: referred, error: referredError } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, avatar_url, created_at")
+        .eq("referral_code", code)
+        .neq("id", user.id);
+
+      if (referredError) throw referredError;
+
+      setReferredMembers(
+        (referred || []).map(m => ({
+          id: m.id,
+          firstName: m.first_name,
+          lastName: m.last_name,
+          avatarUrl: m.avatar_url,
+          createdAt: m.created_at || "",
+        }))
+      );
+    } catch (error) {
+      console.error("Error loading referral data:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les données de parrainage",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  useEffect(() => {
-    const loadReferrer = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setLoadingReferrer(true);
-        const referrerData = await getReferrer(user.id);
-        setReferrer(referrerData);
-        setLoadingReferrer(false);
-      }
-    };
-    loadReferrer();
-  }, [getReferrer]);
+  const generateReferralCode = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "AURORA-";
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
 
-  const handleCopyCode = async () => {
-    if (!referralCode) return;
-    
+  const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(referralCode);
       setCopied(true);
-      toast.success(t('copied') || 'Code copié !');
+      toast({
+        title: "Code copié !",
+        description: "Le code de parrainage a été copié dans le presse-papiers",
+      });
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-      toast.error(t('error') || 'Erreur lors de la copie');
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de copier le code",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleShareCode = () => {
-    if (!referralCode) return;
+  const shareReferralLink = async () => {
+    const shareUrl = `${window.location.origin}/register?ref=${referralCode}`;
+    const shareData = {
+      title: "Rejoignez Aurora Society",
+      text: `Je vous invite à rejoindre Aurora Society, un cercle exclusif pour les membres d'élite. Utilisez mon code de parrainage : ${referralCode}`,
+      url: shareUrl,
+    };
 
-    const { shareText, shareUrl } = getSharePayload();
-    
-    if (navigator.share) {
-      navigator.share({
-        title: t('referralInvite') || 'Rejoignez Aurora Society',
-        text: shareText,
-        url: shareUrl
-      }).catch(err => console.log('Error sharing:', err));
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-      toast.success(t('linkCopied') || 'Lien copié !');
-    }
-  };
-
-  const handleCopyLinkOnly = async () => {
-    if (!referralCode) return;
-    const { shareUrl } = getSharePayload();
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success(t('linkCopied') || 'Lien copié !');
-    } catch (err) {
-      console.error('Failed to copy link:', err);
-      toast.error(t('error') || 'Erreur lors de la copie du lien');
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: "Lien copié !",
+          description: "Le lien de parrainage a été copié",
+        });
+      }
+    } catch (error) {
+      console.error("Error sharing:", error);
     }
-  };
-
-  const handleShareByEmail = () => {
-    if (!referralCode) return;
-    const { shareText, shareUrl } = getSharePayload();
-    const subject = encodeURIComponent(t('referralInvite') || 'Invitation Aurora Society');
-    const body = encodeURIComponent(`${shareText}\n\n${shareUrl}`);
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
-  };
-
-  const handleShareWhatsApp = () => {
-    if (!referralCode) return;
-    const { shareText, shareUrl } = getSharePayload();
-    const message = encodeURIComponent(`${shareText}\n${shareUrl}`);
-    const whatsappUrl = `https://wa.me/?text=${message}`;
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    if (!dateString) return "";
+    return new Date(dateString).toLocaleDateString("fr-FR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-black text-gold p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-gold/60">{t('loading') || 'Chargement...'}</div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground">Chargement...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-gold p-4 md:p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(-1)}
-              className="text-gold hover:text-gold hover:bg-gold/10"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-serif text-gold">
-                {t('myReferralNetwork') || 'Mon Réseau de Parrainage'}
-              </h1>
-              <p className="text-gold/60 mt-1">
-                {t('referralNetworkDescription') || 'Gérez vos parrainages et invitez de nouveaux membres'}
-              </p>
-            </div>
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="flex items-center gap-4 mb-8">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Parrainage</h1>
+            <p className="text-muted-foreground">Invitez de nouveaux membres et suivez vos parrainages</p>
           </div>
         </div>
 
-        {/* Error State */}
-        {error && (
-          <Card className="bg-red-950/20 border-red-500/50">
+        {/* Referral Code Card */}
+        <Card className="mb-8 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-primary" />
+              Votre Code de Parrainage
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Input
+                  value={referralCode}
+                  readOnly
+                  className="text-center text-xl font-mono font-bold tracking-wider bg-background"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={copyToClipboard} variant="outline" className="flex-1 sm:flex-none">
+                  {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                  {copied ? "Copié" : "Copier"}
+                </Button>
+                <Button onClick={shareReferralLink} className="flex-1 sm:flex-none">
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Partager
+                </Button>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mt-4">
+              Partagez ce code avec vos contacts pour les inviter à rejoindre Aurora Society.
+              Ils devront l'entrer lors de leur inscription.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Statistics */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <Card>
             <CardContent className="pt-6">
-              <p className="text-red-400">{error}</p>
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-primary/10">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{referredMembers.length}</p>
+                  <p className="text-sm text-muted-foreground">Membres parrainés</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Referral Code & Stats */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* My Referral Code */}
-            <Card className="bg-black/50 border-gold/20">
-              <CardHeader>
-                <CardTitle className="text-gold flex items-center gap-2">
-                  <UserPlus className="h-5 w-5" />
-                  {t('myReferralCode') || 'Mon Code de Parrainage'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-black/50 border border-gold/30 rounded-lg p-4">
-                    <p className="text-2xl font-mono font-bold text-gold text-center">
-                      {referralCode || '---'}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleCopyCode}
-                    className="border-gold/30 text-gold hover:bg-gold/10"
-                  >
-                    {copied ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <Copy className="h-5 w-5" />
-                    )}
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  <Button
-                    onClick={handleShareCode}
-                    className="w-full bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
-                    variant="outline"
-                    disabled={currentReferralsCount >= maxReferrals}
-                  >
-                    <Share2 className="h-4 w-4" />
-                    {t('shareCodeSystem') || (t('shareCode') || 'Partager mon code')}
-                  </Button>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="bg-black/40 border-gold/30 text-gold hover:bg-gold/10 flex items-center gap-2 justify-center text-xs py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={handleCopyLinkOnly}
-                      disabled={currentReferralsCount >= maxReferrals}
-                    >
-                      <Link className="h-3 w-3" />
-                      {t('shareCodeCopyLink') || 'Copier le lien'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="bg-black/40 border-gold/30 text-gold hover:bg-gold/10 flex items-center gap-2 justify-center text-xs py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={handleShareByEmail}
-                      disabled={currentReferralsCount >= maxReferrals}
-                    >
-                      <Mail className="h-3 w-3" />
-                      {t('shareCodeEmail') || 'Email'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="bg-black/40 border-gold/30 text-gold hover:bg-gold/10 flex items-center gap-2 justify-center text-xs py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={handleShareWhatsApp}
-                      disabled={currentReferralsCount >= maxReferrals}
-                    >
-                      <MessageCircle className="h-3 w-3" />
-                      {t('shareCodeWhatsApp') || 'WhatsApp'}
-                    </Button>
-                  </div>
-
-                  <p className="text-xs text-gold/60 text-center">
-                    {currentReferralsCount >= maxReferrals
-                      ? (t('referralLimitReached') || `Vous avez atteint la limite de ${maxReferrals} filleuls pour votre code de parrainage.`)
-                      : (
-                          <>
-                            {t('referralRemainingPrefix') || 'Vous pouvez encore parrainer'} {remainingSlots} {remainingSlots === 1 ? (t('membersShown') || 'membre') : (t('membersShownPlural') || 'membres')} {t('referralRemainingSuffix') || `avec ce code (maximum ${maxReferrals}).`}
-                          </>
-                        )}
-                  </p>
-                </div>
-                <p className="text-sm text-gold/60 text-center">
-                  {t('referralCodeHelp') || 'Partagez ce code avec vos contacts pour les inviter à rejoindre Aurora Society'}
-                </p>
-              </CardContent>
-            </Card>
-
           
-            {/* {stats && (
-              <Card className="bg-black/50 border-gold/20">
-                <CardHeader>
-                  <CardTitle className="text-gold flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    {t('statistics') || 'Statistiques'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-4">
-                    
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gold/80">
-                          {t('totalReferrals') || 'Total parrainages'}
-                        </span>
-                        <span className="text-2xl font-bold text-gold">
-                          {stats.total_referrals || 0}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gold/60">
-                        {t('totalReferralsHelp') ||
-                          "Nombre total de personnes que vous avez parrainées depuis le début."}
-                      </p>
-                    </div>
-
-                  
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gold/80">
-                          {t('thisMonth') || 'Ce mois'}
-                        </span>
-                        <span className="text-xl font-semibold text-gold">
-                          {stats.referrals_this_month || 0}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gold/60">
-                        {t('thisMonthReferralsHelp') ||
-                          "Nombre de nouveaux filleuls que vous avez invités ce mois‑ci."}
-                      </p>
-                    </div>
-
-                  
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gold/80">
-                          {t('thisYear') || 'Cette année'}
-                        </span>
-                        <span className="text-xl font-semibold text-gold">
-                          {stats.referrals_this_year || 0}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gold/60">
-                        {t('thisYearReferralsHelp') ||
-                          "Total de vos filleuls pour l'année en cours (janvier à décembre)."}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )} */}
-
-            {/* My Referrer */}
-            {!loadingReferrer && referrer && (
-              <Card className="bg-black/50 border-gold/20">
-                <CardHeader>
-                  <CardTitle className="text-gold flex items-center gap-2">
-                    <Award className="h-5 w-5" />
-                    {t('myReferrer') || 'Mon Parrain'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {referrer.referrer_profile && (
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12 border border-gold/30">
-                        <AvatarImage src={referrer.referrer_profile.avatar_url || undefined} />
-                        <AvatarFallback className="bg-gold/10 text-gold">
-                          {getInitials(
-                            referrer.referrer_profile.first_name,
-                            referrer.referrer_profile.last_name
-                          )}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold text-gold">
-                          {referrer.referrer_profile.first_name} {referrer.referrer_profile.last_name}
-                        </p>
-                        <p className="text-sm text-gold/60">
-                          {formatDate(referrer.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Right Column - Referrals List */}
-          <div className="lg:col-span-2">
-            <Card className="bg-black/50 border-gold/20">
-              <CardHeader>
-                <CardTitle className="text-gold flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  {t('myReferrals') || 'Mes Filleuls'}
-                  {referrals.length > 0 && (
-                    <span className="ml-2 text-gold/60 text-lg font-normal">
-                      ({referrals.length})
-                    </span>
-                  )}
-                <span className="ml-auto text-xs text-gold/60 font-normal">
-                  Limite : {currentReferralsCount}/{maxReferrals}
-                </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {referrals.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Users className="h-16 w-16 text-gold/30 mx-auto mb-4" />
-                    <p className="text-gold/60 text-lg mb-2">
-                      {t('noReferralsYet') || 'Aucun parrainage pour le moment'}
-                    </p>
-                    <p className="text-gold/40 text-sm">
-                      {t('shareCodeToInvite') || 'Partagez votre code pour inviter de nouveaux membres'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {referrals.map((referral) => (
-                      <div
-                        key={referral.id}
-                        className="flex items-center gap-4 p-4 bg-black/30 rounded-lg border border-gold/10 hover:border-gold/30 transition-colors"
-                      >
-                        <Avatar className="h-12 w-12 border border-gold/30">
-                          <AvatarImage 
-                            src={referral.referred_profile?.avatar_url || undefined} 
-                          />
-                          <AvatarFallback className="bg-gold/10 text-gold">
-                            {referral.referred_profile 
-                              ? getInitials(
-                                  referral.referred_profile.first_name,
-                                  referral.referred_profile.last_name
-                                )
-                              : '??'
-                            }
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="font-semibold text-gold">
-                            {referral.referred_profile 
-                              ? `${referral.referred_profile.first_name} ${referral.referred_profile.last_name}`
-                              : 'Membre'
-                            }
-                          </p>
-                          <div className="flex items-center gap-2 text-sm text-gold/60">
-                            <Calendar className="h-4 w-4" />
-                            <span>{formatDate(referral.created_at)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "px-3 py-1 rounded-full text-xs font-medium",
-                            referral.status === 'completed' 
-                              ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                              : "bg-gold/20 text-gold border border-gold/30"
-                          )}>
-                            {referral.status === 'completed' 
-                              ? t('completed') || 'Complété'
-                              : t('pending') || 'En attente'
-                            }
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-green-500/10">
+                  <Check className="h-6 w-6 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{referredMembers.length}</p>
+                  <p className="text-sm text-muted-foreground">Inscriptions confirmées</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-yellow-500/10">
+                  <Gift className="h-6 w-6 text-yellow-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">
+                    {referredMembers.length >= 5 ? "Gold" : referredMembers.length >= 3 ? "Silver" : "Bronze"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Statut parrain</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Referred Members List */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Membres Parrainés
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {referredMembers.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Aucun membre parrainé</h3>
+                <p className="text-muted-foreground">
+                  Partagez votre code de parrainage pour inviter de nouveaux membres
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {referredMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                    onClick={() => navigate(`/profile/${member.id}`)}
+                  >
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={member.avatarUrl || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {member.firstName[0]}{member.lastName[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-foreground">
+                        {member.firstName} {member.lastName}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        Inscrit le {formatDate(member.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 };
 
 export default Referrals;
-

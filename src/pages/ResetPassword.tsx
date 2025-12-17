@@ -1,280 +1,272 @@
-import React, { useState, useEffect } from "react";
-import { AuroraLogo } from "@/components/AuroraLogo";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Eye, EyeOff, Lock } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { validatePassword, getPasswordRequirements } from "@/lib/passwordValidator";
-import logo from "@/assets/logo.png";
+import { useToast } from "@/hooks/use-toast";
+import { Eye, EyeOff, Lock, Check } from "lucide-react";
+import { AuroraLogo } from "@/components/AuroraLogo";
+
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPasswords, setShowPasswords] = useState({
-    password: false,
-    confirm: false,
-  });
-  const [validToken, setValidToken] = useState<boolean | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isValidSession, setIsValidSession] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { t } = useLanguage();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Check if we have a valid reset token in the URL
-    const checkToken = async () => {
-      // First, check query params (Supabase sends tokens in query params)
-      const accessToken = searchParams.get('access_token');
-      const type = searchParams.get('type');
-      const refreshToken = searchParams.get('refresh_token');
-
-      if (accessToken && type === 'recovery') {
-        setValidToken(true);
-        // Store tokens for later use
-        // Clear the query params from URL for security
-        window.history.replaceState(null, '', window.location.pathname);
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Check if we have a recovery session (from password reset link)
+      if (session) {
+        setIsValidSession(true);
       } else {
-        // Fallback: check hash params (some email clients might use hash)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const hashAccessToken = hashParams.get('access_token');
-        const hashType = hashParams.get('type');
-        
-        if (hashAccessToken && hashType === 'recovery') {
-          setValidToken(true);
-          // Clear the hash from URL for security
-          window.history.replaceState(null, '', window.location.pathname);
-        } else {
-          setValidToken(false);
-          toast.error(t('error'));
-        }
+        toast({
+          title: "Lien invalide ou expiré",
+          description: "Veuillez demander un nouveau lien de réinitialisation.",
+          variant: "destructive",
+        });
+        setTimeout(() => navigate("/login"), 2000);
       }
+      setIsChecking(false);
     };
 
-    checkToken();
-  }, [searchParams]);
+    checkSession();
+  }, [navigate, toast]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const getPasswordStrength = () => {
+    if (password.length === 0) return 0;
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    return strength;
+  };
+
+  const passwordStrength = getPasswordStrength();
+
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+
+    if (password.length < 8) {
+      toast({
+        title: "Mot de passe trop court",
+        description: "Le mot de passe doit contenir au moins 8 caractères.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Mots de passe différents",
+        description: "Les mots de passe ne correspondent pas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordStrength < 3) {
+      toast({
+        title: "Mot de passe trop faible",
+        description: "Utilisez des majuscules, minuscules, chiffres et caractères spéciaux.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
-      // Validate passwords
-      if (password !== confirmPassword) {
-        toast.error(t('error'));
-        setLoading(false);
-        return;
-      }
+      const { error } = await supabase.auth.updateUser({ password });
 
-      // Validate password strength
-      const passwordValidation = validatePassword(password);
-      if (!passwordValidation.isValid) {
-        toast.error(passwordValidation.errors[0] || t('error'));
-        setLoading(false);
-        return;
-      }
-
-      // Get the token from URL (check both query params and hash)
-      let accessToken = searchParams.get('access_token');
-      let refreshToken = searchParams.get('refresh_token');
-
-      // If not in query params, check hash
-      if (!accessToken) {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        accessToken = hashParams.get('access_token');
-        refreshToken = hashParams.get('refresh_token') || refreshToken;
-      }
-
-      if (!accessToken) {
-        toast.error(t('error'));
-        setLoading(false);
-        return;
-      }
-
-      // Set the session with the recovery tokens
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken || '',
-      });
-
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        throw sessionError;
-      }
-
-      // Update the password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password,
-      });
-
-      if (updateError) {
-        console.error('Password update error:', updateError);
-        throw updateError;
-      }
-
-      toast.success(t('success'));
-      
-      // Redirect to login after a short delay
-      setTimeout(() => {
+      if (error) {
+        toast({
+          title: "Erreur",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        // Sign out to clear the recovery session
+        await supabase.auth.signOut();
+        
+        toast({
+          title: "Mot de passe mis à jour",
+          description: "Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+        });
+        
         navigate("/login");
-      }, 2000);
-    } catch (error: any) {
-      console.error('Error resetting password:', error);
-      toast.error(t('error'));
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue. Veuillez réessayer.",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  if (validToken === null) {
+  if (isChecking) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-gold">{t('loading')}</div>
+        <div className="animate-pulse text-gold">Vérification...</div>
       </div>
     );
   }
 
-  if (validToken === false) {
+  if (!isValidSession) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
-        <div className="text-center max-w-md mx-auto w-full">
-          {/* <AuroraLogo size="lg" className="mx-auto mb-8" /> */}
-          <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
-          <h1 className="text-4xl md:text-5xl font-serif text-gold mb-2 tracking-wide">
-            AURORA
-          </h1>
-          <h2 className="text-2xl md:text-3xl font-serif text-gold mb-8 tracking-widest">
-            SOCIETY
-          </h2>
-
-          <Card className="bg-black/40 border-red-500/30">
-            <CardHeader>
-              <CardTitle className="text-red-400">{t('error')}</CardTitle>
-              <CardDescription className="text-gold/60">
-                {t('error')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                onClick={() => navigate("/forgot-password")}
-                variant="outline"
-                className="w-full text-gold border-gold/30 hover:bg-gold/10"
-              >
-                {t('forgotPassword')}
-              </Button>
-            </CardContent>
-          </Card>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-center">
+          <p>Redirection vers la page de connexion...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
-      <div className="text-center max-w-md mx-auto w-full">
-        <AuroraLogo size="lg" className="mx-auto mb-8" />
-        
-        <h1 className="text-4xl md:text-5xl font-serif text-gold mb-2 tracking-wide">
-          AURORA
-        </h1>
-        <h2 className="text-2xl md:text-3xl font-serif text-gold mb-8 tracking-widest">
-          SOCIETY
-        </h2>
-        <p className="text-gold/60 text-sm mb-8 tracking-widest">{t('forgotPassword').toUpperCase()}</p>
-        
-        <Card className="bg-black/40 border-gold/20">
-          <CardHeader>
-            <div className="mx-auto mb-4 w-16 h-16 bg-gold/20 rounded-full flex items-center justify-center">
-              <Lock className="w-8 h-8 text-gold" />
-            </div>
-            <CardTitle className="text-gold">{t('setNewPassword')}</CardTitle>
-            <CardDescription className="text-gold/60">
-              {t('setNewPasswordDescription')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-gold/80 text-sm font-serif">
-                  {t('newPassword')}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPasswords.password ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10"
-                    placeholder={t('newPassword')}
-                    required
-                    autoFocus
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full text-gold/60 hover:text-gold"
-                    onClick={() => setShowPasswords({ ...showPasswords, password: !showPasswords.password })}
-                  >
-                    {showPasswords.password ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </div>
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8">
+        {/* Logo */}
+        <div className="flex justify-center">
+          <AuroraLogo size="lg" />
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-gold/80 text-sm font-serif">
-                  {t('confirmPassword')}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showPasswords.confirm ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10"
-                    placeholder={t('confirmPassword')}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full text-gold/60 hover:text-gold"
-                    onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                  >
-                    {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </div>
+        {/* Title */}
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-display text-gold">Nouveau mot de passe</h1>
+          <p className="text-white/60 text-sm">
+            Créez votre nouveau mot de passe sécurisé
+          </p>
+        </div>
 
-              <div className="text-xs text-gold/60 space-y-1">
-                <p className="font-medium">{t('required')}</p>
-                <ul className="list-disc list-inside space-y-0.5 ml-2">
-                  {getPasswordRequirements().map((req, index) => (
-                    <li key={index}>{req}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <Button 
-                type="submit" 
-                disabled={loading}
-                variant="outline"
-                size="lg"
-                className="w-full text-gold border-gold hover:bg-gold hover:text-black transition-all duration-300"
+        {/* Form */}
+        <form onSubmit={handleResetPassword} className="space-y-6">
+          {/* New Password */}
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-white/80">
+              Nouveau mot de passe
+            </Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-10 pr-10 bg-white/5 border-white/10 text-white"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60"
               >
-                {loading ? t('updating') : t('updatePassword')}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            
+            {/* Password Strength Indicator */}
+            {password.length > 0 && (
+              <div className="space-y-1">
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <div
+                      key={level}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        level <= passwordStrength
+                          ? passwordStrength <= 2
+                            ? "bg-red-500"
+                            : passwordStrength <= 3
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
+                          : "bg-white/10"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-white/40">
+                  {passwordStrength <= 2 && "Faible"}
+                  {passwordStrength === 3 && "Moyen"}
+                  {passwordStrength >= 4 && "Fort"}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword" className="text-white/80">
+              Confirmer le mot de passe
+            </Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+              <Input
+                id="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="pl-10 pr-10 bg-white/5 border-white/10 text-white"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            
+            {/* Match Indicator */}
+            {confirmPassword.length > 0 && (
+              <div className="flex items-center gap-1">
+                {password === confirmPassword ? (
+                  <>
+                    <Check className="h-3 w-3 text-green-500" />
+                    <span className="text-xs text-green-500">Les mots de passe correspondent</span>
+                  </>
+                ) : (
+                  <span className="text-xs text-red-500">Les mots de passe ne correspondent pas</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            disabled={isLoading || password.length < 8 || password !== confirmPassword}
+            className="w-full bg-gold hover:bg-gold/90 text-black font-medium"
+          >
+            {isLoading ? "Mise à jour..." : "Mettre à jour le mot de passe"}
+          </Button>
+        </form>
+
+        {/* Back to Login */}
+        <div className="text-center">
+          <button
+            onClick={() => navigate("/login")}
+            className="text-white/60 hover:text-gold text-sm transition-colors"
+          >
+            Retour à la connexion
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
 export default ResetPassword;
-

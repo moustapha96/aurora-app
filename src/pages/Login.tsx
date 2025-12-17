@@ -4,20 +4,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { useRegistration } from "@/contexts/RegistrationContext";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useLanguage, languages } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useAdmin } from "@/hooks/useAdmin";
 import { convertToEuros } from "@/lib/currencyConverter";
 import { z } from "zod";
-import { Eye, EyeOff } from "lucide-react";
-import { validatePassword } from "@/lib/passwordValidator";
-import { checkRateLimit, formatRetryMessage, resetRateLimit } from "@/lib/rateLimiting";
-import { initializeSession } from "@/lib/sessionManager";
-import logo from "@/assets/logo.png";
-// Schema will be created inside component to access t function
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Globe, Eye, EyeOff, ScanFace, Fingerprint, Loader2, Monitor } from "lucide-react";
+import { useBiometricAuth } from "@/hooks/useBiometricAuth";
+import { BiometricService } from "@/services/biometricService";
+import { 
+  getBiometricCapabilities, 
+  getBiometricName, 
+  authenticateWebAuthn,
+  checkWebAuthnEnabled,
+  BiometricType 
+} from "@/services/webAuthnService";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+const registrationSchema = z.object({
+  username: z.string().min(3, "L'identifiant doit contenir au moins 3 caractères").max(50),
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
+  email: z.string().email("Email invalide"),
+});
 
 const Login = () => {
   const [searchParams] = useSearchParams();
@@ -26,16 +41,37 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPasswords, setShowPasswords] = useState({
-    password: false,
-    confirmPassword: false,
-    loginPassword: false,
-  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const navigate = useNavigate();
-  const { t } = useLanguage();
-  const { registrationData, avatarPreview, idCardPreview, clearRegistrationData } = useRegistration();
-  const { refetch: checkAdmin } = useAdmin();
-  const { settings } = useSettings();
+  const { language, setLanguage, t } = useLanguage();
+
+  const handlePasswordReset = async () => {
+    if (!resetEmail) {
+      toast.error("Veuillez entrer votre email");
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+
+      toast.success("Un email de réinitialisation a été envoyé");
+      setShowResetDialog(false);
+      setResetEmail("");
+    } catch (error: any) {
+      toast.error(`Erreur: ${error.message}`);
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const handleCompleteRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,54 +81,32 @@ const Login = () => {
       console.log('Starting registration completion...');
       
       if (password !== confirmPassword) {
-        toast.error(t('error'));
+        toast.error("Les mots de passe ne correspondent pas");
         setLoading(false);
         return;
       }
 
-      // Récupérer les données d'inscription depuis le contexte
-      if (!registrationData) {
-        toast.error(t('error'));
+      // Récupérer les données d'inscription
+      const registrationDataStr = sessionStorage.getItem('registrationData');
+      const avatarBase64 = sessionStorage.getItem('registrationAvatar');
+      
+      console.log('Session data exists:', !!registrationDataStr);
+      
+      if (!registrationDataStr) {
+        toast.error("Données d'inscription manquantes");
         navigate("/register");
         setLoading(false);
         return;
       }
+
+      const registrationData = JSON.parse(registrationDataStr);
       console.log('Registration data:', { 
         email: registrationData.email, 
         firstName: registrationData.firstName, 
         lastName: registrationData.lastName 
       });
 
-      // Validate password using settings
-      const passwordValidation = validatePassword(password, {
-        minLength: settings.passwordMinLength,
-        requireUppercase: settings.passwordRequireUppercase,
-        requireNumbers: settings.passwordRequireNumbers,
-        requireSpecialChars: settings.passwordRequireSpecialChars,
-      });
-      if (!passwordValidation.isValid) {
-        toast.error(passwordValidation.errors[0] || t('error'));
-        setLoading(false);
-        return;
-      }
-
       // Validate inputs
-      const registrationSchema = z.object({
-        username: z.string().min(3, t('error')).max(50),
-        password: z.string().refine((password) => {
-          const validation = validatePassword(password, {
-            minLength: settings.passwordMinLength,
-            requireUppercase: settings.passwordRequireUppercase,
-            requireNumbers: settings.passwordRequireNumbers,
-            requireSpecialChars: settings.passwordRequireSpecialChars,
-          });
-          return validation.isValid;
-        }, {
-          message: t('error'),
-        }),
-        email: z.string().email(t('error')),
-      });
-
       const validationResult = registrationSchema.safeParse({
         username,
         password,
@@ -112,13 +126,11 @@ const Login = () => {
         email: registrationData.email,
         password: password,
         options: {
-          emailRedirectTo: settings.requireEmailVerification 
-            ? `${window.location.origin}/verify-email`
-            : `${window.location.origin}/member-card`,
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
-            username: username
-          }
-        }
+            username: username,
+          },
+        },
       });
 
       if (authError) {
@@ -130,13 +142,12 @@ const Login = () => {
 
       if (authData.user) {
         let avatarUrl = null;
-        let idCardUrl = null;
 
         // Upload avatar if present
-        if (avatarPreview) {
+        if (avatarBase64) {
           try {
             // Convert base64 to blob
-            const response = await fetch(avatarPreview);
+            const response = await fetch(avatarBase64);
             const blob = await response.blob();
             const fileName = `${authData.user.id}-${Date.now()}.jpg`;
             const filePath = `avatars/${fileName}`;
@@ -156,30 +167,6 @@ const Login = () => {
           }
         }
 
-        // Upload ID card if present
-        if (idCardPreview) {
-          try {
-            // Convert base64 to blob
-            const response = await fetch(idCardPreview);
-            const blob = await response.blob();
-            const fileName = `${authData.user.id}-id-card-${Date.now()}.jpg`;
-            const filePath = `id-cards/${fileName}`;
-
-            const { error: uploadError } = await supabase.storage
-              .from('id-cards')
-              .upload(filePath, blob, { upsert: true });
-
-            if (!uploadError) {
-              const { data: urlData } = supabase.storage
-                .from('id-cards')
-                .getPublicUrl(filePath);
-              idCardUrl = urlData.publicUrl;
-            }
-          } catch (uploadErr) {
-            console.error('Error uploading ID card:', uploadErr);
-          }
-        }
-
         // Calculer le patrimoine en milliards d'euros
         let wealthInBillions = null;
         if (registrationData.wealthAmount && registrationData.wealthUnit) {
@@ -188,10 +175,10 @@ const Login = () => {
           const unit = registrationData.wealthUnit;
           
           // Convertir en milliards d'euros
-          wealthInBillions = convertToEuros(amount, currency, unit as "M" | "Md").toString();
+          wealthInBillions = convertToEuros(amount, currency, unit).toString();
         }
 
-        // Créer le profil en utilisant la fonction SQL (bypass RLS)
+        // Créer le profil
         console.log('Creating profile with data:', {
           id: authData.user.id,
           firstName: registrationData.firstName,
@@ -199,106 +186,193 @@ const Login = () => {
           username: username
         });
 
-        const { error: profileError } = await (supabase.rpc as any)('create_profile', {
-          p_id: authData.user.id,
-          p_first_name: registrationData.firstName,
-          p_last_name: registrationData.lastName,
-          p_honorific_title: registrationData.honorificTitle || null,
-          p_mobile_phone: registrationData.mobile,
-          p_job_function: registrationData.jobFunction || null,
-          p_activity_domain: registrationData.activityDomain || null,
-          p_personal_quote: registrationData.personalQuote || null,
-          p_username: username,
-          p_referral_code: registrationData.referralCode || null,
-          p_is_founder: registrationData.isFounder || false,
-          p_wealth_billions: wealthInBillions,
-          p_wealth_currency: registrationData.wealthCurrency || 'EUR',
-          p_wealth_unit: registrationData.wealthUnit || null,
-          p_wealth_amount: registrationData.wealthAmount || null,
-          p_avatar_url: avatarUrl,
-          p_id_card_url: idCardUrl,
-        });
+        // Create public profile (without sensitive data)
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            first_name: registrationData.firstName,
+            last_name: registrationData.lastName,
+            honorific_title: registrationData.honorificTitle,
+            job_function: registrationData.jobFunction,
+            activity_domain: registrationData.activityDomain,
+            personal_quote: registrationData.personalQuote,
+            username: username,
+            referral_code: registrationData.referralCode,
+            is_founder: registrationData.isFounder || false,
+            avatar_url: avatarUrl,
+          });
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
           throw profileError;
         }
 
+        // Create private profile data (sensitive info)
+        const { error: privateError } = await supabase
+          .from('profiles_private')
+          .insert({
+            user_id: authData.user.id,
+            mobile_phone: registrationData.mobile,
+            wealth_billions: wealthInBillions,
+            wealth_currency: registrationData.wealthCurrency || 'EUR',
+            wealth_unit: registrationData.wealthUnit || null,
+            wealth_amount: registrationData.wealthAmount || null,
+          });
+
+        if (privateError) {
+          console.error('Private profile creation error:', privateError);
+          // Don't throw - profile is created, private data can be added later
+        }
+
         console.log('Profile created successfully');
 
-        // Create referral relationship if code was provided
-        if (registrationData.referralCode && registrationData.referralCode.trim() !== '') {
-          try {
-            const { data: referralResult, error: referralError } = await (supabase.rpc as any)('validate_and_create_referral', {
-              p_referral_code: registrationData.referralCode.toUpperCase().trim(),
-              p_new_user_id: authData.user.id
-            }) as { data: any; error: any };
-
-            if (referralError) {
-              console.warn('Referral creation error (non-blocking):', referralError);
-              // Don't block registration if referral fails
-            } else if (referralResult && typeof referralResult === 'object' && referralResult.success) {
-              console.log('Referral relationship created successfully');
-            }
-          } catch (referralErr: any) {
-            console.warn('Referral creation failed (non-blocking):', referralErr);
-            // Continue with registration even if referral fails
-          }
-        }
-
-        // Send email notification if enabled
-        if (settings.emailOnNewUser) {
-          try {
-            const { sendNewUserEmail } = await import('@/lib/emailService');
-            await sendNewUserEmail(
-              registrationData.email,
-              `${registrationData.firstName} ${registrationData.lastName}`
-            );
-          } catch (emailError) {
-            console.error('Error sending new user email:', emailError);
-            // Don't block registration if email fails
-          }
-        }
-
-        // Clear registration data from context
-        clearRegistrationData();
+        sessionStorage.removeItem('registrationData');
+        sessionStorage.removeItem('registrationAvatar');
         console.log('Registration completed successfully');
-        
-        // Handle email verification requirement
-        if (settings.requireEmailVerification && !authData.user?.email_confirmed_at) {
-          toast.success(t('accountCreated'));
-          navigate("/verify-email");
-          return;
-        }
-        
-        // Check if user is admin and redirect accordingly
-        if (authData.user) {
-          try {
-            const { data: isAdmin } = await supabase.rpc('has_role', {
-              _user_id: authData.user.id,
-              _role: 'admin'
-            });
-            
-            if (isAdmin === true) {
-              toast.success(t('accountCreatedSuccess'));
-              checkAdmin();
-              navigate("/admin/dashboard");
-              return;
-            }
-          } catch (error) {
-            console.error('Error checking admin role:', error);
-            // Continue with normal redirect if check fails
-          }
-        }
-        
-        toast.success(t('accountCreatedSuccess'));
-        navigate("/member-card");
+        toast.success("Compte créé avec succès! Vous pouvez maintenant vous connecter.");
+        navigate("/login");
       }
     } catch (error: any) {
       console.error('Registration error:', error);
-      toast.error(`${t('registrationError')}: ${error.message}`);
+      toast.error(`Erreur lors de l'inscription: ${error.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Native biometric auth
+  const { isNative, isEnabled: biometricEnabled, biometryType, loading: biometricLoading } = useBiometricAuth();
+  const [biometricAuthLoading, setBiometricAuthLoading] = useState(false);
+
+  // WebAuthn (web biometric) state
+  const [webAuthnAvailable, setWebAuthnAvailable] = useState(false);
+  const [webAuthnType, setWebAuthnType] = useState<BiometricType>('none');
+  const [webAuthnLoading, setWebAuthnLoading] = useState(false);
+
+  // Check WebAuthn capabilities on mount
+  useEffect(() => {
+    const checkWebAuthn = async () => {
+      const capabilities = await getBiometricCapabilities();
+      setWebAuthnAvailable(capabilities.isPlatformAvailable);
+      setWebAuthnType(capabilities.biometricType);
+    };
+    checkWebAuthn();
+  }, []);
+
+  // Auto-trigger biometric auth on native platform
+  useEffect(() => {
+    let mounted = true;
+    
+    const tryBiometricLogin = async () => {
+      // Only run on native platform with biometric enabled
+      if (!isNative || !biometricEnabled || biometricLoading || isCompleteMode) {
+        return;
+      }
+      
+      if (!mounted) return;
+      setBiometricAuthLoading(true);
+      
+      try {
+        const result = await BiometricService.authenticate();
+        
+        if (!mounted) return;
+        
+        if (result.success) {
+          toast.success("Connexion réussie!");
+          navigate("/member-card");
+        } else if (result.error && result.error !== 'Authentification annulée') {
+          console.log('Biometric auth failed:', result.error);
+        }
+      } catch (error) {
+        console.error('Biometric login error:', error);
+      } finally {
+        if (mounted) {
+          setBiometricAuthLoading(false);
+        }
+      }
+    };
+
+    tryBiometricLogin();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [isNative, biometricEnabled, biometricLoading, navigate, isCompleteMode]);
+
+  const handleBiometricLogin = async () => {
+    setBiometricAuthLoading(true);
+    const result = await BiometricService.authenticate();
+    
+    if (result.success) {
+      toast.success("Connexion réussie!");
+      navigate("/member-card");
+    } else {
+      toast.error(result.error || "Échec de l'authentification biométrique");
+    }
+    setBiometricAuthLoading(false);
+  };
+
+  // Handle WebAuthn login (web biometric)
+  const handleWebAuthnLogin = async () => {
+    if (!username) {
+      toast.error("Veuillez entrer votre email d'abord");
+      return;
+    }
+
+    setWebAuthnLoading(true);
+
+    try {
+      // First, we need to get the user ID from the email
+      // We'll do a login attempt to check if WebAuthn is enabled for this user
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, webauthn_enabled')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id || '')
+        .single();
+
+      // If not logged in, try to find user by checking if they have credentials
+      // This is a simplified flow - in production you might want a lookup endpoint
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Veuillez d'abord vous connecter avec votre mot de passe pour activer la biométrie");
+        setWebAuthnLoading(false);
+        return;
+      }
+
+      const isEnabled = await checkWebAuthnEnabled(user.id);
+      
+      if (!isEnabled) {
+        toast.info("La connexion biométrique n'est pas activée pour ce compte. Activez-la dans les paramètres.");
+        setWebAuthnLoading(false);
+        return;
+      }
+
+      const result = await authenticateWebAuthn(user.id);
+      
+      if (result.success) {
+        toast.success("Connexion réussie!");
+        navigate("/member-card");
+      } else {
+        toast.error(result.error || "Échec de l'authentification");
+      }
+    } catch (error: any) {
+      console.error('WebAuthn login error:', error);
+      toast.error("Erreur lors de l'authentification biométrique");
+    } finally {
+      setWebAuthnLoading(false);
+    }
+  };
+
+  const getWebAuthnIcon = () => {
+    switch (webAuthnType) {
+      case 'faceId':
+        return <ScanFace className="h-5 w-5" />;
+      case 'windowsHello':
+        return <Monitor className="h-5 w-5" />;
+      default:
+        return <Fingerprint className="h-5 w-5" />;
     }
   };
 
@@ -309,38 +383,6 @@ const Login = () => {
     try {
       console.log('Attempting login with email:', username);
       
-      // Check rate limit before attempting login (using settings)
-      const rateLimitCheck = await checkRateLimit(username.toLowerCase().trim(), 'login');
-      
-      if (!rateLimitCheck.allowed) {
-        const retryMessage = formatRetryMessage(rateLimitCheck.retryAfter);
-        const lockoutMessage = settings.lockoutDuration 
-          ? t('accountLocked').replace('{minutes}', settings.lockoutDuration.toString())
-          : '';
-        const errorMessage = rateLimitCheck.message || lockoutMessage ||
-          (retryMessage 
-            ? `${t('tooManyAttempts') || 'Too many login attempts'}. ${retryMessage}`
-            : t('tooManyAttempts') || t('tryAgainLater') || 'Too many login attempts. Please try again later.');
-        toast.error(errorMessage);
-        setLoading(false);
-        return;
-      }
-      
-      // Check 2FA requirement
-      if (settings.require2FA) {
-        // TODO: Implement 2FA check
-        // For now, we'll just log it
-        console.log('2FA is required but not yet implemented');
-      }
-
-      // Show remaining attempts warning if close to limit
-      if (rateLimitCheck.remainingAttempts !== undefined && rateLimitCheck.remainingAttempts <= 2) {
-        const attemptsText = rateLimitCheck.remainingAttempts === 1 
-          ? t('remainingAttempts')?.replace('{count}', '1') || '1 attempt remaining'
-          : t('remainingAttempts')?.replace('{count}', rateLimitCheck.remainingAttempts.toString()) || `${rateLimitCheck.remainingAttempts} attempts remaining`;
-        toast.warning(attemptsText);
-      }
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: username,
         password: password,
@@ -348,53 +390,18 @@ const Login = () => {
 
       if (error) {
         console.error('Login error:', error);
-        // Rate limit is already checked, so failed login is just an auth error
-        // The rate limit will be incremented on the next attempt
         throw error;
       }
 
+      // Update stored tokens for biometric auth
+      await BiometricService.updateStoredTokens();
+
       console.log('Login successful for user:', data.user?.id);
-      
-      // Reset rate limit on successful login
-      await resetRateLimit(username.toLowerCase().trim(), 'login');
-      
-      // Initialize session management
-      initializeSession({ sessionTimeout: settings.sessionTimeout });
-      
-      // Check if user is admin and redirect accordingly
-      if (data.user) {
-        try {
-          const { data: isAdmin } = await supabase.rpc('has_role', {
-            _user_id: data.user.id,
-            _role: 'admin'
-          });
-          
-          if (isAdmin === true) {
-            toast.success(t('loginSuccess') || t('success'));
-            // Refresh admin status
-            checkAdmin();
-            navigate("/admin/dashboard");
-            return;
-          }
-        } catch (error) {
-          console.error('Error checking admin role:', error);
-          // Continue with normal redirect if check fails
-        }
-      }
-      
-      toast.success(t('loginSuccess') || t('success'));
+      toast.success("Connexion réussie!");
       navigate("/member-card");
     } catch (error: any) {
       console.error('Login failed:', error);
-      
-      // Show appropriate error message
-      if (error.message?.includes('Invalid login credentials') || error.message?.includes('Invalid credentials')) {
-        toast.error(t('invalidCredentials') || 'Invalid email or password');
-      } else if (error.message?.includes('Email not confirmed')) {
-        toast.error(t('emailNotConfirmed') || 'Please verify your email address');
-      } else {
-        toast.error(t('loginError') || t('error') || 'Login failed. Please try again.');
-      }
+      toast.error(`Erreur de connexion: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -403,21 +410,42 @@ const Login = () => {
   if (isCompleteMode) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
+        {/* Language Selector */}
+        <div className="absolute top-6 right-6">
+          <Select value={language} onValueChange={(value) => setLanguage(value as any)}>
+            <SelectTrigger className="w-[180px] border-gold/30 bg-black text-gold hover:border-gold z-50">
+              <Globe className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-black border-gold/30 z-50">
+              {languages.map((lang) => (
+                <SelectItem 
+                  key={lang.code} 
+                  value={lang.code}
+                  className="text-gold hover:bg-gold/10 focus:bg-gold/10"
+                >
+                  {lang.flag} {lang.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
         <div className="text-center max-w-md mx-auto w-full">
-          {/* <AuroraLogo size="lg" className="mx-auto mb-8" /> */}
-          <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
+          <AuroraLogo size="lg" className="mx-auto mb-8" />
+          
           <h1 className="text-4xl md:text-5xl font-serif text-gold mb-2 tracking-wide">
             AURORA
           </h1>
           <h2 className="text-2xl md:text-3xl font-serif text-gold mb-8 tracking-widest">
             SOCIETY
           </h2>
-          <p className="text-gold/60 text-sm mb-8 tracking-widest">{t('completeRegistration')?.toUpperCase() || 'FINALISER L\'INSCRIPTION'}</p>
+          <p className="text-gold/60 text-sm mb-8 tracking-widest">FINALISER L'INSCRIPTION</p>
           
           <form onSubmit={handleCompleteRegistration} className="space-y-6 bg-black/40 border border-gold/20 rounded-lg p-8">
             <div className="space-y-2">
               <Label htmlFor="username" className="text-gold/80 text-sm font-serif">
-                {t('username')}
+                Identifiant ( Email)
               </Label>
               <Input
                 id="username"
@@ -425,75 +453,96 @@ const Login = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-                placeholder={t('chooseUsername') || t('username')}
+                placeholder="Choisissez votre identifiant"
                 required
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password" className="text-gold/80 text-sm font-serif">
-                {t('password')}
+                Mot de passe
               </Label>
               <div className="relative">
                 <Input
                   id="password"
-                  type={showPasswords.password ? "text" : "password"}
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10"
-                  placeholder={t('choosePassword') || t('password')}
+                  placeholder="Choisissez votre mot de passe"
                   required
+                  minLength={6}
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-0 top-0 h-full text-gold/60 hover:text-gold"
-                  onClick={() => setShowPasswords({ ...showPasswords, password: !showPasswords.password })}
+                  className="absolute right-0 top-0 h-full px-3 text-gold/60 hover:text-gold hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPasswords.password ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
+              
+              {/* Password strength indicators */}
+              {password && (
+                <div className="space-y-2 mt-2">
+                  <div className="flex gap-1">
+                    <div className={`h-1 flex-1 rounded ${password.length >= 6 ? 'bg-green-500' : 'bg-gold/20'}`} />
+                    <div className={`h-1 flex-1 rounded ${password.length >= 8 && /[A-Z]/.test(password) ? 'bg-green-500' : 'bg-gold/20'}`} />
+                    <div className={`h-1 flex-1 rounded ${password.length >= 8 && /[0-9]/.test(password) && /[!@#$%^&*]/.test(password) ? 'bg-green-500' : 'bg-gold/20'}`} />
+                  </div>
+                  <ul className="text-xs space-y-1">
+                    <li className={password.length >= 6 ? 'text-green-500' : 'text-gold/40'}>
+                      ✓ Minimum 6 caractères
+                    </li>
+                    <li className={/[A-Z]/.test(password) ? 'text-green-500' : 'text-gold/40'}>
+                      ✓ Une majuscule
+                    </li>
+                    <li className={/[0-9]/.test(password) ? 'text-green-500' : 'text-gold/40'}>
+                      ✓ Un chiffre
+                    </li>
+                    <li className={/[!@#$%^&*]/.test(password) ? 'text-green-500' : 'text-gold/40'}>
+                      ✓ Un caractère spécial (!@#$%^&*)
+                    </li>
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" className="text-gold/80 text-sm font-serif">
-                {t('confirmPassword')}
+                Confirmer le mot de passe
               </Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
-                  type={showPasswords.confirmPassword ? "text" : "password"}
+                  type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10"
-                  placeholder={t('confirmPassword')}
+                  className={`bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10 ${
+                    confirmPassword && password !== confirmPassword ? 'border-red-500' : ''
+                  }`}
+                  placeholder="Confirmez votre mot de passe"
                   required
+                  minLength={6}
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-0 top-0 h-full text-gold/60 hover:text-gold"
-                  onClick={() => setShowPasswords({ ...showPasswords, confirmPassword: !showPasswords.confirmPassword })}
+                  className="absolute right-0 top-0 h-full px-3 text-gold/60 hover:text-gold hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showPasswords.confirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              <div className="text-xs text-gold/60 space-y-1">
-                <p className="font-medium">{t('passwordRequirements')}:</p>
-                <ul className="list-disc list-inside space-y-0.5 ml-2">
-                  {[
-                    `${t('passwordMinLength')}: ${settings.passwordMinLength || 6}`,
-                    settings.passwordRequireUppercase ? t('passwordUppercase') : null,
-                    t('passwordLowercase'),
-                    settings.passwordRequireNumbers ? t('passwordDigit') : null,
-                    settings.passwordRequireSpecialChars ? t('passwordSpecial') : null,
-                  ].filter(Boolean).map((req, index) => (
-                    <li key={index}>{req}</li>
-                  ))}
-                </ul>
-              </div>
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-red-500 text-xs">Les mots de passe ne correspondent pas</p>
+              )}
+              {confirmPassword && password === confirmPassword && (
+                <p className="text-green-500 text-xs">✓ Les mots de passe correspondent</p>
+              )}
             </div>
 
             <Button 
@@ -503,7 +552,7 @@ const Login = () => {
               size="lg"
               className="w-full text-gold border-gold hover:bg-gold hover:text-black transition-all duration-300"
             >
-              {loading ? t('loading') : t('createAccount')}
+              {loading ? "Création..." : "Créer mon compte"}
             </Button>
           </form>
         </div>
@@ -513,22 +562,42 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
+      {/* Language Selector */}
+      <div className="absolute top-6 right-6">
+        <Select value={language} onValueChange={(value) => setLanguage(value as any)}>
+          <SelectTrigger className="w-[180px] border-gold/30 bg-black text-gold hover:border-gold z-50">
+            <Globe className="w-4 h-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-black border-gold/30 z-50">
+            {languages.map((lang) => (
+              <SelectItem 
+                key={lang.code} 
+                value={lang.code}
+                className="text-gold hover:bg-gold/10 focus:bg-gold/10"
+              >
+                {lang.flag} {lang.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      
       <div className="text-center max-w-md mx-auto w-full">
-        {/* <AuroraLogo size="lg" className="mx-auto mb-8" /> */}
-        <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
-          
+        <AuroraLogo size="lg" className="mx-auto mb-8" />
+        
         <h1 className="text-4xl md:text-5xl font-serif text-gold mb-2 tracking-wide">
           AURORA
         </h1>
         <h2 className="text-2xl md:text-3xl font-serif text-gold mb-8 tracking-widest">
           SOCIETY
         </h2>
-        <p className="text-gold/60 text-sm mb-8 tracking-widest">{t('login')?.toUpperCase() || 'CONNEXION'}</p>
+        <p className="text-gold/60 text-sm mb-8 tracking-widest">CONNEXION</p>
         
         <form onSubmit={handleLogin} className="space-y-6 bg-black/40 border border-gold/20 rounded-lg p-8">
           <div className="space-y-2">
             <Label htmlFor="loginEmail" className="text-gold/80 text-sm font-serif">
-              {t('email')}
+              Email ( Identifiant )
             </Label>
             <Input
               id="loginEmail"
@@ -536,70 +605,157 @@ const Login = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-              placeholder={t('yourEmail') || t('email')}
+              placeholder="Votre email"
               required
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="loginPassword" className="text-gold/80 text-sm font-serif">
-              {t('password')}
+              Mot de passe
             </Label>
             <div className="relative">
               <Input
                 id="loginPassword"
-                type={showPasswords.loginPassword ? "text" : "password"}
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10"
-                placeholder={t('yourPassword') || t('password')}
+                placeholder="Votre mot de passe"
                 required
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-0 top-0 h-full text-gold/60 hover:text-gold"
-                onClick={() => setShowPasswords({ ...showPasswords, loginPassword: !showPasswords.loginPassword })}
+                className="absolute right-0 top-0 h-full px-3 text-gold/60 hover:text-gold hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
               >
-                {showPasswords.loginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
           </div>
 
+          <Button
+            type="button"
+            variant="link"
+            className="text-gold/60 hover:text-gold p-0 h-auto text-sm"
+            onClick={() => setShowResetDialog(true)}
+          >
+            Mot de passe oublié ?
+          </Button>
+
           <Button 
             type="submit" 
-            disabled={loading}
+            disabled={loading || biometricAuthLoading}
             variant="outline"
             size="lg"
             className="w-full text-gold border-gold hover:bg-gold hover:text-black transition-all duration-300"
           >
-            {loading ? t('connecting') || t('loading') : t('login')}
+            {loading ? "Connexion..." : t('login')}
           </Button>
+
+          {/* Native Biometric Login Button (iOS/Android) */}
+          {isNative && biometricEnabled && (
+            <Button
+              type="button"
+              onClick={handleBiometricLogin}
+              disabled={biometricAuthLoading}
+              variant="outline"
+              size="lg"
+              className="w-full text-gold border-gold/50 hover:bg-gold/10 transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              {biometricAuthLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Authentification...
+                </>
+              ) : (
+                <>
+                  {biometryType === 'face' ? (
+                    <ScanFace className="h-5 w-5" />
+                  ) : (
+                    <Fingerprint className="h-5 w-5" />
+                  )}
+                  {biometryType === 'face' ? 'Se connecter avec Face ID' : 'Se connecter avec empreinte'}
+                </>
+              )}
+            </Button>
+          )}
+
+          {/* WebAuthn Login Button (Web - Touch ID, Windows Hello, etc.) */}
+          {!isNative && webAuthnAvailable && (
+            <Button
+              type="button"
+              onClick={handleWebAuthnLogin}
+              disabled={webAuthnLoading || loading}
+              variant="outline"
+              size="lg"
+              className="w-full text-gold border-gold/50 hover:bg-gold/10 transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              {webAuthnLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Vérification...
+                </>
+              ) : (
+                <>
+                  {getWebAuthnIcon()}
+                  Se connecter avec {getBiometricName(webAuthnType)}
+                </>
+              )}
+            </Button>
+          )}
         </form>
         
         <div className="mt-8 text-gold/60 text-sm text-center">
-          <p>{t('exclusiveCircle') || ''}</p>
-          <p>{t('chosenMembers') || ''}</p>
+          <p>{t('exclusiveCircle')}</p>
+          <p>{t('chosenMembers')}</p>
         </div>
 
-        <div className="mt-4 space-y-2">
-          <Button
-            onClick={() => navigate("/forgot-password")}
-            variant="link"
-            className="w-full text-gold/60 hover:text-gold text-sm"
-          >
-            {t('forgotPassword')}
-          </Button>
-          <Button
-            onClick={() => navigate("/register")}
-            variant="link"
-            className="w-full text-gold/60 hover:text-gold text-sm"
-          >
-            {t('notMemberYet') || t('register')}
-          </Button>
-        </div>
+        <Button
+          onClick={() => navigate("/register")}
+          variant="link"
+          className="mt-4 text-gold/60 hover:text-gold"
+        >
+          Pas encore membre ? S'inscrire
+        </Button>
       </div>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <DialogContent className="bg-black border-gold/30">
+          <DialogHeader>
+            <DialogTitle className="text-gold font-serif">Réinitialiser le mot de passe</DialogTitle>
+            <DialogDescription className="text-gold/60">
+              Entrez votre email pour recevoir un lien de réinitialisation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="resetEmail" className="text-gold/80 text-sm font-serif">
+                Email
+              </Label>
+              <Input
+                id="resetEmail"
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
+                placeholder="Votre email"
+              />
+            </div>
+            <Button
+              onClick={handlePasswordReset}
+              disabled={resetLoading}
+              className="w-full text-gold border-gold hover:bg-gold hover:text-black"
+              variant="outline"
+            >
+              {resetLoading ? "Envoi..." : "Envoyer le lien"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

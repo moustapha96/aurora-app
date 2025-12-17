@@ -1,3 +1,4 @@
+import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Layers, Zap, Users, Palette } from "lucide-react";
@@ -27,6 +28,7 @@ const Metaverse = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
+      <Header />
       <main className="container mx-auto px-6">
         <h1 className="text-9xl font-serif text-primary text-center">
           {t('metaversePage')}

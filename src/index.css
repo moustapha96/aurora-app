@@ -45,18 +45,30 @@ All colors MUST be HSL. */
     --black-deep: 0 0% 3%;
     --black-medium: 0 0% 8%;
     --black-light: 0 0% 12%;
+    --black-elevated: 0 0% 10%;
     --navy-blue: 220 60% 25%;
     --navy-blue-light: 220 80% 12%;
+    
+    /* Card Surfaces - Elevated and Premium */
+    --card-elevated: 0 0% 7%;
+    --card-surface: 0 0% 9%;
+    --card-hover: 0 0% 11%;
     
     /* Gradients */
     --gradient-gold: linear-gradient(135deg, hsl(45 100% 70%) 0%, hsl(45 90% 60%) 100%);
     --gradient-dark: linear-gradient(180deg, hsl(0 0% 3%) 0%, hsl(0 0% 8%) 100%);
     --gradient-overlay: linear-gradient(135deg, hsl(0 0% 3% / 0.9) 0%, hsl(0 0% 8% / 0.8) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 8%) 0%, hsl(0 0% 5%) 100%);
+    --gradient-card-hover: linear-gradient(145deg, hsl(0 0% 10%) 0%, hsl(0 0% 7%) 100%);
+    --gradient-premium: linear-gradient(135deg, hsl(0 0% 8%) 0%, hsl(45 10% 6%) 50%, hsl(0 0% 5%) 100%);
     
     /* Shadows */
     --shadow-gold: 0 4px 20px hsl(45 100% 70% / 0.3);
     --shadow-elegant: 0 8px 32px hsl(0 0% 0% / 0.4);
     --shadow-premium: 0 12px 48px hsl(45 100% 70% / 0.2);
+    --shadow-card: 0 4px 16px hsl(0 0% 0% / 0.3), 0 0 1px hsl(45 100% 70% / 0.1);
+    --shadow-card-hover: 0 8px 24px hsl(0 0% 0% / 0.4), 0 0 2px hsl(45 100% 70% / 0.15);
+    --shadow-glow: 0 0 20px hsl(45 100% 70% / 0.08);
     
     /* Animations */
     --transition-luxury: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -129,6 +141,14 @@ All colors MUST be HSL. */
     background: var(--gradient-dark);
   }
   
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+  
+  .gradient-premium {
+    background: var(--gradient-premium);
+  }
+  
   .shadow-gold {
     box-shadow: var(--shadow-gold);
   }
@@ -141,8 +161,31 @@ All colors MUST be HSL. */
     box-shadow: var(--shadow-premium);
   }
   
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  
   .transition-luxury {
     transition: var(--transition-luxury);
+  }
+  
+  /* Premium Module Card Style */
+  .module-card {
+    background: var(--gradient-card);
+    border: 1px solid hsl(45 100% 70% / 0.15);
+    box-shadow: var(--shadow-card);
+    transition: var(--transition-smooth);
+  }
+  
+  .module-card:hover {
+    background: var(--gradient-card-hover);
+    border-color: hsl(45 100% 70% / 0.25);
+    box-shadow: var(--shadow-card-hover), var(--shadow-glow);
+  }
+  
+  /* Section Container with subtle gradient */
+  .section-container {
+    background: linear-gradient(180deg, hsl(0 0% 4%) 0%, hsl(0 0% 3%) 100%);
   }
   
   .aurora-glow {
@@ -172,21 +215,140 @@ All colors MUST be HSL. */
     outline-offset: -2px !important;
   }
   
-  /* Responsive images in prose content */
-  .prose img {
-    @apply max-w-full h-auto rounded-lg;
-    width: 100% !important;
-    height: auto !important;
+  /* Gold accent line */
+  .gold-accent-top {
+    position: relative;
   }
   
-  .prose video {
-    @apply max-w-full h-auto rounded-lg;
-    width: 100% !important;
-    height: auto !important;
+  .gold-accent-top::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, hsl(45 100% 70% / 0.4) 50%, transparent 100%);
+  }
+}
+
+/* ===== Capacitor / Mobile Native Styles ===== */
+
+/* CSS Variables for native features */
+:root {
+  --keyboard-height: 0px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* Safe area padding for iOS notch and home indicator */
+.safe-area-top {
+  padding-top: var(--safe-area-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.safe-area-all {
+  padding-top: var(--safe-area-top);
+  padding-bottom: var(--safe-area-bottom);
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+
+/* Keyboard handling */
+body.keyboard-visible {
+  --keyboard-offset: var(--keyboard-height);
+}
+
+body.keyboard-visible .keyboard-aware {
+  padding-bottom: var(--keyboard-height);
+  transition: padding-bottom 0.25s ease-out;
+}
+
+body.keyboard-visible .keyboard-hide {
+  display: none !important;
+}
+
+/* Native scroll behavior */
+.native-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Prevent text selection on native (for UI elements) */
+.no-select {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Tap highlight removal for native feel */
+.native-tap {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Active states for native feel */
+.native-active:active {
+  opacity: 0.7;
+  transform: scale(0.98);
+  transition: all 0.1s ease;
+}
+
+/* iOS-style momentum scrolling */
+.momentum-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fixed bottom navigation with safe area */
+.fixed-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding-bottom: max(var(--safe-area-bottom), 1rem);
+  background: hsl(var(--background));
+  border-top: 1px solid hsl(var(--border));
+  z-index: 50;
+}
+
+/* Pull to refresh container */
+.pull-to-refresh {
+  overscroll-behavior-y: contain;
+}
+
+/* Native-like card press effect */
+.card-press {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-press:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Disable hover effects on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .hover\:bg-muted:hover {
+    background-color: transparent;
   }
   
-  .prose iframe {
-    @apply max-w-full rounded-lg;
-    width: 100% !important;
+  .aurora-glow:hover::before {
+    opacity: 0;
   }
+}
+
+/* iOS status bar area */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .ios-header {
+    padding-top: calc(env(safe-area-inset-top) + 0.5rem);
+  }
+}
+
+/* Android navigation bar area */
+.android-nav-padding {
+  padding-bottom: 48px;
 }

@@ -1,22 +1,31 @@
+import { useState } from "react";
+import { AuroraLogo } from "./AuroraLogo";
 import { Button } from "./ui/button";
-import { Menu, Settings, User, MessageSquare, FileText, Globe, LogOut, Briefcase, Heart, Crown, Users, Network as NetworkIcon, Shield } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { useSettings } from "@/contexts/SettingsContext";
+import { Badge } from "./ui/badge";
+import { Menu, Settings, User, MessageSquare, FileText, Trash2, LogOut, Layout, Smartphone, Monitor, Apple, Globe, Briefcase, Heart, Users, Compass, ShoppingBag, Headphones, X, Home, Shield, Fingerprint } from "lucide-react";
+import { usePlatformContext } from "@/contexts/PlatformContext";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
-import { useUserRole } from "@/hooks/useUserRole";
-import { useAdmin } from "@/hooks/useAdmin";
-import { LayoutDashboard } from "lucide-react";
-import logo from "@/assets/logo.png";
+import { useLanguage, languages } from "@/contexts/LanguageContext";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 import {
   Sheet,
   SheetContent,
@@ -24,316 +33,289 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
-const languages = [
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'en', name: 'English', flag: '🇬🇧' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-  { code: 'pt', name: 'Português', flag: '🇵🇹' },
-  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'ru', name: 'Русский', flag: '🇷🇺' },
-];
 
 export const Header = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { language, setLanguage, t } = useLanguage();
-  const { settings } = useSettings();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { role, loading: roleLoading } = useUserRole();
-  const { isAdmin, loading: adminLoading } = useAdmin();
+  const { platform, isNative, isIOS, isAndroid, isWeb } = usePlatformContext();
+  const { language, setLanguage, t } = useLanguage();
+  const { isAdmin } = useAdminCheck();
 
-  useEffect(() => {
-    // Check authentication status
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
-    };
+  const navigationItems = [
+    { label: "Accueil", icon: Home, path: "/member-card" },
+    { label: "Business", icon: Briefcase, path: "/business" },
+    { label: "Famille", icon: Heart, path: "/family" },
+    { label: "Personnel", icon: User, path: "/personal" },
+    { label: "Réseau", icon: Users, path: "/network" },
+    { label: "Membres", icon: Compass, path: "/members" },
+    { label: "Marketplace", icon: ShoppingBag, path: "/marketplace" },
+    { label: "Conciergerie", icon: Headphones, path: "/concierge" },
+  ];
 
-    checkAuth();
+  const getPlatformIcon = () => {
+    if (isIOS) return <Apple className="w-3 h-3" />;
+    if (isAndroid) return <Smartphone className="w-3 h-3" />;
+    return <Monitor className="w-3 h-3" />;
+  };
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session?.user);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+  const getPlatformLabel = () => {
+    if (isIOS) return "iOS";
+    if (isAndroid) return "Android";
+    return "Web";
+  };
 
   const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      toast.success(t('logoutSuccess') || 'Déconnexion réussie');
-      setIsAuthenticated(false);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Utilisateur non connecté");
+        return;
+      }
+
+      // Delete all user data from related tables
+      const userId = user.id;
+      
+      // Delete in order to respect foreign key constraints
+      await supabase.from('messages').delete().eq('sender_id', userId);
+      await supabase.from('conversation_members').delete().eq('user_id', userId);
+      await supabase.from('connection_requests').delete().or(`requester_id.eq.${userId},recipient_id.eq.${userId}`);
+      await supabase.from('friendships').delete().or(`user_id.eq.${userId},friend_id.eq.${userId}`);
+      await supabase.from('artwork_collection').delete().eq('user_id', userId);
+      await supabase.from('business_content').delete().eq('user_id', userId);
+      await supabase.from('family_content').delete().eq('user_id', userId);
+      await supabase.from('social_influence').delete().eq('user_id', userId);
+      await supabase.from('sports_hobbies').delete().eq('user_id', userId);
+      await supabase.from('curated_sports').delete().eq('user_id', userId);
+      await supabase.from('destinations').delete().eq('user_id', userId);
+      await supabase.from('exhibitions').delete().eq('user_id', userId);
+      await supabase.from('user_roles').delete().eq('user_id', userId);
+      await supabase.from('profiles').delete().eq('id', userId);
+
+      // Sign out
+      await supabase.auth.signOut();
+      
+      toast.success("Compte supprimé avec succès");
       navigate("/login");
-    } catch (error: any) {
-      console.error('Error logging out:', error);
-      toast.error(t('error') || 'Erreur lors de la déconnexion');
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      toast.error("Erreur lors de la suppression du compte");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
-  const navigationItems = [
-    { path: "/business", label: t('business'), icon: Briefcase },
-    { path: "/personal", label: t('personal'), icon: Crown },
-    { path: "/family", label: t('family'), icon: Heart },
-    { path: "/network", label: t('network'), icon: NetworkIcon },
-    { path: "/referrals", label: t('myReferralNetwork') || 'Parrainage', icon: NetworkIcon },
-    { path: "/members", label: t('members'), icon: Users },
-  ];
-
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
-
-  const handleNavigation = (path: string) => {
+  const handleNavigate = (path: string) => {
     navigate(path);
     setMobileMenuOpen(false);
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-      <div className="container mx-auto px-4 sm:px-6 py-3">
-        <div className="flex items-center justify-between gap-4">
-          {/* Left: Mobile Menu & Logo */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            {/* Mobile Menu Button */}
+    <>
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Left: Navigation Menu - Visible on all screens */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
-                  <Menu className="w-5 h-5" />
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Menu className="w-4 h-4" />
+                  <span className="hidden sm:inline">Navigation</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[280px] sm:w-[320px]">
+              <SheetContent side="left" className="w-72">
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-2">
-                    {/* <AuroraLogo size="sm" /> */}
-                    <img src={logo} alt="Logo" className="w-16 h-16" />
-                    <div>
-                      <h1 className="text-lg font-serif text-primary">{settings.siteName || 'AURORA'}</h1>
-                      <p className="text-xs text-muted-foreground tracking-widest">
-                        {settings.siteDescription ? settings.siteDescription.substring(0, 20) + '...' : 'SOCIETY'}
-                      </p>
-                    </div>
+                    <AuroraLogo size="sm" />
+                    <span className="font-serif text-primary">AURORA</span>
                   </SheetTitle>
                 </SheetHeader>
-                <nav className="mt-8 space-y-2">
-                  {isAuthenticated && navigationItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
+                <nav className="mt-8 flex flex-col space-y-2">
+                  {navigationItems.map((item) => (
+                    <Button
+                      key={item.path}
+                      variant="ghost"
+                      className="justify-start gap-3 h-12"
+                      onClick={() => handleNavigate(item.path)}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      {item.label}
+                    </Button>
+                  ))}
+                  <div className="border-t border-border my-4" />
+                  <Button
+                    variant="ghost"
+                    className="justify-start gap-3 h-12"
+                    onClick={() => handleNavigate("/messages")}
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    Messages
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="justify-start gap-3 h-12"
+                    onClick={() => handleNavigate("/edit-profile")}
+                  >
+                    <User className="w-5 h-5" />
+                    Mon Profil
+                  </Button>
+                  {isAdmin && (
+                    <>
+                      <div className="border-t border-border my-4" />
                       <Button
-                        key={item.path}
-                        variant={isActive(item.path) ? "secondary" : "ghost"}
-                        className="w-full justify-start gap-3"
-                        onClick={() => handleNavigation(item.path)}
+                        variant="ghost"
+                        className="justify-start gap-3 h-12"
+                        onClick={() => handleNavigate("/admin/dashboard")}
                       >
-                        <Icon className="w-4 h-4" />
-                        {item.label}
+                        <Shield className="w-5 h-5" />
+                        {t('administration')}
                       </Button>
-                    );
-                  })}
-                  <div className="pt-4 border-t">
-
-                    {isAuthenticated && (
-                      <>
-                        {/* User Role in Mobile Menu */}
-                        {!roleLoading && role && (
-                          <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-md bg-accent/50 border border-border">
-                            {role === 'admin' && <Shield className="w-4 h-4 text-gold" />}
-                            <span className="text-sm font-medium text-foreground">
-                              {role === 'admin' ? t('admin') || 'Admin' : t('member') || 'Member'}
-                            </span>
-                          </div>
-                        )}
-                        {/* Admin Access Button in Mobile Menu */}
-                        {!adminLoading && isAdmin && (
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start gap-3 bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20"
-                            onClick={() => handleNavigation("/admin/dashboard")}
-                          >
-                            <LayoutDashboard className="w-4 h-4" />
-                            {t('adminDashboard') || 'Administration'}
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start gap-3"
-                          onClick={() => handleNavigation("/messages")}
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                          {t('messages') || 'Messages'}
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start gap-3"
-                          onClick={() => handleNavigation("/edit-profile")}
-                        >
-                          <User className="w-4 h-4" />
-                          {t('profile') || 'Profil'}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start gap-3 text-destructive hover:text-destructive"
-                          onClick={handleLogout}
-                        >
-                          <LogOut className="w-4 h-4" />
-                          {t('logout') || 'Déconnexion'}
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                    </>
+                  )}
+                  <div className="border-t border-border my-4" />
+                  <Button
+                    variant="ghost"
+                    className="justify-start gap-3 h-12 text-destructive"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-5 h-5" />
+                    Déconnexion
+                  </Button>
                 </nav>
               </SheetContent>
             </Sheet>
-
-            {/* Logo - Clickable */}
-            <button
-              onClick={() => navigate("/")}
-              className="flex items-center space-x-2 sm:space-x-3 hover:opacity-80 transition-opacity flex-shrink-0"
+            
+            {/* Center: Logo */}
+            <div 
+              className="flex items-center space-x-3 cursor-pointer" 
+              onClick={() => navigate("/member-card")}
             >
-              {/* <AuroraLogo size="sm" /> */}
-              <img src={logo} alt="Logo" className="w-14 h-14" />
-              <div className="hidden sm:block">
-                <h1 className="text-lg sm:text-xl font-serif text-primary">{settings.siteName || 'AURORA'}</h1>
-                <p className="text-xs text-muted-foreground tracking-widest">
-                  {settings.siteDescription ? settings.siteDescription.substring(0, 20) + '...' : 'SOCIETY'}
-                </p>
+              <AuroraLogo size="sm" />
+              <div>
+                <h1 className="text-xl font-serif text-primary">AURORA</h1>
+                <p className="text-xs text-muted-foreground tracking-widest">SOCIETY</p>
               </div>
-            </button>
+            </div>
+            
+            {/* Right: User Actions */}
+            <div className="flex items-center space-x-2">
+              {/* Platform Indicator (for testing) */}
+              <Badge variant="outline" className="hidden sm:flex items-center gap-1 text-xs">
+                {getPlatformIcon()}
+                {getPlatformLabel()}
+                {isNative && <span className="text-primary">•</span>}
+              </Badge>
 
-            {/* Desktop Navigation */}
-            {isAuthenticated && (
-              <nav className="hidden md:flex items-center gap-1 ml-4">
-                {navigationItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Button
-                      key={item.path}
-                      variant={isActive(item.path) ? "secondary" : "ghost"}
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => navigate(item.path)}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="hidden lg:inline">{item.label}</span>
-                    </Button>
-                  );
-                })}
-              </nav>
-            )}
-          </div>
-
-          {/* Right: User Actions */}
-          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-            {/* Language Selector */}
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="w-[120px] sm:w-[140px] h-9 bg-background border-border text-foreground">
-                <Globe className="w-4 h-4 mr-1 sm:mr-2" />
-                <SelectValue className="text-xs sm:text-sm">
-                  <span className="hidden sm:inline">
-                    {languages.find(lang => lang.code === language)?.flag || '🌐'} {languages.find(lang => lang.code === language)?.name || language.toUpperCase()}
-                  </span>
-                  <span className="sm:hidden">
-                    {languages.find(lang => lang.code === language)?.flag || '🌐'}
-                  </span>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="bg-background border-border">
-                {languages.map((lang) => (
-                  <SelectItem
-                    key={lang.code}
-                    value={lang.code}
-                    className="text-foreground focus:bg-accent focus:text-accent-foreground"
-                  >
-                    <span className="mr-2">{lang.flag}</span>
-                    {lang.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Public Actions */}
-            {/* <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => navigate("/terms")}
-              className="hidden sm:flex"
-              title={t('terms') || 'Conditions'}
-            >
-              <FileText className="w-5 h-5" />
-            </Button> */}
-
-            {/* Authenticated Actions */}
-            {isAuthenticated && (
-              <>
-                {/* User Role Badge */}
-                {!roleLoading && role && (
-                  <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-md bg-accent/50 border border-border">
-                    {role === 'admin' && <Shield className="w-4 h-4 text-gold" />}
-                    <span className="text-xs font-medium text-foreground">
-                      {role === 'admin' ? t('admin') || 'Admin' : t('member') || 'Member'}
-                    </span>
-                  </div>
-                )}
-                {/* Admin Access Button */}
-                {!adminLoading && isAdmin && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate("/admin/dashboard")}
-                    className="hidden sm:flex items-center gap-2 border-gold/30 text-gold hover:bg-gold/10 bg-gold/5"
-                    title={t('adminDashboard') || 'Administration'}
-                  >
-                    <LayoutDashboard className="w-4 h-4" />
-                    <span className="hidden lg:inline">{t('adminDashboard') || 'Admin'}</span>
+              {/* Language Switcher */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Globe className="w-5 h-5" />
                   </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate("/messages")}
-                  title={t('messages') || 'Messages'}
-                >
-                  <MessageSquare className="w-5 h-5" />
-                </Button>
-                {/* <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => navigate("/settings")}
-                  className="hidden sm:flex"
-                  title={t('settings') || 'Paramètres'}
-                >
-                  <Settings className="w-5 h-5" />
-                </Button> */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate("/edit-profile")}
-                  className="hidden sm:flex"
-                  title={t('profile') || 'Profil'}
-                >
-                  <User className="w-5 h-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleLogout}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  title={t('logout') || 'Déconnexion'}
-                >
-                  <LogOut className="w-5 h-5" />
-                </Button>
-              </>
-            )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {languages.map((lang) => (
+                    <DropdownMenuItem
+                      key={lang.code}
+                      onClick={() => setLanguage(lang.code)}
+                      className={language === lang.code ? "bg-accent" : ""}
+                    >
+                      <span className="mr-2">{lang.flag}</span>
+                      {lang.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button variant="ghost" size="icon" className="hidden md:flex" onClick={() => navigate("/terms")}>
+                <FileText className="w-5 h-5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
+                <MessageSquare className="w-5 h-5" />
+              </Button>
+              
+              {/* Settings Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Settings className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => navigate("/settings")}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    {t('settings')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/security-settings")}>
+                    <Fingerprint className="w-4 h-4 mr-2" />
+                    {t('securitySettings')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/landing-preview")}>
+                    <Layout className="w-4 h-4 mr-2" />
+                    {t('landingPages')}
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
+                        <Shield className="w-4 h-4 mr-2" />
+                        {t('administration')}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    {t('logout')}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {t('deleteAccount')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              <Button variant="ghost" size="icon" onClick={() => navigate("/edit-profile")}>
+                <User className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Delete Account Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer le compte</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible et toutes vos données seront définitivement supprimées.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Suppression..." : "Supprimer définitivement"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

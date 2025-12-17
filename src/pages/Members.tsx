@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, useParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, ArrowLeft, Crown, Heart, Diamond, BadgeDollarSign, SlidersHorizontal, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getHonorificTitleTranslation } from "@/lib/honorificTitles";
-import { useSettings } from "@/contexts/SettingsContext";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -13,11 +11,10 @@ import { ConnectionRequests } from "@/components/ConnectionRequests";
 import { WealthBadge } from "@/components/WealthBadge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Header } from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { INDUSTRIES } from "@/lib/industries";
 import { COUNTRIES } from "@/lib/countries";
-import { EditConnectionPermissionsDialog } from "@/components/EditConnectionPermissionsDialog";
-import { Settings } from "lucide-react";
 
 import {
   Dialog,
@@ -57,7 +54,7 @@ type Member = {
 };
 
 // Composant LinkedIn-style pour les cartes membres
-const MemberCard = ({ member, onClick, status, isSelected, t, language }: { member: Member; onClick: () => void; status?: string; isSelected?: boolean; t: (key: string) => string; language: string }) => {
+const MemberCard = ({ member, onClick, status, isSelected }: { member: Member; onClick: () => void; status?: string; isSelected?: boolean }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   
@@ -133,9 +130,7 @@ const MemberCard = ({ member, onClick, status, isSelected, t, language }: { memb
           {/* Informations du membre */}
           <div className="text-center space-y-2">
             {member.honorific_title && (
-              <p className="text-xs text-gold/60 font-medium uppercase tracking-wide">
-                {getHonorificTitleTranslation(member.honorific_title, language, t)}
-              </p>
+              <p className="text-xs text-gold/60 font-medium uppercase tracking-wide">{member.honorific_title}</p>
             )}
             <h3 className="text-lg font-serif text-gold group-hover:text-gold/80 transition-colors line-clamp-1">
               {member.name}
@@ -146,29 +141,10 @@ const MemberCard = ({ member, onClick, status, isSelected, t, language }: { memb
               <p className="text-xs text-gold/60 line-clamp-1">{member.location}</p>
             )}
             
-            {/* Badge de cercle (Diamond, Platinum, Gold) */}
-            {member.badge !== "none" && (
-              <div className="flex items-center justify-center gap-1 mt-1">
-                <span className="text-lg">
-                  {member.badge === "diamond" ? "💎" : member.badge === "platinum" ? "🏆" : "⭐"}
-                </span>
-                <span className="text-xs text-gold/60 font-medium uppercase">
-                  {member.badge === "diamond" ? "Diamond" : member.badge === "platinum" ? "Platinum" : "Gold"}
-                </span>
-              </div>
-            )}
-            
-            {/* Badge Patron */}
-            {member.is_patron && (
-              <Badge className="mt-1 bg-purple-600/20 text-purple-300 border-purple-400/30 px-2 py-0.5 text-xs">
-                Patron
-              </Badge>
-            )}
-            
             {/* Status badge */}
             {status && (
               <Badge variant="outline" className="mt-2 border-gold/30 text-gold/70">
-                {status === "connected" ? (t('connected') || "Connecté") : status === "pending" ? (t('pending') || "En attente") : (t('connect') || "Se connecter")}
+                {status === "connected" ? "Connecté" : status === "pending" ? "En attente" : "Se connecter"}
               </Badge>
             )}
           </div>
@@ -195,11 +171,9 @@ const calculateBadgeFromWealth = (wealthBillions: string | null): string => {
 };
 
 const Members = () => {
-  const { id: profileId } = useParams<{ id?: string }>();
-  const { settings } = useSettings();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [connectionStatus, setConnectionStatus] = useState<{ [key: string]: "pending" | "connected" }>({});
@@ -210,7 +184,7 @@ const Members = () => {
   const [circleFilter, setCircleFilter] = useState<string>("all");
   const [friendNameFilter, setFriendNameFilter] = useState<string>("all");
   const [friendWealthFilter, setFriendWealthFilter] = useState<string>("all");
-  const [showOnlyConnections, setShowOnlyConnections] = useState(false);
+  const [showOnlyConnections, setShowOnlyConnections] = useState(() => searchParams.get('showConnections') === 'true');
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -219,19 +193,6 @@ const Members = () => {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [userFriendships, setUserFriendships] = useState<string[]>([]);
   const [currentUserBadge, setCurrentUserBadge] = useState<string>("gold");
-  const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
-  const [hasAccess, setHasAccess] = useState<boolean>(true);
-  const [isCheckingAccess, setIsCheckingAccess] = useState<boolean>(false);
-  const [viewingProfileName, setViewingProfileName] = useState<string>("");
-  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
-  const [currentConnectionPermissions, setCurrentConnectionPermissions] = useState<{
-    business_access: boolean;
-    family_access: boolean;
-    personal_access: boolean;
-    influence_access: boolean;
-    network_access: boolean;
-  } | null>(null);
-  const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
   
   const badgeHierarchy: { [key: string]: number } = {
     diamond: 3,
@@ -268,68 +229,10 @@ const Members = () => {
   // Get current user's profile to exclude from members list
   const [currentUserProfile, setCurrentUserProfile] = React.useState<any>(null);
 
-  // Check URL params to auto-enable connections filter
-  useEffect(() => {
-    const showConnections = searchParams.get('showConnections');
-    if (showConnections === 'true') {
-      setShowOnlyConnections(true);
-    }
-  }, [searchParams]);
   
   React.useEffect(() => {
     const loadMembersAndCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // Determine which profile's connections to load
-      const targetProfileId = profileId || user?.id;
-      const isOwnProfile = !profileId || profileId === user?.id;
-      
-      setViewingProfileId(targetProfileId || null);
-      
-      // If viewing another user's connections, check access
-      if (!isOwnProfile && user && targetProfileId) {
-        setIsCheckingAccess(true);
-        
-        // Check if we are friends with this user and have network_access
-        const { data: friendships } = await supabase
-          .from('friendships')
-          .select('network_access')
-          .or(`and(user_id.eq.${user.id},friend_id.eq.${targetProfileId}),and(user_id.eq.${targetProfileId},friend_id.eq.${user.id})`);
-        
-        if (!friendships || friendships.length === 0 || !friendships[0]?.network_access) {
-          setHasAccess(false);
-          setIsCheckingAccess(false);
-          setIsInitialLoad(false);
-          
-          // Load profile name for error message
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', targetProfileId)
-            .single();
-          
-          if (profileData) {
-            setViewingProfileName(`${profileData.first_name} ${profileData.last_name}`);
-          }
-          return;
-        }
-        setHasAccess(true);
-        
-        // Load profile name for header
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', targetProfileId)
-          .single();
-        
-        if (profileData) {
-          setViewingProfileName(`${profileData.first_name} ${profileData.last_name}`);
-        }
-      } else {
-        setHasAccess(true);
-        setViewingProfileName("");
-      }
-      setIsCheckingAccess(false);
       
       if (!user) {
         console.log('No user found, loading all members');
@@ -338,7 +241,7 @@ const Members = () => {
         
         let query = supabase
           .from('profiles')
-          .select('id, first_name, last_name, honorific_title, job_function, activity_domain, country, is_founder, is_patron, wealth_amount, wealth_unit, wealth_billions, wealth_currency, avatar_url', { count: 'exact' })
+          .select('id, first_name, last_name, honorific_title, job_function, activity_domain, country, is_founder, is_patron, avatar_url', { count: 'exact' })
           .range(offset, offset + membersPerPage - 1);
         
         if (industryFilter !== "all") {
@@ -351,12 +254,6 @@ const Members = () => {
         
         if (searchTerm) {
           query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,job_function.ilike.%${searchTerm}%`);
-        }
-        
-        if (wealthSort === "asc") {
-          query = query.order('wealth_amount', { ascending: true, nullsFirst: false });
-        } else if (wealthSort === "desc") {
-          query = query.order('wealth_amount', { ascending: false, nullsFirst: false });
         }
         
         const { data: profiles, error, count } = await query;
@@ -381,11 +278,11 @@ const Members = () => {
           badge: 'none',
           is_founder: profile.is_founder || false,
           is_patron: profile.is_patron || false,
-          wealth_billions: profile.wealth_billions,
-          wealth_amount: profile.wealth_amount,
-          wealth_unit: profile.wealth_unit,
-          wealth_currency: profile.wealth_currency,
-          wealth_numeric: parseFloat(profile.wealth_amount) || 0,
+          wealth_billions: null,
+          wealth_amount: null,
+          wealth_unit: null,
+          wealth_currency: null,
+          wealth_numeric: 0,
           friends: [],
           connections_count: 0
         }));
@@ -398,77 +295,50 @@ const Members = () => {
       
       setCurrentUserProfile({ id: user.id });
       
-      // Load current user's profile to determine their badge/circle
-      const { data: userProfile, error: profileError } = await supabase
-        .from('profiles')
+      // Load current user's private data to determine their badge/circle
+      const { data: userPrivate, error: privateError } = await supabase
+        .from('profiles_private')
         .select('wealth_billions')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .single();
       
-      if (!profileError && userProfile?.wealth_billions) {
-        setCurrentUserBadge(calculateBadgeFromWealth(userProfile.wealth_billions));
+      if (!privateError && userPrivate?.wealth_billions) {
+        setCurrentUserBadge(calculateBadgeFromWealth(userPrivate.wealth_billions));
       } else {
         setCurrentUserBadge("none");
       }
       
-      // Load friendships to get target profile's friend IDs for filtering
-      // If viewing another user's profile, load their connections
+      // Load friendships to get user's friend IDs for filtering
       const { data: allFriendships } = await supabase
         .from('friendships')
         .select('user_id, friend_id');
       
-      const targetFriendIds: string[] = [];
-      if (allFriendships && targetProfileId) {
-        allFriendships.forEach(friendship => {
-          if (friendship.user_id === targetProfileId) {
-            targetFriendIds.push(friendship.friend_id);
-          } else if (friendship.friend_id === targetProfileId) {
-            targetFriendIds.push(friendship.user_id);
-          }
-        });
-      }
-      
-      // Also track current user's friendships for connection status
-      const currentUserFriendIds: string[] = [];
-      if (allFriendships && user) {
+      const userFriendIds: string[] = [];
+      if (allFriendships) {
         allFriendships.forEach(friendship => {
           if (friendship.user_id === user.id) {
-            currentUserFriendIds.push(friendship.friend_id);
+            userFriendIds.push(friendship.friend_id);
           } else if (friendship.friend_id === user.id) {
-            currentUserFriendIds.push(friendship.user_id);
+            userFriendIds.push(friendship.user_id);
           }
         });
       }
       
-      setUserFriendships(isOwnProfile ? targetFriendIds : currentUserFriendIds);
+      setUserFriendships(userFriendIds);
       
       // OPTIMISATION: Load only necessary data with pagination
       // Calculate offset based on current page and filters
       const offset = (currentPage - 1) * membersPerPage;
       
-      // Build query with filters applied server-side
+      // Build query with filters applied server-side (without wealth data for security)
       let query = supabase
         .from('profiles')
-        .select('id, first_name, last_name, honorific_title, job_function, activity_domain, country, is_founder, is_patron, wealth_amount, wealth_unit, wealth_billions, wealth_currency, avatar_url', { count: 'exact' });
+        .select('id, first_name, last_name, honorific_title, job_function, activity_domain, country, is_founder, is_patron, avatar_url', { count: 'exact' })
+        .neq('id', user.id);
       
-      // Exclude the target profile from results (whether it's own profile or another user's)
-      if (targetProfileId) {
-        query = query.neq('id', targetProfileId);
-      }
-      
-      // If viewing another user's profile, always show only their connections
-      // Otherwise, apply "show only connections" filter if enabled
-      if (!isOwnProfile && targetProfileId) {
-        // Viewing another user's connections - show only their friends
-        if (targetFriendIds.length > 0) {
-          query = query.in('id', targetFriendIds);
-        } else {
-          // No connections, return empty result
-          query = query.eq('id', '00000000-0000-0000-0000-000000000000'); // Impossible ID to return empty
-        }
-      } else if (showOnlyConnections && targetFriendIds.length > 0) {
-        // Viewing own profile with connections filter
-        query = query.in('id', targetFriendIds);
+      // Apply "show only connections" filter server-side
+      if (showOnlyConnections && userFriendIds.length > 0) {
+        query = query.in('id', userFriendIds);
       }
       
       query = query.range(offset, offset + membersPerPage - 1);
@@ -487,27 +357,6 @@ const Members = () => {
       // Apply search filter server-side using full-text search
       if (searchTerm) {
         query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,job_function.ilike.%${searchTerm}%`);
-      }
-      
-      // Apply wealth sorting server-side
-      if (wealthSort === "asc") {
-        query = query.order('wealth_amount', { ascending: true, nullsFirst: false });
-      } else if (wealthSort === "desc") {
-        query = query.order('wealth_amount', { ascending: false, nullsFirst: false });
-      }
-      
-      // Apply circle filter server-side based on wealth_billions
-      if (circleFilter !== "all") {
-        if (circleFilter === "gold") {
-          // Gold: 10M€ à 30M€ (0.01 à 0.03 Md)
-          query = query.gte('wealth_billions', '0.01').lt('wealth_billions', '0.03');
-        } else if (circleFilter === "platinum") {
-          // Platinum: 30M€ à 100M€ (0.03 à 0.1 Md)
-          query = query.gte('wealth_billions', '0.03').lte('wealth_billions', '0.1');
-        } else if (circleFilter === "diamond") {
-          // Diamond: > 100M€ (> 0.1 Md)
-          query = query.gt('wealth_billions', '0.1');
-        }
       }
       
       const { data: profiles, error, count } = await query;
@@ -540,7 +389,7 @@ const Members = () => {
         });
       }
       
-      // Transform ONLY the paginated results
+      // Transform ONLY the paginated results (without wealth data for security)
       const transformedMembers = (profiles || []).map(profile => ({
         id: profile.id,
         name: `${profile.first_name} ${profile.last_name}`,
@@ -550,14 +399,14 @@ const Members = () => {
         location: profile.country || 'N/A',
         avatar: profile.first_name?.charAt(0) || 'M',
         avatar_url: profile.avatar_url,
-        badge: calculateBadgeFromWealth(profile.wealth_billions),
+        badge: 'none', // Badge hidden for privacy
         is_founder: profile.is_founder || false,
         is_patron: profile.is_patron || false,
-        wealth_billions: profile.wealth_billions,
-        wealth_amount: profile.wealth_amount,
-        wealth_unit: profile.wealth_unit,
-        wealth_currency: profile.wealth_currency,
-        wealth_numeric: parseFloat(profile.wealth_amount) || 0,
+        wealth_billions: null,
+        wealth_amount: null,
+        wealth_unit: null,
+        wealth_currency: null,
+        wealth_numeric: 0,
         friends: [],
         connections_count: connectionsCount[profile.id]?.size || 0
       }));
@@ -568,7 +417,7 @@ const Members = () => {
     };
     
     loadMembersAndCurrentUser();
-  }, [currentPage, industryFilter, locationFilter, searchTerm, wealthSort, circleFilter, showOnlyConnections, profileId]);
+  }, [currentPage, industryFilter, locationFilter, searchTerm, wealthSort, circleFilter, showOnlyConnections]);
 
   // OPTIMISATION: Filtering is now mostly done server-side
   // Only client-side filters remaining are for complex friend filters (if needed in future)
@@ -585,12 +434,15 @@ const Members = () => {
   // Pagination is now handled server-side
   const paginatedMembers = filteredMembers;
   
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters change - use a ref to prevent loops
+  const prevFiltersRef = React.useRef<string>("");
   React.useEffect(() => {
-    if (currentPage !== 1) {
+    const currentFilters = JSON.stringify({searchTerm, industryFilter, locationFilter, wealthSort, circleFilter, friendNameFilter, friendWealthFilter, showOnlyConnections});
+    if (prevFiltersRef.current && prevFiltersRef.current !== currentFilters && currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [searchTerm, industryFilter, locationFilter, wealthSort, circleFilter, friendNameFilter, friendWealthFilter, showOnlyConnections]);
+    prevFiltersRef.current = currentFilters;
+  }, [searchTerm, industryFilter, locationFilter, wealthSort, circleFilter, friendNameFilter, friendWealthFilter, showOnlyConnections, currentPage]);
 
   const getBadgeColor = (badge: string) => {
     switch (badge) {
@@ -639,107 +491,11 @@ const Members = () => {
     }
   };
   
-  const loadConnectionPermissions = async (memberId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data: friendship, error } = await supabase
-        .from('friendships')
-        .select('id, business_access, family_access, personal_access, influence_access, network_access')
-        .eq('user_id', user.id)
-        .eq('friend_id', memberId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error loading connection permissions:', error);
-        return null;
-      }
-
-      return friendship;
-    } catch (error) {
-      console.error('Error loading connection permissions:', error);
-      return null;
-    }
-  };
-
-  const handleEditPermissions = async (memberId: string, memberName: string) => {
-    const friendship = await loadConnectionPermissions(memberId);
-    if (friendship) {
-      setEditingConnectionId(friendship.id);
-      setCurrentConnectionPermissions({
-        business_access: friendship.business_access ?? true,
-        family_access: friendship.family_access ?? true,
-        personal_access: friendship.personal_access ?? true,
-        influence_access: friendship.influence_access ?? true,
-        network_access: friendship.network_access ?? true,
-      });
-      setPermissionsDialogOpen(true);
-    } else {
-      toast.error(t('errorLoadingPermissions') || 'Erreur lors du chargement des permissions');
-    }
-  };
-
-  const handleSavePermissions = async (permissions: {
-    business_access: boolean;
-    family_access: boolean;
-    personal_access: boolean;
-    influence_access: boolean;
-    network_access: boolean;
-  }) => {
-    if (!editingConnectionId) return;
-
-    try {
-      const { error } = await supabase
-        .from('friendships')
-        .update(permissions)
-        .eq('id', editingConnectionId);
-
-      if (error) throw error;
-
-      toast.success(t('permissionsUpdated') || 'Permissions mises à jour avec succès');
-      setPermissionsDialogOpen(false);
-      setEditingConnectionId(null);
-      setCurrentConnectionPermissions(null);
-      // Reload connection status to reflect changes
-      // Find the member and reload their status
-      if (selectedMember) {
-        const nameParts = selectedMember.name.split(" ");
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(" ");
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('first_name', firstName)
-          .eq('last_name', lastName)
-          .single();
-        
-        if (profile) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { data: friendship } = await supabase
-              .from('friendships')
-              .select('id')
-              .or(`and(user_id.eq.${user.id},friend_id.eq.${profile.id}),and(user_id.eq.${profile.id},friend_id.eq.${user.id})`)
-              .maybeSingle();
-            
-            if (friendship) {
-              setConnectionStatus(prev => ({ ...prev, [selectedMember.name]: "connected" }));
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error updating permissions:', error);
-      toast.error(t('errorUpdatingPermissions') || 'Erreur lors de la mise à jour des permissions');
-    }
-  };
-
   const handleConnectionRequest = async (memberName: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error(t('error'));
+        toast.error("Vous devez être connecté");
         return;
       }
 
@@ -756,95 +512,40 @@ const Members = () => {
         .single();
 
       if (profileError || !recipientProfile) {
-        toast.error(t('error'));
+        toast.error("Membre introuvable");
         return;
       }
 
       // Prevent self-connection
       if (recipientProfile.id === user.id) {
-        toast.error(t('error'));
+        toast.error("Vous ne pouvez pas vous envoyer de demande à vous-même");
         return;
       }
 
-      // Check if a connection request already exists (in either direction)
-      const { data: existingRequest, error: checkError } = await supabase
-        .from('connection_requests')
-        .select('id, status, requester_id, recipient_id')
-        .or(`and(requester_id.eq.${user.id},recipient_id.eq.${recipientProfile.id}),and(requester_id.eq.${recipientProfile.id},recipient_id.eq.${user.id})`)
-        .maybeSingle();
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-
-      // If request exists
-      if (existingRequest) {
-        // If it's already pending and we're the requester, do nothing
-        if (existingRequest.status === 'pending' && existingRequest.requester_id === user.id) {
-          toast.info(t('connectionRequestAlreadySent') || 'Demande de connexion déjà envoyée');
-          return;
-        }
-        
-        // If it's pending and we're the recipient, they already sent us a request
-        if (existingRequest.status === 'pending' && existingRequest.recipient_id === user.id) {
-          toast.info(t('connectionRequestAlreadyReceived') || 'Cette personne vous a déjà envoyé une demande');
-          return;
-        }
-
-        // If it was rejected, update it to pending
-        if (existingRequest.status === 'rejected') {
-          const { error: updateError } = await supabase
-            .from('connection_requests')
-            .update({ 
-              status: 'pending',
-              requester_id: user.id,
-              recipient_id: recipientProfile.id,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingRequest.id);
-
-          if (updateError) throw updateError;
-          
-          setConnectionStatus(prev => ({ ...prev, [memberName]: "pending" }));
-          setSelectedMember(null);
-          toast.success(t('connectionRequestResent') || 'Demande de connexion renvoyée');
-          return;
-        }
-
-        // If it's accepted, they're already connected
-        if (existingRequest.status === 'accepted') {
-          toast.info(t('alreadyConnected') || 'Vous êtes déjà connecté avec cette personne');
-          return;
-        }
-      }
-
-      // Create new connection request using upsert to handle conflicts gracefully
+      // Create connection request
       const { error } = await supabase
         .from('connection_requests')
-        .upsert({
+        .insert({
           requester_id: user.id,
           recipient_id: recipientProfile.id,
           status: 'pending'
-        }, {
-          onConflict: 'requester_id,recipient_id',
-          ignoreDuplicates: false
         });
 
       if (error) {
-        // If it's still a conflict error, check what happened
-        if (error.code === '23505') {
-          toast.info(t('connectionRequestAlreadySent') || 'Demande de connexion déjà envoyée');
-          return;
+        if (error.code === '23505') { // Unique constraint violation
+          toast.error("Demande déjà envoyée");
+        } else {
+          throw error;
         }
-        throw error;
+        return;
       }
 
       setConnectionStatus(prev => ({ ...prev, [memberName]: "pending" }));
       setSelectedMember(null);
-      toast.success(t('connectionRequestSent') || 'Demande de connexion envoyée');
+      toast.success("Demande de connexion envoyée");
     } catch (error) {
       console.error('Error sending connection request:', error);
-      toast.error(t('error'));
+      toast.error("Erreur lors de l'envoi");
     }
   };
   
@@ -853,113 +554,61 @@ const Members = () => {
     navigate(`/payment?badge=${badge}&amount=${badgePrices[badge]}`);
   };
 
-  // Show access denied message if viewing another user's connections without permission
-  if (isCheckingAccess) {
-    return (
-      <div className="min-h-screen bg-[hsl(var(--navy-blue-light))] text-gold p-6 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gold/80 text-lg">Vérification des permissions...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasAccess && viewingProfileId) {
-    return (
-      <div className="min-h-screen bg-[hsl(var(--navy-blue-light))] text-gold p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center mb-8">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(`/profile/${viewingProfileId}`)}
-              className="text-gold/60 hover:text-gold mr-4"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              {t('back')}
-            </Button>
-            <h1 className="text-4xl font-serif text-gold tracking-wide">
-              {viewingProfileName ? `MEMBRES DE ${viewingProfileName.toUpperCase()}` : 'MEMBERS'}
-            </h1>
-          </div>
-          <div className="bg-black/50 border border-gold/20 rounded-lg p-8 text-center">
-            <p className="text-gold/80 text-lg mb-4">
-              Accès refusé
-            </p>
-            <p className="text-gold/60">
-              Vous n'avez pas la permission de voir les connexions de {viewingProfileName || 'ce membre'}.
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/profile/${viewingProfileId}`)}
-              className="mt-6 border-gold/30 text-gold hover:bg-gold/10"
-            >
-              Retour au profil
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[hsl(var(--navy-blue-light))] text-gold p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Connection Requests Section - Only for own profile */}
-        {!profileId && (
-          <div className="mb-8">
+    <>
+      <Header />
+      <div className="min-h-screen bg-[hsl(var(--navy-blue-light))] text-gold px-4 sm:px-6 pt-20 sm:pt-24 pb-8 safe-area-all">
+        <div className="max-w-7xl mx-auto">
+          {/* Connection Requests Section */}
+          <div className="mb-6 sm:mb-8">
             <ConnectionRequests />
           </div>
-        )}
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => profileId ? navigate(`/profile/${profileId}`) : navigate("/member-card")}
-              className="text-gold/60 hover:text-gold mr-4"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              {t('back')}
-            </Button>
-            <h1 className="text-4xl font-serif text-gold tracking-wide">
-              {viewingProfileName ? `MEMBRES DE ${viewingProfileName.toUpperCase()}` : 'MEMBERS'}
-            </h1>
-          </div>
-        </div>
-
-        {/* Search Bar and Filters */}
-        <div className="mb-8 space-y-4">
-          <div className="flex gap-4 items-center">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gold/40" />
-              <Input
-                type="text"
-                placeholder="Rechercher par nom, prénom, secteur, pays ou relations..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-black/50 border-gold/20 text-gold placeholder:text-gold/40 focus:border-gold/50"
-              />
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+            <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/member-card")}
+                className="text-gold/60 hover:text-gold mr-2 sm:mr-4"
+              >
+                <ArrowLeft className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">{t('back')}</span>
+              </Button>
+              <h1 className="text-2xl sm:text-4xl font-serif text-gold tracking-wide">MEMBERS</h1>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className="border-gold/30 text-gold/70 hover:bg-gold/10"
-            >
-              <SlidersHorizontal className="w-4 h-4 mr-2" />
-              Filtres
-            </Button>
           </div>
 
-          {/* Advanced Filters */}
-          {showFilters && (
-            <div className="space-y-4">
-              {/* Show only connections toggle - Only for own profile */}
-              {!profileId && (
-                <div className="p-4 bg-black/30 border border-gold/20 rounded-lg">
+          {/* Search Bar and Filters */}
+          <div className="mb-6 sm:mb-8 space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+              <div className="relative flex-1 sm:max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gold/40" />
+                <Input
+                  type="text"
+                  placeholder="Rechercher..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-black/50 border-gold/20 text-gold placeholder:text-gold/40 focus:border-gold/50"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="border-gold/30 text-gold/70 hover:bg-gold/10 w-full sm:w-auto"
+              >
+                <SlidersHorizontal className="w-4 h-4 mr-2" />
+                Filtres
+              </Button>
+            </div>
+
+            {/* Advanced Filters */}
+            {showFilters && (
+              <div className="space-y-4">
+                {/* Show only connections toggle */}
+                <div className="p-3 sm:p-4 bg-black/30 border border-gold/20 rounded-lg">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -967,312 +616,282 @@ const Members = () => {
                       onChange={(e) => setShowOnlyConnections(e.target.checked)}
                       className="w-4 h-4 rounded border-gold/30 bg-black/50 text-gold focus:ring-gold/50"
                     />
-                    <span className="text-gold/90 font-medium">
+                    <span className="text-gold/90 font-medium text-sm sm:text-base">
                       Afficher uniquement mes relations ({new Set(userFriendships).size})
                     </span>
                   </label>
                 </div>
-              )}
-              
-              {/* Other filters */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-black/30 border border-gold/20 rounded-lg">
-                <div>
-                  <label className="text-gold/70 text-sm mb-2 block">{t('activityDomain')}</label>
-                  <Select value={industryFilter} onValueChange={setIndustryFilter}>
-                    <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
-                      <SelectValue placeholder={t('activityDomain')} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black border-gold/20 max-h-[300px]">
-                      <SelectItem value="all">{t('activityDomain')}</SelectItem>
-                      {INDUSTRIES.map(industry => {
-                        const translationKey = `industry_${industry.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
-                        return (
+                
+                {/* Other filters */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-4 bg-black/30 border border-gold/20 rounded-lg">
+                  <div>
+                    <label className="text-gold/70 text-sm mb-2 block">Secteur d'activité</label>
+                    <Select value={industryFilter} onValueChange={setIndustryFilter}>
+                      <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
+                        <SelectValue placeholder="Tous les secteurs" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black border-gold/20 max-h-[300px]">
+                        <SelectItem value="all">Tous les secteurs</SelectItem>
+                        {INDUSTRIES.map(industry => (
                           <SelectItem key={industry} value={industry} className="text-gold hover:bg-gold/10 focus:bg-gold/10">
-                            {t(translationKey) || industry}
+                            {industry}
                           </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div>
-                  <label className="text-gold/70 text-sm mb-2 block">Pays/État</label>
-                  <Select value={locationFilter} onValueChange={setLocationFilter}>
-                    <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
-                      <SelectValue placeholder="Tous les pays" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black border-gold/20 max-h-[300px]">
-                      <SelectItem value="all">Tous les pays</SelectItem>
-                      {COUNTRIES.map(country => (
-                        <SelectItem key={country} value={country}>{country}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <div>
+                    <label className="text-gold/70 text-sm mb-2 block">Pays/État</label>
+                    <Select value={locationFilter} onValueChange={setLocationFilter}>
+                      <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
+                        <SelectValue placeholder="Tous les pays" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black border-gold/20 max-h-[300px]">
+                        <SelectItem value="all">Tous les pays</SelectItem>
+                        {COUNTRIES.map(country => (
+                          <SelectItem key={country} value={country}>{country}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div>
-                  <label className="text-gold/70 text-sm mb-2 block">Tri par patrimoine</label>
-                  <Select value={wealthSort} onValueChange={setWealthSort}>
-                    <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
-                      <SelectValue placeholder="Aucun tri" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black border-gold/20">
-                      <SelectItem value="none">Aucun tri</SelectItem>
-                      <SelectItem value="asc">Croissant (⬆️)</SelectItem>
-                      <SelectItem value="desc">Décroissant (⬇️)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <div>
+                    <label className="text-gold/70 text-sm mb-2 block">Tri par patrimoine</label>
+                    <Select value={wealthSort} onValueChange={setWealthSort}>
+                      <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
+                        <SelectValue placeholder="Aucun tri" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black border-gold/20">
+                        <SelectItem value="none">Aucun tri</SelectItem>
+                        <SelectItem value="asc">Croissant (⬆️)</SelectItem>
+                        <SelectItem value="desc">Décroissant (⬇️)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div>
-                  <label className="text-gold/70 text-sm mb-2 block">Cercle</label>
-                  <Select value={circleFilter} onValueChange={setCircleFilter}>
-                    <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
-                      <SelectValue placeholder="Tous les cercles" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black border-gold/20">
-                      <SelectItem value="all">Tous les cercles</SelectItem>
-                      <SelectItem value="gold">Gold (10M€ - 30M€)</SelectItem>
-                      <SelectItem value="platinum">Platinum (30M€ - 100M€)</SelectItem>
-                      <SelectItem value="diamond">Diamond (&gt; 100M€)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <label className="text-gold/70 text-sm mb-2 block">Cercle</label>
+                    <Select value={circleFilter} onValueChange={setCircleFilter}>
+                      <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
+                        <SelectValue placeholder="Tous les cercles" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black border-gold/20">
+                        <SelectItem value="all">Tous les cercles</SelectItem>
+                        <SelectItem value="gold">Gold (10M€ - 30M€)</SelectItem>
+                        <SelectItem value="platinum">Platinum (30M€ - 100M€)</SelectItem>
+                        <SelectItem value="diamond">Diamond (&gt; 100M€)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* Results count */}
+          {!isInitialLoad && (
+            <div className="mb-4 text-gold/60 text-sm">
+              {filteredMembers.length} membre{filteredMembers.length > 1 ? 's' : ''} trouvé{filteredMembers.length > 1 ? 's' : ''}
+              {totalPages > 1 && ` • Page ${currentPage} sur ${totalPages}`}
             </div>
           )}
-        </div>
 
-        {/* Results count */}
-        {!isInitialLoad && (
-          <div className="mb-4 text-gold/60 text-sm">
-            {filteredMembers.length} {filteredMembers.length > 1 ? t('membersShownPlural') : t('membersShown')} {filteredMembers.length > 1 ? t('displayedPlural') : t('displayed')}
-            {totalPages > 1 && ` • Page ${currentPage} sur ${totalPages}`}
-          </div>
-        )}
-
-        {/* Members Grid - LinkedIn style */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          {isInitialLoad ? (
-            // Skeleton cards pendant le chargement initial
-            Array.from({ length: membersPerPage }).map((_, index) => (
-              <Card key={index} className="bg-[hsl(var(--navy-blue-light))] border-gold/20 overflow-hidden">
-                <CardContent className="p-0">
-                  <Skeleton className="h-16 w-full bg-gold/10" />
-                  <div className="relative px-6 pb-6">
-                    <div className="flex justify-center -mt-12 mb-4">
-                      <Skeleton className="w-24 h-24 rounded-full border-4 border-black" />
+          {/* Members Grid - LinkedIn style */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            {isInitialLoad ? (
+              // Skeleton cards pendant le chargement initial
+              Array.from({ length: membersPerPage }).map((_, index) => (
+                <Card key={index} className="bg-[hsl(var(--navy-blue-light))] border-gold/20 overflow-hidden">
+                  <CardContent className="p-0">
+                    <Skeleton className="h-16 w-full bg-gold/10" />
+                    <div className="relative px-6 pb-6">
+                      <div className="flex justify-center -mt-12 mb-4">
+                        <Skeleton className="w-24 h-24 rounded-full border-4 border-black" />
+                      </div>
+                      <div className="text-center space-y-2">
+                        <Skeleton className="h-6 w-3/4 mx-auto bg-gold/10" />
+                        <Skeleton className="h-4 w-2/3 mx-auto bg-gold/10" />
+                        <Skeleton className="h-3 w-1/2 mx-auto bg-gold/10" />
+                      </div>
                     </div>
-                    <div className="text-center space-y-2">
-                      <Skeleton className="h-6 w-3/4 mx-auto bg-gold/10" />
-                      <Skeleton className="h-4 w-2/3 mx-auto bg-gold/10" />
-                      <Skeleton className="h-3 w-1/2 mx-auto bg-gold/10" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            paginatedMembers.map((member, index) => (
-              <MemberCard
-                key={member.id || index}
-                member={member}
-                onClick={() => {
-                  setSelectedMemberId(member.id);
-                  handleMemberClick(member);
-                }}
-                status={connectionStatus[member.name]}
-                isSelected={selectedMemberId === member.id}
-                t={t}
-                language={language}
-              />
-            ))
-          )}
-        </div>
-
-        {/* Pagination */}
-        {!isInitialLoad && totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mb-8">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="border-gold/30 text-gold disabled:opacity-30"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            
-            <div className="flex gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentPage(page)}
-                  className={currentPage === page 
-                    ? "bg-gold text-black hover:bg-gold/90" 
-                    : "border-gold/30 text-gold hover:bg-gold/10"
-                  }
-                >
-                  {page}
-                </Button>
-              ))}
-            </div>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="border-gold/30 text-gold disabled:opacity-30"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              paginatedMembers.map((member, index) => (
+                <MemberCard
+                  key={member.id || index}
+                  member={member}
+                  onClick={() => {
+                    setSelectedMemberId(member.id);
+                    handleMemberClick(member);
+                  }}
+                  status={connectionStatus[member.name]}
+                  isSelected={selectedMemberId === member.id}
+                />
+              ))
+            )}
           </div>
-        )}
 
-        {/* Connection Dialog - Same Level or Lower */}
-        {selectedMember && !showUpgradeDialog && (
-          <Dialog open={!!selectedMember} onOpenChange={() => setSelectedMember(null)}>
-            <DialogContent className="bg-card border-border">
-              <DialogHeader>
-                {selectedMember.honorific_title && (
-                  <p className="text-center text-sm font-serif text-primary/80 mb-1">
-                    {getHonorificTitleTranslation(selectedMember.honorific_title, language, t)}
-                  </p>
-                )}
-                <DialogTitle className="text-2xl font-serif text-primary">
-                  {selectedMember.name}
-                </DialogTitle>
-                <DialogDescription className="text-muted-foreground">
-                  {selectedMember.title} • {selectedMember.industry}
-                </DialogDescription>
-              </DialogHeader>
+          {/* Pagination */}
+          {!isInitialLoad && totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mb-8">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="border-gold/30 text-gold disabled:opacity-30"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
               
-              <div className="py-6">
-                <div className="flex items-center justify-center mb-6">
-                  <Avatar className="w-24 h-24 border-2 border-primary">
-                    <AvatarImage src={selectedMember.avatar_url} alt={selectedMember.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary text-3xl font-serif">
-                      {selectedMember.avatar}
-                    </AvatarFallback>
-                  </Avatar>
-                  {selectedMember.badge !== "none" && (
-                    <div className="absolute text-2xl ml-20 mt-16">
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className={currentPage === page 
+                      ? "bg-gold text-black hover:bg-gold/90" 
+                      : "border-gold/30 text-gold hover:bg-gold/10"
+                    }
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="border-gold/30 text-gold disabled:opacity-30"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          {/* Connection Dialog - Same Level or Lower */}
+          {selectedMember && !showUpgradeDialog && (
+            <Dialog open={!!selectedMember} onOpenChange={() => setSelectedMember(null)}>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  {selectedMember.honorific_title && (
+                    <p className="text-center text-sm font-serif text-primary/80 mb-1">
+                      {selectedMember.honorific_title}
+                    </p>
+                  )}
+                  <DialogTitle className="text-2xl font-serif text-primary">
+                    {selectedMember.name}
+                  </DialogTitle>
+                  <DialogDescription className="text-muted-foreground">
+                    {selectedMember.title} • {selectedMember.industry}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="py-6">
+                  <div className="flex items-center justify-center mb-6">
+                    <Avatar className="w-24 h-24 border-2 border-primary">
+                      <AvatarImage src={selectedMember.avatar_url} alt={selectedMember.name} />
+                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary text-3xl font-serif">
+                        {selectedMember.avatar}
+                      </AvatarFallback>
+                    </Avatar>
+                    {selectedMember.badge !== "none" && (
+                      <div className="absolute text-2xl ml-20 mt-16">
+                        {getBadgeSymbol(selectedMember.badge)}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <p className="text-center text-foreground mb-4">
+                    {t('sendConnectionRequest')} {selectedMember.name} ?
+                  </p>
+                </div>
+
+                <DialogFooter>
+                  {connectionStatus[selectedMember.name] === "pending" ? (
+                    <div className="w-full text-center py-2 px-4 bg-muted/50 rounded-lg">
+                      <p className="text-muted-foreground font-medium">{t('pendingResponse')}</p>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="premium"
+                      className="w-full"
+                      onClick={() => handleConnectionRequest(selectedMember.name)}
+                    >
+                      {t('connectionRequest')}
+                    </Button>
+                  )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* Upgrade Dialog - Higher Level */}
+          {showUpgradeDialog && selectedMember && (
+            <Dialog open={showUpgradeDialog} onOpenChange={() => setShowUpgradeDialog(false)}>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-serif text-primary">
+                    {t('upgradeRequired')}
+                  </DialogTitle>
+                  <DialogDescription className="text-muted-foreground">
+                    {t('higherCircle')}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="py-6">
+                  <div className="flex items-center justify-center mb-6">
+                    <div className="text-5xl">
                       {getBadgeSymbol(selectedMember.badge)}
                     </div>
-                  )}
-                </div>
-                
-                <p className="text-center text-foreground mb-4">
-                  {t('sendConnectionRequest')} {selectedMember.name} ?
-                </p>
-              </div>
-
-              <DialogFooter className="flex flex-col gap-2">
-                {connectionStatus[selectedMember.name] === "pending" ? (
-                  <div className="w-full text-center py-2 px-4 bg-muted/50 rounded-lg">
-                    <p className="text-muted-foreground font-medium">{t('pendingResponse')}</p>
                   </div>
-                ) : connectionStatus[selectedMember.name] === "connected" ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => handleEditPermissions(selectedMember.id, selectedMember.name)}
-                    >
-                      <Settings className="w-4 h-4 mr-2" />
-                      {t('editPermissions') || 'Modifier les permissions'}
-                    </Button>
-                    <div className="w-full text-center py-2 px-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-                      <p className="text-green-500 font-medium">{t('connected') || 'Connecté'}</p>
-                    </div>
-                  </>
-                ) : (
+                  
+                  <p className="text-center text-foreground mb-6 leading-relaxed">
+                    {t('contactRequirement')} <span className="font-semibold text-primary">{selectedMember.name}</span>, 
+                    {t('sameLevelRequired')}
+                    <br /><br />
+                    {t('requiredLevel')} <span className="font-semibold text-primary capitalize">{selectedMember.badge}</span>
+                    <br />
+                    {t('amount')} <span className="font-semibold text-primary">{badgePrices[selectedMember.badge]}{t('perMonth')}</span>
+                  </p>
+                </div>
+
+                <DialogFooter className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setShowUpgradeDialog(false)}
+                  >
+                    {t('refuse')}
+                  </Button>
                   <Button
                     variant="premium"
-                    className="w-full"
-                    onClick={() => handleConnectionRequest(selectedMember.name)}
+                    className="flex-1"
+                    onClick={() => handleUpgrade(selectedMember.badge)}
                   >
-                    {t('connectionRequest')}
+                    {t('validate')}
                   </Button>
-                )}
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
 
-        {/* Upgrade Dialog - Higher Level */}
-        {showUpgradeDialog && selectedMember && (
-          <Dialog open={showUpgradeDialog} onOpenChange={() => setShowUpgradeDialog(false)}>
-            <DialogContent className="bg-card border-border">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-serif text-primary">
-                  {t('upgradeRequired')}
-                </DialogTitle>
-                <DialogDescription className="text-muted-foreground">
-                  {t('higherCircle')}
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="py-6">
-                <div className="flex items-center justify-center mb-6">
-                  <div className="text-5xl">
-                    {getBadgeSymbol(selectedMember.badge)}
-                  </div>
-                </div>
-                
-                <p className="text-center text-foreground mb-6 leading-relaxed">
-                  {t('contactRequirement')} <span className="font-semibold text-primary">{selectedMember.name}</span>, 
-                  {t('sameLevelRequired')}
-                  <br /><br />
-                  {t('requiredLevel')} <span className="font-semibold text-primary capitalize">{selectedMember.badge}</span>
-                  <br />
-                  {t('amount')} <span className="font-semibold text-primary">{badgePrices[selectedMember.badge]}{t('perMonth')}</span>
-                </p>
-              </div>
-
-              <DialogFooter className="flex gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowUpgradeDialog(false)}
-                >
-                  {t('refuse')}
-                </Button>
-                <Button
-                  variant="premium"
-                  className="flex-1"
-                  onClick={() => handleUpgrade(selectedMember.badge)}
-                >
-                  {t('validate')}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {/* Results Count */}
-        <div className="mt-8 text-center">
-          <p className="text-gold/60 text-sm">
-            {filteredMembers.length} {filteredMembers.length > 1 ? t('membersShownPlural') : t('membersShown')} {filteredMembers.length > 1 ? t('displayedPlural') : t('displayed')}
-          </p>
+          {/* Results Count */}
+          <div className="mt-8 text-center">
+            <p className="text-gold/60 text-sm">
+              {filteredMembers.length} {filteredMembers.length > 1 ? t('membersShownPlural') : t('membersShown')} {filteredMembers.length > 1 ? t('displayedPlural') : t('displayed')}
+            </p>
+          </div>
         </div>
-
-        {/* Edit Permissions Dialog */}
-        {currentConnectionPermissions && selectedMember && (
-          <EditConnectionPermissionsDialog
-            open={permissionsDialogOpen}
-            onOpenChange={setPermissionsDialogOpen}
-            friendName={selectedMember.name}
-            currentPermissions={currentConnectionPermissions}
-            onSave={handleSavePermissions}
-          />
-        )}
       </div>
-    </div>
+    </>
   );
 };
 

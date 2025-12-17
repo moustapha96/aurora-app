@@ -3,7 +3,6 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Briefcase, Users, Heart, Globe, Settings, Crown, Gem, LogOut, Edit } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getHonorificTitleTranslation } from "@/lib/honorificTitles";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ConnectionRequests } from "@/components/ConnectionRequests";
@@ -11,16 +10,18 @@ import { WealthBadge } from "@/components/WealthBadge";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { id } = useParams();
   const location = useLocation();
   const [profile, setProfile] = useState<any>(null);
+  const [privateData, setPrivateData] = useState<any>(null);
   const [businessContent, setBusinessContent] = useState<any>(null);
   const [familyContent, setFamilyContent] = useState<any>(null);
   const [sportsHobbies, setSportsHobbies] = useState<any[]>([]);
   const [artworks, setArtworks] = useState<any[]>([]);
   const [destinations, setDestinations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   // Load profile data - reloads when returning to this page
   useEffect(() => {
@@ -39,7 +40,9 @@ const Profile = () => {
 
       // Use id from URL if present, otherwise use current user's id
       const profileId = id || user.id;
-      console.log('[Profile] Loading profile for ID:', profileId);
+      const isOwn = profileId === user.id;
+      setIsOwnProfile(isOwn);
+      console.log('[Profile] Loading profile for ID:', profileId, 'isOwn:', isOwn);
       
       // Load profile
       const { data: profileData, error: profileError } = await supabase
@@ -50,10 +53,20 @@ const Profile = () => {
 
       if (profileError) {
         console.error('[Profile] Error loading profile:', profileError);
-        toast.error(t('error'));
+        toast.error("Erreur lors du chargement du profil");
       } else if (profileData) {
         console.log('[Profile] Profile loaded successfully');
         setProfile(profileData);
+      }
+
+      // Load private data only for own profile
+      if (isOwn) {
+        const { data: privData } = await supabase
+          .from('profiles_private')
+          .select('*')
+          .eq('user_id', profileId)
+          .maybeSingle();
+        setPrivateData(privData);
       }
 
       // Load business content
@@ -129,7 +142,7 @@ const Profile = () => {
     if (error) {
       toast.error("Erreur lors de la déconnexion");
     } else {
-      toast.success(t('success'));
+      toast.success("Déconnexion réussie");
       navigate("/login");
     }
   };
@@ -140,29 +153,29 @@ const Profile = () => {
       icon: Briefcase,
       route: "/business",
       items: businessContent ? [
-        businessContent.company_name || t('company'),
-        businessContent.position_title || t('position'),
-        businessContent.achievements_text?.substring(0, 50) || t('achievements')
-      ] : [t('noInformationProvided')]
+        businessContent.company_name || "Entreprise",
+        businessContent.position_title || "Position",
+        businessContent.achievements_text?.substring(0, 50) || "Réalisations"
+      ] : ["Aucune information renseignée"]
     },
     {
       title: t('familySocial'),
       icon: Heart,
       route: "/family",
       items: familyContent ? [
-        familyContent.family_text?.substring(0, 50) || t('family'),
-        familyContent.philanthropy_text?.substring(0, 50) || t('philanthropy'),
-        familyContent.network_text?.substring(0, 50) || t('network')
-      ] : [t('noInformationProvided')]
+        familyContent.family_text?.substring(0, 50) || "Famille",
+        familyContent.philanthropy_text?.substring(0, 50) || "Philanthropie",
+        familyContent.network_text?.substring(0, 50) || "Réseau"
+      ] : ["Aucune information renseignée"]
     },
     {
       title: t('personal'),
       icon: Crown,
       route: "/personal",
       items: [
-        artworks.length > 0 ? `${artworks.length} ${t('artworksCount')}` : t('noArtCollection'),
-        sportsHobbies.length > 0 ? sportsHobbies.map(h => h.title).join(', ').substring(0, 50) : t('noHobbyProvided'),
-        destinations.length > 0 ? `${destinations.length} ${t('destinationsCount')}` : t('noDestination')
+        artworks.length > 0 ? `${artworks.length} œuvre(s) d'art` : "Collection d'art",
+        sportsHobbies.length > 0 ? sportsHobbies.map(h => h.title).join(', ').substring(0, 50) : "Passions",
+        destinations.length > 0 ? `${destinations.length} destination(s)` : "Destinations"
       ],
       subsections: true
     },
@@ -170,26 +183,26 @@ const Profile = () => {
       title: t('influenceNetwork'),
       icon: Globe,
       route: "/network",
-      items: [t('socialNetworks'), t('mediaPress'), t('philanthropyEngagement')]
+      items: ["Réseaux Sociaux", "Médias & Couverture Presse", "Philanthropie & Engagement"]
     },
     {
       title: t('integratedServices'),
       icon: Settings,
       route: "/services",
-      items: [t('concierge'), t('metaverse'), t('marketplace')]
+      items: ["Concierge", "Immersive Metaverse", "Marketplace"]
     },
     {
       title: t('members'),
       icon: Users,
       route: "/members",
-      items: [t('membersDirectory'), t('detailedProfiles'), t('exclusiveNetwork')]
+      items: ["Répertoire des membres", "Profils détaillés", "Réseau exclusif"]
     }
   ];
 
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-gold p-6 flex items-center justify-center">
-        <p>{t('loading')}</p>
+        <p>Chargement...</p>
       </div>
     );
   }
@@ -203,45 +216,45 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-gold p-6">
+    <div className="min-h-screen bg-black text-gold px-4 sm:px-6 py-6 safe-area-all">
       {/* Header with Profile */}
       <div className="max-w-4xl mx-auto">
         {/* Profile Header */}
-        <div className="text-center mb-8">
-          <div className="w-32 h-32 mx-auto mb-4 rounded-full border-2 border-gold overflow-hidden relative">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 rounded-full border-2 border-gold overflow-hidden relative">
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt={`${profile.first_name} ${profile.last_name}`} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-gold/20 to-gold/5 flex items-center justify-center">
-                <span className="text-4xl font-serif">{profile.first_name?.[0] || 'U'}</span>
+                <span className="text-3xl sm:text-4xl font-serif">{profile.first_name?.[0] || 'U'}</span>
               </div>
             )}
-            <WealthBadge 
-              wealthBillions={profile.wealth_billions}
-              wealthAmount={profile.wealth_amount}
-              wealthUnit={profile.wealth_unit}
-              wealthCurrency={profile.wealth_currency}
-            />
+            {isOwnProfile && privateData && (
+              <WealthBadge 
+                wealthBillions={privateData.wealth_billions}
+                wealthAmount={privateData.wealth_amount}
+                wealthUnit={privateData.wealth_unit}
+                wealthCurrency={privateData.wealth_currency}
+              />
+            )}
           </div>
           
           {profile.honorific_title && (
-            <p className="text-xl font-serif text-gold/90 mb-2">
-              {getHonorificTitleTranslation(profile.honorific_title, language, t)}
-            </p>
+            <p className="text-lg sm:text-xl font-serif text-gold/90 mb-2">{profile.honorific_title}</p>
           )}
-          <h1 className="text-3xl font-serif text-gold mb-1">{profile.first_name?.toUpperCase() || ''}</h1>
-          <h2 className="text-3xl font-serif text-gold mb-2">{profile.last_name?.toUpperCase() || ''}</h2>
-          {profile.job_function && <p className="text-gold/80 mb-1">{profile.job_function}</p>}
-          {profile.activity_domain && <p className="text-gold/80 mb-1">{profile.activity_domain}</p>}
+          <h1 className="text-2xl sm:text-3xl font-serif text-gold mb-1">{profile.first_name?.toUpperCase() || ''}</h1>
+          <h2 className="text-2xl sm:text-3xl font-serif text-gold mb-2">{profile.last_name?.toUpperCase() || ''}</h2>
+          {profile.job_function && <p className="text-gold/80 text-sm sm:text-base mb-1">{profile.job_function}</p>}
+          {profile.activity_domain && <p className="text-gold/80 text-sm sm:text-base mb-1">{profile.activity_domain}</p>}
           {profile.country && (
-            <p className="text-gold/80 mb-4 flex items-center justify-center gap-2">
+            <p className="text-gold/80 mb-4 flex items-center justify-center gap-2 text-sm sm:text-base">
               <Globe className="w-4 h-4" />
               {profile.country}
             </p>
           )}
           
           {profile.personal_quote && (
-            <p className="text-gold/70 italic text-sm max-w-md mx-auto">
+            <p className="text-gold/70 italic text-xs sm:text-sm max-w-md mx-auto">
               "{profile.personal_quote}"
             </p>
           )}
@@ -249,27 +262,18 @@ const Profile = () => {
 
         {/* Connection Requests Section - Only for own profile */}
         {!id && (
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <ConnectionRequests />
           </div>
         )}
 
         {/* Profile Sections Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {profileSections.map((section, index) => (
             <div
               key={index}
               className={`bg-black/50 border border-gold/20 rounded-lg p-6 hover:border-gold/40 transition-all duration-300 ${section.title !== "INTEGRATED SERVICES" ? 'cursor-pointer' : ''}`}
-              onClick={() => {
-                if (section.title === "INTEGRATED SERVICES") return;
-                // MEMBRES section: if viewing another user's profile, show their connections
-                if (section.title === t('members') || section.title === "MEMBRES") {
-                  navigate(id ? `/members/${id}` : '/members');
-                } else {
-                  // Other sections can have ID parameter
-                  navigate(id ? `${section.route}/${id}` : section.route);
-                }
-              }}
+              onClick={() => section.title !== "INTEGRATED SERVICES" && navigate(id ? `${section.route}/${id}` : section.route)}
             >
               <div className="flex items-center mb-4">
                 <section.icon className="w-6 h-6 text-gold mr-3" />
@@ -347,7 +351,7 @@ const Profile = () => {
               className="border-gold/40 text-gold hover:bg-gold hover:text-black"
             >
               <Edit className="mr-2 h-4 w-4" />
-              {t('editProfile')}
+              Modifier le profil
             </Button>
             <Button
               variant="outline"
@@ -355,7 +359,7 @@ const Profile = () => {
               className="border-gold/40 text-gold hover:bg-gold hover:text-black"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              {t('logout')}
+              Quitter
             </Button>
           </div>
         )}
@@ -369,7 +373,7 @@ const Profile = () => {
               className="border-gold/40 text-gold hover:bg-gold hover:text-black"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              {t('logout')}
+              Quitter
             </Button>
           </div>
         )}

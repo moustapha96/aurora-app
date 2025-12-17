@@ -56,6 +56,9 @@ export default {
         "black-deep": "hsl(var(--black-deep))",
         "black-medium": "hsl(var(--black-medium))",
         "black-light": "hsl(var(--black-light))",
+        "black-elevated": "hsl(var(--black-elevated))",
+        "card-elevated": "hsl(var(--card-elevated))",
+        "card-surface": "hsl(var(--card-surface))",
       },
       fontFamily: {
         serif: ['Playfair Display', 'Georgia', 'serif'],

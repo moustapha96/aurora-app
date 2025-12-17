@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { Upload, X, Loader2 } from "lucide-react";
 
 interface FamilyContent {
@@ -21,7 +20,6 @@ interface FamilyContent {
   personal_quote?: string;
   portrait_url?: string;
   gallery_photos?: string[];
-  pdf_documents?: string[];
 }
 
 interface FamilyContentEditorProps {
@@ -32,42 +30,38 @@ interface FamilyContentEditorProps {
 }
 
 export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: FamilyContentEditorProps) => {
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FamilyContent>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FamilyContent>({
     defaultValues: content
   });
-  const { t } = useLanguage();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [portraitFile, setPortraitFile] = useState<File | null>(null);
-  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [newGalleryFiles, setNewGalleryFiles] = useState<{ file: File; preview: string }[]>([]);
   const [portraitPreview, setPortraitPreview] = useState<string | null>(content.portrait_url || null);
-  const [galleryPreviews, setGalleryPreviews] = useState<string[]>(content.gallery_photos || []);
-  const [deletedGalleryUrls, setDeletedGalleryUrls] = useState<string[]>([]);
-  const [pdfFiles, setPdfFiles] = useState<File[]>([]);
-  const [pdfUrls, setPdfUrls] = useState<string[]>(content.pdf_documents || []);
-  const [deletedPdfUrls, setDeletedPdfUrls] = useState<string[]>([]);
+  const [existingGalleryUrls, setExistingGalleryUrls] = useState<string[]>(content.gallery_photos || []);
   const [initialContent, setInitialContent] = useState<FamilyContent>(content);
   const [isFirstOpen, setIsFirstOpen] = useState(true);
   
   const formData = watch();
 
   useEffect(() => {
-    // Ne réinitialiser initialContent que lors de la première ouverture
-    if (open && isFirstOpen) {
-      setInitialContent(content);
-      setIsFirstOpen(false);
+    if (open) {
+      // Réinitialiser isLoading à l'ouverture du dialog
+      setIsLoading(false);
+      
+      // Ne réinitialiser initialContent que lors de la première ouverture
+      if (isFirstOpen) {
+        setInitialContent(content);
+        setIsFirstOpen(false);
+      }
+      
+      // Toujours réinitialiser le formulaire et les previews
+      reset(content);
+      setPortraitPreview(content.portrait_url || null);
+      setExistingGalleryUrls(content.gallery_photos || []);
+      setPortraitFile(null);
+      setNewGalleryFiles([]);
     }
-    
-    // Toujours réinitialiser le formulaire et les previews
-    reset(content);
-    setPortraitPreview(content.portrait_url || null);
-    setGalleryPreviews(content.gallery_photos || []);
-    setPortraitFile(null);
-    setGalleryFiles([]);
-    setDeletedGalleryUrls([]);
-    setPdfFiles([]);
-    setPdfUrls(content.pdf_documents || []);
-    setDeletedPdfUrls([]);
   }, [content, reset, open, isFirstOpen]);
 
   const isFieldModified = (fieldName: keyof FamilyContent): boolean => {
@@ -91,43 +85,30 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
       reader.onloadend = () => setPortraitPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
+    // Reset input value to allow re-selection
+    e.target.value = '';
   };
 
   const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setGalleryFiles(prev => [...prev, ...files]);
     
     files.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setGalleryPreviews(prev => [...prev, reader.result as string]);
+        setNewGalleryFiles(prev => [...prev, { file, preview: reader.result as string }]);
       };
       reader.readAsDataURL(file);
     });
+    // Reset input value to allow re-selection
+    e.target.value = '';
   };
 
-  const removeGalleryImage = (index: number) => {
-    const urlToDelete = galleryPreviews[index];
-    // Si c'est une URL existante (pas une preview base64), l'ajouter à la liste de suppression
-    if (urlToDelete && !urlToDelete.startsWith('data:')) {
-      setDeletedGalleryUrls(prev => [...prev, urlToDelete]);
-    }
-    setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
-    setGalleryFiles(prev => prev.filter((_, i) => i !== index));
+  const removeExistingGalleryImage = (index: number) => {
+    setExistingGalleryUrls(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setPdfFiles(prev => [...prev, ...files]);
-  };
-
-  const removePdf = (index: number) => {
-    const urlToDelete = pdfUrls[index];
-    if (urlToDelete) {
-      setDeletedPdfUrls(prev => [...prev, urlToDelete]);
-    }
-    setPdfUrls(prev => prev.filter((_, i) => i !== index));
-    setPdfFiles(prev => prev.filter((_, i) => i !== index));
+  const removeNewGalleryImage = (index: number) => {
+    setNewGalleryFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const uploadFile = async (file: File, path: string): Promise<string | null> => {
@@ -150,18 +131,18 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
   const onSubmit = async (data: FamilyContent) => {
     setIsLoading(true);
     try {
+      // Rafraîchir la session avant de sauvegarder
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        console.error('Session refresh error:', refreshError);
+      }
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      let portraitUrl = content.portrait_url;
-      // Filtrer les URLs supprimées de la galerie
-      let galleryUrls = (content.gallery_photos || []).filter(
-        url => !deletedGalleryUrls.includes(url)
-      );
-      // Filtrer les PDFs supprimés
-      let pdfDocuments = (content.pdf_documents || []).filter(
-        url => !deletedPdfUrls.includes(url)
-      );
+      let portraitUrl = portraitPreview?.startsWith('data:') ? null : portraitPreview;
+      // Utiliser les URLs existantes (qui n'ont pas été supprimées)
+      let galleryUrls = [...existingGalleryUrls];
 
       // Upload portrait if changed
       if (portraitFile) {
@@ -169,18 +150,14 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
         portraitUrl = await uploadFile(portraitFile, path);
       }
 
-      // Upload new gallery photos
-      for (const file of galleryFiles) {
-        const path = `${user.id}/family/gallery-${Date.now()}-${file.name}`;
-        const url = await uploadFile(file, path);
-        if (url) galleryUrls.push(url);
-      }
-
-      // Upload new PDF documents
-      for (const file of pdfFiles) {
-        const path = `${user.id}/family/docs-${Date.now()}-${file.name}`;
-        const url = await uploadFile(file, path);
-        if (url) pdfDocuments.push(url);
+      // Upload new gallery photos in parallel
+      if (newGalleryFiles.length > 0) {
+        const uploadPromises = newGalleryFiles.map(async ({ file }, index) => {
+          const path = `${user.id}/family/gallery-${Date.now()}-${index}-${file.name}`;
+          return uploadFile(file, path);
+        });
+        const uploadedUrls = await Promise.all(uploadPromises);
+        galleryUrls.push(...uploadedUrls.filter((url): url is string => url !== null));
       }
 
       // Save to database
@@ -196,8 +173,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
           anecdotes_text: data.anecdotes_text,
           personal_quote: data.personal_quote,
           portrait_url: portraitUrl,
-          gallery_photos: galleryUrls,
-          pdf_documents: pdfDocuments
+          gallery_photos: galleryUrls
         }, {
           onConflict: 'user_id'
         });
@@ -214,8 +190,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
         anecdotes_text: data.anecdotes_text,
         personal_quote: data.personal_quote,
         portrait_url: portraitUrl,
-        gallery_photos: galleryUrls,
-        pdf_documents: pdfDocuments
+        gallery_photos: galleryUrls
       };
       setInitialContent(newContent);
       setIsFirstOpen(true);
@@ -248,10 +223,9 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Tabs defaultValue="textes" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="textes">Textes</TabsTrigger>
               <TabsTrigger value="photos">Photos</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
             </TabsList>
 
             <TabsContent value="textes" className="space-y-4">
@@ -316,7 +290,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
               </div>
 
               <div>
-                <Label htmlFor="personal_quote">{t('personalQuote')}</Label>
+                <Label htmlFor="personal_quote">Citation personnelle</Label>
                 <Input 
                   id="personal_quote" 
                   {...register("personal_quote")}
@@ -330,7 +304,20 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
                 <Label>Photo de portrait</Label>
                 <div className="mt-2 space-y-2">
                   {portraitPreview && (
-                    <img src={portraitPreview} alt="Portrait" className="w-32 h-32 object-cover rounded-lg" />
+                    <div className="relative w-32 h-32">
+                      <img src={portraitPreview} alt="Portrait" className="w-full h-full object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90 z-20"
+                        onClick={() => {
+                          setPortraitPreview(null);
+                          setPortraitFile(null);
+                          setValue('portrait_url', null);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
                   )}
                   <Input type="file" accept="image/*" onChange={handlePortraitChange} />
                 </div>
@@ -340,18 +327,33 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
                 <Label>Galerie photos</Label>
                 <div className="mt-2 space-y-4">
                   <div className="grid grid-cols-4 gap-4">
-                    {galleryPreviews.map((preview, index) => (
-                      <div key={index} className="relative group">
-                        <img src={preview} alt={`Gallery ${index}`} className="w-full h-24 object-cover rounded-lg" />
-                        <Button
+                    {existingGalleryUrls.length === 0 && newGalleryFiles.length === 0 && (
+                      <p className="text-muted-foreground text-sm col-span-4">Aucune photo dans la galerie</p>
+                    )}
+                    {/* Photos existantes */}
+                    {existingGalleryUrls.map((url, index) => (
+                      <div key={`existing-${index}`} className="relative">
+                        <img src={url} alt={`Gallery ${index}`} className="w-full h-24 object-cover rounded-lg" />
+                        <button
                           type="button"
-                          size="icon"
-                          variant="destructive"
-                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => removeGalleryImage(index)}
+                          className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90 z-20"
+                          onClick={() => removeExistingGalleryImage(index)}
                         >
-                          <X className="h-4 w-4" />
-                        </Button>
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {/* Nouvelles photos */}
+                    {newGalleryFiles.map((item, index) => (
+                      <div key={`new-${index}`} className="relative">
+                        <img src={item.preview} alt={`New ${index}`} className="w-full h-24 object-cover rounded-lg" />
+                        <button
+                          type="button"
+                          className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90 z-20"
+                          onClick={() => removeNewGalleryImage(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -359,57 +361,6 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
                     <Input type="file" accept="image/*" multiple onChange={handleGalleryChange} />
                     <Upload className="h-5 w-5" />
                   </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="documents" className="space-y-4">
-              <div>
-                <Label>Documents PDF</Label>
-                <div className="mt-2 space-y-4">
-                  <div className="space-y-2">
-                    {pdfUrls.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        Aucun document ajouté pour le moment.
-                      </p>
-                    )}
-                    {pdfUrls.map((url, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40"
-                      >
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm underline break-all"
-                        >
-                          {url.split("/").pop() || `Document ${index + 1}`}
-                        </a>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="destructive"
-                          onClick={() => removePdf(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept="application/pdf"
-                      multiple
-                      onChange={handlePdfChange}
-                    />
-                    <Upload className="h-5 w-5" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Ajoutez vos documents de famille (contrats, arbres généalogiques, scans, etc.) au
-                    format PDF.
-                  </p>
                 </div>
               </div>
             </TabsContent>

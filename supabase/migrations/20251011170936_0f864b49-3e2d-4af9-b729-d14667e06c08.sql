@@ -1,13 +1,8 @@
--- Create enum for user roles (if not exists)
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN
-    CREATE TYPE public.app_role AS ENUM ('admin', 'member');
-  END IF;
-END $$;
+-- Create enum for user roles
+CREATE TYPE public.app_role AS ENUM ('admin', 'member');
 
 -- Create profiles table
-CREATE TABLE IF NOT EXISTS public.profiles (
+CREATE TABLE public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
@@ -24,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 
 -- Create user_roles table
-CREATE TABLE IF NOT EXISTS public.user_roles (
+CREATE TABLE public.user_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   role app_role NOT NULL,
@@ -36,17 +31,14 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for profiles
-DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 CREATE POLICY "Users can view their own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
 
-DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
 
-DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
@@ -68,12 +60,10 @@ AS $$
 $$;
 
 -- RLS Policies for user_roles
-DROP POLICY IF EXISTS "Users can view their own roles" ON public.user_roles;
 CREATE POLICY "Users can view their own roles"
   ON public.user_roles FOR SELECT
   USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Only admins can manage roles" ON public.user_roles;
 CREATE POLICY "Only admins can manage roles"
   ON public.user_roles FOR ALL
   USING (public.has_role(auth.uid(), 'admin'));
@@ -94,7 +84,6 @@ END;
 $$;
 
 -- Trigger for new user
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
@@ -112,7 +101,6 @@ END;
 $$;
 
 -- Trigger for updated_at on profiles
-DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

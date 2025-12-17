@@ -1,56 +1,32 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { getCorsHeaders } from '../_shared/cors.ts';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req) => {
-  const origin = req.headers.get('origin');
-  const corsHeaders = getCorsHeaders(origin);
-  
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 204,
-      headers: corsHeaders 
-    });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Authentication is optional for registration flow
-    // The function can be called during registration when user is not yet authenticated
-    // verify_jwt is set to false in config.toml
+    const { imageBase64 } = await req.json();
 
-    let requestData;
-    try {
-      requestData = await req.json();
-    } catch (e) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    // Input validation
+    if (!imageBase64) {
+      throw new Error('Image is required');
     }
 
-    const { imageBase64 } = requestData;
-
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Image is required and must be a string' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    // Validate image size (max 10MB base64)
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    if (imageBase64.length > MAX_SIZE) {
+      throw new Error('Image too large. Maximum size is 10MB');
     }
 
-    // Validate base64 format (basic check)
+    // Validate base64 format
     if (!imageBase64.startsWith('data:image/')) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid image format. Expected data URI' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Limit image size (base64 is ~33% larger than binary)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (imageBase64.length > maxSize) {
-      return new Response(
-        JSON.stringify({ error: 'Image is too large. Maximum size is 10MB' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      throw new Error('Invalid image format. Must be a valid base64 image');
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -116,10 +92,16 @@ serve(async (req) => {
       throw new Error('Failed to parse AI response');
     }
 
+    // Sanitize output - only allow alphanumeric, spaces, hyphens, apostrophes
+    const sanitizeName = (name: string): string => {
+      if (!name || typeof name !== 'string') return '';
+      return name.replace(/[^a-zA-ZÀ-ÿ\s\-']/g, '').substring(0, 100).trim();
+    };
+
     return new Response(
       JSON.stringify({
-        firstName: parsedData.firstName || '',
-        lastName: parsedData.lastName || '',
+        firstName: sanitizeName(parsedData.firstName),
+        lastName: sanitizeName(parsedData.lastName),
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

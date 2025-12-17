@@ -1,4 +1,31 @@
 project_id = "lwfqselpqlliaxduxihu"
 
 [functions.analyze-id-card]
+verify_jwt = true
+
+[functions.create-test-members]
+verify_jwt = true
+
+[functions.migrate-base64-avatars]
+verify_jwt = true
+
+[functions.business-ai-suggest]
+verify_jwt = true
+
+[functions.family-ai-suggest]
+verify_jwt = true
+
+[functions.personal-ai-suggest]
+verify_jwt = true
+
+[functions.network-ai-suggest]
+verify_jwt = true
+
+[functions.parse-cv-network]
+verify_jwt = true
+
+[functions.parse-cv-business]
+verify_jwt = true
+
+[functions.jumio-verification]
 verify_jwt = false

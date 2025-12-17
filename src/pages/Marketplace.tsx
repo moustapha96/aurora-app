@@ -1,8 +1,9 @@
+import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { Watch, Palette, Car, Gem, Home, Wine, Shirt, Package, Crown, Sparkles, ArrowLeft } from "lucide-react";
+import { Watch, Palette, Plane, Gem, Home, Wine, Package, Crown, Sparkles, ArrowLeft, Shield, Lock, CheckCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const Marketplace = () => {
@@ -11,52 +12,52 @@ const Marketplace = () => {
 
   const productCategories = [
     {
-      icon: Watch,
-      name: "Horlogerie de Prestige",
-      description: "Collections exclusives et pièces rares",
-      itemCount: "24 pièces disponibles"
+      icon: Home,
+      name: "Immobilier d'Exception",
+      description: "Propriétés rares et off-market",
+      itemCount: "Domaines privés, îles, hôtels"
+    },
+    {
+      icon: Plane,
+      name: "Jets, Yachts & Véhicules Rares",
+      description: "Aviation privée et nautisme de prestige",
+      itemCount: "Sélection exclusive"
     },
     {
       icon: Palette,
-      name: "Art & Antiquités",
-      description: "Œuvres d'art et objets de collection",
-      itemCount: "156 œuvres"
+      name: "Art",
+      description: "Œuvres d'art et pièces de collection",
+      itemCount: "Sélection authentifiée"
     },
     {
-      icon: Car,
-      name: "Automobiles d'Exception",
-      description: "Véhicules de collection et supercars",
-      itemCount: "18 véhicules"
+      icon: Watch,
+      name: "Montres de Prestige",
+      description: "Pièces rares et éditions limitées",
+      itemCount: "Collections exclusives"
     },
     {
       icon: Gem,
-      name: "Joaillerie & Pierres Précieuses",
-      description: "Créations uniques et diamants certifiés",
-      itemCount: "67 créations"
-    },
-    {
-      icon: Home,
-      name: "Immobilier de Prestige",
-      description: "Propriétés d'exception dans le monde",
-      itemCount: "42 propriétés"
+      name: "Joaillerie",
+      description: "Créations uniques et pierres précieuses",
+      itemCount: "Haute joaillerie"
     },
     {
       icon: Wine,
-      name: "Vins & Spiritueux Rares",
-      description: "Millésimes exceptionnels et éditions limitées",
-      itemCount: "284 bouteilles"
+      name: "Vins & Domaines Viticoles",
+      description: "Millésimes exceptionnels et propriétés",
+      itemCount: "Sélection premium"
     },
     {
-      icon: Shirt,
-      name: "Haute Couture & Mode",
-      description: "Pièces exclusives des plus grands créateurs",
-      itemCount: "93 pièces"
+      icon: Crown,
+      name: "Investissements Privés",
+      description: "Opportunités exclusives entre membres",
+      itemCount: "Club deals"
     },
     {
       icon: Package,
-      name: "Objets de Luxe",
-      description: "Articles rares et éditions limitées",
-      itemCount: "127 objets"
+      name: "Objets Rares",
+      description: "Pièces uniques et éditions limitées",
+      itemCount: "Sélection confidentielle"
     }
   ];
 
@@ -107,25 +108,32 @@ const Marketplace = () => {
 
   const marketplaceFeatures = [
     {
-      icon: Crown,
-      title: "Authentification Garantie",
-      description: "Chaque produit est certifié par des experts indépendants"
+      icon: CheckCircle,
+      title: "Sélectionné",
+      description: "Chaque actif est rigoureusement vérifié et authentifié"
+    },
+    {
+      icon: Lock,
+      title: "Documenté",
+      description: "Traçabilité complète et provenance certifiée"
+    },
+    {
+      icon: Shield,
+      title: "Sécurisé",
+      description: "Transactions confidentielles et garanties"
     },
     {
       icon: Sparkles,
-      title: "Sélection Exclusive",
-      description: "Accès à des pièces rares non disponibles publiquement"
-    },
-    {
-      icon: Package,
-      title: "Livraison Sécurisée",
-      description: "Transport assuré et service blanc gant international"
+      title: "Présenté avec sobriété",
+      description: "Le rare n'est pas exposé, il se transmet entre membres"
     }
   ];
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="container mx-auto px-6 pb-16">
+      <Header />
+      
+      <main className="container mx-auto px-6 pt-24 pb-16">
         {/* Back Button */}
         <Button 
           variant="ghost" 
@@ -141,11 +149,14 @@ const Marketplace = () => {
           <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
             Marketplace Privée
           </Badge>
-          <h1 className="text-5xl md:text-7xl font-serif text-foreground mb-6">
-            Produits d'Exception
+          <h1 className="text-5xl md:text-6xl font-serif text-foreground mb-6">
+            Accès discret à des actifs rares
           </h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-            Accédez à une sélection exclusive de produits de luxe, authentifiés et réservés aux membres Aurora Society
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-4">
+            Une marketplace privée réservée aux membres, dédiée à la transaction d'actifs rares et off-market.
+          </p>
+          <p className="text-lg text-muted-foreground/70 max-w-2xl mx-auto mb-8 italic">
+            Le rare n'est pas affiché. Il se transmet.
           </p>
         </div>
 

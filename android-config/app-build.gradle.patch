@@ -1,0 +1,44 @@
+/*
+ * PATCH POUR android/app/build.gradle
+ * ==================================
+ * 
+ * Après avoir exécuté `npx cap add android`, appliquez ces modifications
+ * dans le fichier android/app/build.gradle pour supporter Java 17/21.
+ * 
+ * ÉTAPE 1: Trouvez la section `android { }` et ajoutez/modifiez :
+ */
+
+android {
+    // ... existing code ...
+    
+    compileOptions {
+        // Support pour Java 17 OU Java 21
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+/*
+ * ÉTAPE 2: Si vous utilisez Java 21, changez les valeurs ci-dessus :
+ * 
+ * compileOptions {
+ *     sourceCompatibility JavaVersion.VERSION_21
+ *     targetCompatibility JavaVersion.VERSION_21
+ * }
+ * 
+ * kotlinOptions {
+ *     jvmTarget = '21'
+ * }
+ * 
+ * 
+ * NOTE IMPORTANTE:
+ * ----------------
+ * Capacitor 7+ fonctionne avec Java 17 par défaut.
+ * Java 21 nécessite des modifications supplémentaires dans les dépendances Gradle.
+ * 
+ * Si vous rencontrez des erreurs avec Java 21, essayez d'abord avec Java 17.
+ */

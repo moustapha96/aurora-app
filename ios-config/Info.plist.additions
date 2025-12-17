@@ -1,0 +1,51 @@
+<!--
+  ADDITIONS POUR Info.plist (iOS)
+  ================================
+  
+  Après avoir exécuté `npx cap add ios`, ajoutez ces entrées 
+  dans le fichier: ios/App/App/Info.plist
+  
+  Copiez le contenu entre les balises <dict> existantes.
+-->
+
+<!-- ============================================ -->
+<!-- PERMISSIONS AURORA SOCIETY                   -->
+<!-- ============================================ -->
+
+<!-- Face ID / Touch ID - Authentification biométrique -->
+<key>NSFaceIDUsageDescription</key>
+<string>Aurora Society utilise Face ID pour sécuriser votre compte</string>
+
+<!-- Caméra - Pour scanner documents et photos de profil -->
+<key>NSCameraUsageDescription</key>
+<string>Aurora Society a besoin de la caméra pour scanner vos documents et photos de profil</string>
+
+<!-- Photothèque (lecture) - Pour télécharger des images -->
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Aurora Society a besoin d'accéder à vos photos pour télécharger des images</string>
+
+<!-- Photothèque (écriture) - Pour sauvegarder des images -->
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Aurora Society a besoin d'enregistrer des photos dans votre bibliothèque</string>
+
+<!-- ============================================ -->
+<!-- CONFIGURATION APP                            -->
+<!-- ============================================ -->
+
+<!-- Autoriser le trafic HTTP (pour hot reload en dev) -->
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+</dict>
+
+<!-- Schéma URL personnalisé (deep linking) -->
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>aurora</string>
+        </array>
+    </dict>
+</array>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Aurora Society</string>
+    <string name="title_activity_main">Aurora Society</string>
+    <string name="package_name">app.lovable.e6cb71785bb7428786ce0e9ee3ec0082</string>
+    <string name="custom_url_scheme">app.lovable.e6cb71785bb7428786ce0e9ee3ec0082</string>
+</resources>

@@ -18,9 +18,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { MessageSquare, Send, ArrowLeft, User, Trash2, MoreVertical } from "lucide-react";
+import { Header } from "@/components/Header";
 import { NewConversationDialog } from "@/components/NewConversationDialog";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { useSettings } from "@/contexts/SettingsContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,8 +55,6 @@ interface Message {
 
 const Messages = () => {
   const navigate = useNavigate();
-  const { t } = useLanguage();
-  const { settings } = useSettings();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -159,8 +156,8 @@ const Messages = () => {
     } catch (error: any) {
       console.error("Error loading conversations:", error);
       toast({
-        title: t('error'),
-        description: t('error'),
+        title: "Erreur",
+        description: "Impossible de charger les conversations",
         variant: "destructive",
       });
     } finally {
@@ -200,8 +197,8 @@ const Messages = () => {
     } catch (error: any) {
       console.error("Error loading messages:", error);
       toast({
-        title: t('error'),
-        description: t('error'),
+        title: "Erreur",
+        description: "Impossible de charger les messages",
         variant: "destructive",
       });
     }
@@ -252,40 +249,12 @@ const Messages = () => {
 
       if (error) throw error;
 
-      // Send email notification if enabled
-      if (settings.emailOnNewMessage && otherUserId) {
-        try {
-          // Get recipient email and sender name
-          const { data: recipientAuth } = await supabase.rpc('get_user_auth_info' as any, {
-            _user_id: otherUserId
-          });
-          
-          if (recipientAuth && Array.isArray(recipientAuth) && recipientAuth.length > 0) {
-            const { sendNewMessageEmail } = await import('@/lib/emailService');
-            const { data: senderProfile } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('id', currentUserId)
-              .single();
-            
-            const senderName = senderProfile 
-              ? `${senderProfile.first_name} ${senderProfile.last_name}`
-              : 'Un utilisateur';
-            
-            await sendNewMessageEmail(recipientAuth[0].email, senderName);
-          }
-        } catch (emailError) {
-          console.error('Error sending message email:', emailError);
-          // Don't block message sending if email fails
-        }
-      }
-
       setNewMessage("");
     } catch (error: any) {
       console.error("Error sending message:", error);
       toast({
-        title: t('error'),
-        description: t('error'),
+        title: "Erreur",
+        description: "Impossible d'envoyer le message",
         variant: "destructive",
       });
     }
@@ -310,14 +279,14 @@ const Messages = () => {
 
       setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
       toast({
-        title: t('success'),
-        description: t('success'),
+        title: "Succès",
+        description: "Message supprimé",
       });
     } catch (error: any) {
       console.error("Error deleting message:", error);
       toast({
-        title: t('error'),
-        description: t('error'),
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
         variant: "destructive",
       });
     }
@@ -353,14 +322,14 @@ const Messages = () => {
       }
 
       toast({
-        title: t('success'),
-        description: t('success'),
+        title: "Succès",
+        description: "Conversation supprimée",
       });
     } catch (error: any) {
       console.error("Error deleting conversation:", error);
       toast({
-        title: t('error'),
-        description: t('error'),
+        title: "Erreur",
+        description: "Impossible de supprimer la conversation",
         variant: "destructive",
       });
     }
@@ -369,33 +338,36 @@ const Messages = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto pb-4 px-4">
-        <div className="flex items-center gap-4 mb-6">
+      <Header />
+      
+      <div className="container mx-auto pt-20 sm:pt-24 pb-4 px-4 safe-area-all">
+        <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => navigate("/member-card")}
             className="flex items-center gap-2"
           >
-            <ArrowLeft className="h-5 w-5" />
-            <span>{t('back')}</span>
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">Retour</span>
           </Button>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{t('messages')}</h1>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Messagerie</h1>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[600px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-180px)] sm:h-[600px]">
           {/* Conversations List */}
           <div className="border rounded-lg p-4 bg-card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">{t('conversations')}</h2>
+              <h2 className="text-xl font-semibold">Conversations</h2>
               <NewConversationDialog onConversationCreated={loadConversations} />
             </div>
             
             <ScrollArea className="h-[520px]">
               {loading ? (
-                <p className="text-muted-foreground text-center py-8">{t('loading')}</p>
+                <p className="text-muted-foreground text-center py-8">Chargement...</p>
               ) : conversations.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
-                  {t('noConversations')}
+                  Aucune conversation
                 </p>
               ) : (
                 conversations.map((conv) => (
@@ -447,7 +419,7 @@ const Messages = () => {
                             onClick={() => setDeleteConversationId(conv.id)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            {t('delete')}
+                            Supprimer
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -468,7 +440,7 @@ const Messages = () => {
                       const conv = conversations.find(c => c.id === selectedConversation);
                       return conv?.other_user 
                         ? `${conv.other_user.first_name} ${conv.other_user.last_name}`
-                        : conv?.title || t('conversation');
+                        : conv?.title || "Conversation";
                     })()}
                   </h2>
                   {otherUserId && (
@@ -478,7 +450,7 @@ const Messages = () => {
                       onClick={() => navigate(`/profile/${otherUserId}`)}
                     >
                       <User className="h-4 w-4 mr-2" />
-                      {t('viewProfile')}
+                      Voir le profil
                     </Button>
                   )}
                 </div>
@@ -531,7 +503,7 @@ const Messages = () => {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder={t('writeMessage')}
+                      placeholder="Écrivez votre message..."
                       className="flex-1 min-h-[60px] max-h-[120px] resize-none"
                       rows={2}
                     />
@@ -545,7 +517,7 @@ const Messages = () => {
               <div className="flex items-center justify-center h-full text-muted-foreground">
                 <div className="text-center">
                   <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>{t('selectConversation')}</p>
+                  <p>Sélectionnez une conversation pour commencer</p>
                 </div>
               </div>
             )}
@@ -557,18 +529,18 @@ const Messages = () => {
       <AlertDialog open={!!deleteMessageId} onOpenChange={() => setDeleteMessageId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('deleteMessage')}</AlertDialogTitle>
+            <AlertDialogTitle>Supprimer le message</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteMessageConfirm')}
+              Êtes-vous sûr de vouloir supprimer ce message ? Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteMessageId && deleteMessage(deleteMessageId)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {t('delete')}
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -578,18 +550,18 @@ const Messages = () => {
       <AlertDialog open={!!deleteConversationId} onOpenChange={() => setDeleteConversationId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('deleteConversation')}</AlertDialogTitle>
+            <AlertDialogTitle>Supprimer la conversation</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteConversationConfirm')}
+              Êtes-vous sûr de vouloir supprimer cette conversation ? Tous les messages seront définitivement supprimés.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteConversationId && deleteConversation(deleteConversationId)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {t('delete')}
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

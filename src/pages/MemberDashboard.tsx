@@ -3,7 +3,6 @@ import { AuroraLogo } from "@/components/AuroraLogo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { 
   Briefcase, 
   Users, 
@@ -13,7 +12,8 @@ import {
   Sparkles,
   LogOut,
   Settings,
-  MessageSquare
+  MessageSquare,
+  Layout
 } from "lucide-react";
 
 interface DashboardCardProps {
@@ -48,57 +48,63 @@ const DashboardCard = ({ icon: Icon, title, description, gradient, onClick }: Da
 
 const MemberDashboard = () => {
   const navigate = useNavigate();
-  const { t } = useLanguage();
 
   const dashboardItems = [
     {
       icon: Briefcase,
-      title: t('business'),
-      description: t('businessDescription'),
+      title: "Business & Carrière",
+      description: "Réseautage professionnel et opportunités d'affaires",
       gradient: "from-black-deep/80 via-black-medium/60 to-gold/10",
       route: "/member/business"
     },
     {
       icon: Users,
-      title: t('family'),
-      description: t('familyDescription'),
+      title: "Famille & Réseau",
+      description: "Cercle relationnel et connexions privilégiées",
       gradient: "from-black-deep/80 via-blue-950/40 to-black-medium/60",
       route: "/member/network"
     },
     {
       icon: Palette,
-      title: t('arts'),
-      description: t('artsDescription'),
+      title: "Passions & Arts",
+      description: "Culture, collection et mécénat artistique",
       gradient: "from-black-deep/80 via-red-950/40 to-black-medium/60",
       route: "/member/arts"
     },
     {
       icon: Trophy,
-      title: t('sports'),
-      description: t('sportsDescription'),
+      title: "Sports & Lifestyle",
+      description: "Excellence sportive et art de vivre",
       gradient: "from-black-deep/80 via-green-950/40 to-black-medium/60",
       route: "/member/lifestyle"
     },
     {
       icon: ShoppingBag,
-      title: t('concierge'),
-      description: t('conciergeDescription'),
+      title: "Conciergerie & Marketplace",
+      description: "Services premium et acquisitions exclusives",
       gradient: "from-black-deep/80 via-black-light/40 to-gold/10",
       route: "/member/concierge"
     },
     {
       icon: Sparkles,
-      title: t('metaverse'),
-      description: t('metaverseDescription'),
+      title: "Métavers",
+      description: "Expériences immersives et monde virtuel",
       gradient: "from-black-deep/80 via-purple-950/40 to-black-medium/60",
       route: "/member/metaverse"
     },
     {
       icon: MessageSquare,
-      title: t('messages'),
-      description: t('messagesDescription'),
+      title: "Messagerie",
+      description: "Conversations privées et échanges sécurisés",
       gradient: "from-black-deep/80 via-cyan-950/40 to-black-medium/60",
       route: "/messages"
+    },
+    {
+      icon: Layout,
+      title: "Landing Pages",
+      description: "Gérez votre page de présentation publique",
+      gradient: "from-black-deep/80 via-amber-950/40 to-gold/10",
+      route: "/landing-preview"
     }
   ];
 

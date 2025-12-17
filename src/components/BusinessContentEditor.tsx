@@ -37,7 +37,9 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [logoPreview, setLogoPreview] = useState<string | null>(content.company_logo_url || null);
-  const [photoPreviews, setPhotoPreviews] = useState<string[]>(content.company_photos || []);
+  // Séparation des URLs existantes et des nouveaux previews base64
+  const [existingPhotoUrls, setExistingPhotoUrls] = useState<string[]>(content.company_photos || []);
+  const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
   const [initialContent, setInitialContent] = useState<BusinessContent>(content);
   const [isFirstOpen, setIsFirstOpen] = useState(true);
   
@@ -53,7 +55,8 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
     // Toujours réinitialiser le formulaire et les previews
     reset(content);
     setLogoPreview(content.company_logo_url || null);
-    setPhotoPreviews(content.company_photos || []);
+    setExistingPhotoUrls(content.company_photos || []);
+    setNewPhotoPreviews([]);
     setLogoFile(null);
     setPhotoFiles([]);
   }, [content, reset, open, isFirstOpen]);
@@ -82,27 +85,143 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
   };
 
   const handlePhotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handlePhotosChange triggered');
+    console.log('Input files:', e.target.files);
     const files = Array.from(e.target.files || []);
+    console.log('Files array:', files.length, files);
+    if (files.length > 0) {
+      addPhotoFiles(files);
+      toast({
+        title: "Photos sélectionnées",
+        description: `${files.length} photo(s) ajoutée(s)`
+      });
+    } else {
+      console.log('No files selected');
+    }
+  };
+
+  const addPhotoFiles = (files: File[]) => {
+    console.log('addPhotoFiles called with', files.length, 'files');
     setPhotoFiles(prev => [...prev, ...files]);
     
-    files.forEach(file => {
+    files.forEach((file, index) => {
+      console.log(`Reading file ${index}:`, file.name, file.type, file.size);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPhotoPreviews(prev => [...prev, reader.result as string]);
+        console.log(`File ${index} read complete`);
+        setNewPhotoPreviews(prev => [...prev, reader.result as string]);
+      };
+      reader.onerror = (error) => {
+        console.error(`Error reading file ${index}:`, error);
       };
       reader.readAsDataURL(file);
     });
   };
 
-  const removePhoto = (index: number) => {
-    setPhotoPreviews(prev => prev.filter((_, i) => i !== index));
+  // Handle paste from clipboard (iOS Photos app, etc.)
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    console.log('Paste event triggered', e.clipboardData);
+    const items = e.clipboardData?.items;
+    if (!items) {
+      console.log('No clipboard items found');
+      return;
+    }
+
+    console.log('Clipboard items count:', items.length);
+    const imageFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      console.log('Item type:', item.type, 'kind:', item.kind);
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          console.log('Image file found:', file.name, file.size);
+          imageFiles.push(file);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      addPhotoFiles(imageFiles);
+      toast({
+        title: "Photos ajoutées",
+        description: `${imageFiles.length} photo(s) collée(s) avec succès`
+      });
+    } else {
+      console.log('No image files in clipboard');
+      toast({
+        title: "Aucune image détectée",
+        description: "Copiez d'abord une image, puis collez-la ici",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const removeExistingPhoto = (index: number) => {
+    setExistingPhotoUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeNewPhoto = (index: number) => {
+    setNewPhotoPreviews(prev => prev.filter((_, i) => i !== index));
     setPhotoFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Compresser une image avant upload
+  const compressImage = async (file: File, maxWidth = 1200, quality = 0.8): Promise<File> => {
+    return new Promise((resolve) => {
+      // Si ce n'est pas une image, retourner tel quel
+      if (!file.type.startsWith('image/')) {
+        resolve(file);
+        return;
+      }
+
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      img.onload = () => {
+        // Calculer les nouvelles dimensions
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              console.log(`Compressed: ${file.size} -> ${compressedFile.size} bytes`);
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      img.onerror = () => resolve(file);
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const uploadFile = async (file: File, path: string): Promise<string | null> => {
+    // Compresser l'image avant upload
+    const compressedFile = await compressImage(file);
+    
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('personal-content')
-      .upload(path, file, { upsert: true });
+      .upload(path, compressedFile, { upsert: true });
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
@@ -119,21 +238,46 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
   const onSubmit = async (data: BusinessContent) => {
     setIsLoading(true);
     try {
+      // Rafraîchir la session si nécessaire
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        toast({
+          title: "Session expirée",
+          description: "Veuillez vous reconnecter pour sauvegarder",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) {
+        toast({
+          title: "Session expirée",
+          description: "Veuillez vous reconnecter pour sauvegarder",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
 
       let logoUrl = content.company_logo_url;
-      let photoUrls = [...(content.company_photos || [])];
+      // Utiliser les URLs existantes (qui peuvent avoir été modifiées par l'utilisateur)
+      let photoUrls = [...existingPhotoUrls];
 
       if (logoFile) {
         const path = `${user.id}/business/logo-${Date.now()}.${logoFile.name.split('.').pop()}`;
         logoUrl = await uploadFile(logoFile, path);
       }
 
-      for (const file of photoFiles) {
-        const path = `${user.id}/business/photo-${Date.now()}-${file.name}`;
-        const url = await uploadFile(file, path);
-        if (url) photoUrls.push(url);
+      // Upload des photos en parallèle pour plus de rapidité
+      if (photoFiles.length > 0) {
+        const uploadPromises = photoFiles.map((file, index) => {
+          const path = `${user.id}/business/photo-${Date.now()}-${index}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+          return uploadFile(file, path);
+        });
+        const uploadedUrls = await Promise.all(uploadPromises);
+        photoUrls.push(...uploadedUrls.filter((url): url is string => url !== null));
       }
 
       const { error } = await supabase
@@ -261,7 +405,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
               </div>
             </TabsContent>
 
-            <TabsContent value="photos" className="space-y-4">
+            <TabsContent value="photos" className="space-y-4" onPaste={handlePaste}>
               <div>
                 <Label>Logo de l'entreprise</Label>
                 <div className="mt-2 space-y-2">
@@ -276,23 +420,67 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
                 <Label>Photos de l'entreprise</Label>
                 <div className="mt-2 space-y-4">
                   <div className="grid grid-cols-4 gap-4">
-                    {photoPreviews.map((preview, index) => (
-                      <div key={index} className="relative group">
-                        <img src={preview} alt={`Photo ${index}`} className="w-full h-24 object-cover rounded-lg" />
+                    {/* Photos existantes (URLs) */}
+                    {existingPhotoUrls.map((url, index) => (
+                      <div key={`existing-${index}`} className="relative group">
+                        <img src={url} alt={`Photo ${index}`} className="w-full h-24 object-cover rounded-lg" />
                         <Button
                           type="button"
                           size="icon"
                           variant="destructive"
                           className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => removePhoto(index)}
+                          onClick={() => removeExistingPhoto(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    {/* Nouvelles photos (base64 previews) */}
+                    {newPhotoPreviews.map((preview, index) => (
+                      <div key={`new-${index}`} className="relative group">
+                        <img src={preview} alt={`Nouvelle photo ${index}`} className="w-full h-24 object-cover rounded-lg" />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="destructive"
+                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => removeNewPhoto(index)}
                         >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Zone de paste avec textarea cachée pour capturer le paste sur iOS */}
+                  <div 
+                    className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors focus-within:border-primary/50 relative"
+                    onClick={() => document.getElementById('paste-area')?.focus()}
+                  >
+                    <textarea
+                      id="paste-area"
+                      className="absolute inset-0 opacity-0 cursor-pointer resize-none"
+                      onPaste={handlePaste}
+                      placeholder=""
+                      readOnly
+                    />
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Cliquez ici et collez vos photos (⌘+V)
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ou utilisez le bouton ci-dessous
+                    </p>
+                  </div>
+                  
+                  {/* Input file standard - fonctionne sur tous les appareils */}
                   <div className="flex items-center gap-2">
-                    <Input type="file" accept="image/*" multiple onChange={handlePhotosChange} />
+                    <Input 
+                      type="file" 
+                      accept="image/*" 
+                      multiple 
+                      onChange={handlePhotosChange} 
+                    />
                     <Upload className="h-5 w-5" />
                   </div>
                 </div>

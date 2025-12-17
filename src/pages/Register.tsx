@@ -2,40 +2,42 @@ import { AuroraLogo } from "@/components/AuroraLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useLanguage, languages } from "@/contexts/LanguageContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Globe, Scan, Crown } from "lucide-react";
+import { Globe, Scan, Crown, ArrowLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Upload } from "lucide-react";
-import { useRegistration } from "@/contexts/RegistrationContext";
-import { useSettings } from "@/contexts/SettingsContext";
-import { HONORIFIC_TITLES } from "@/lib/honorificTitles";
-import { ReferralCodeInput } from "@/components/ReferralCodeInput";
-import { INDUSTRIES, getIndustryTranslationKey } from "@/lib/industries";
-import logo from "@/assets/logo.png";
+import { Upload, Users } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { INDUSTRIES } from "@/lib/industries";
+import { RegistrationVerification } from "@/components/RegistrationVerification";
 
+type RegistrationStep = 'form' | 'verification';
 
 const Register = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { language, setLanguage, t } = useLanguage();
-  const { setRegistrationData, setAvatarPreview: setContextAvatarPreview, setIdCardPreview: setContextIdCardPreview } = useRegistration();
-  const { settings, loading: settingsLoading } = useSettings();
   const [loading, setLoading] = useState(false);
+  const [registrationStep, setRegistrationStep] = useState<RegistrationStep>('form');
+  const [verificationImages, setVerificationImages] = useState<{ idImage: string; selfieImage: string } | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
-  const [idCardFile, setIdCardFile] = useState<File | null>(null);
-  const [idCardPreview, setIdCardPreview] = useState<string>("");
-  const [extractedData, setExtractedData] = useState<{ firstName?: string; lastName?: string } | null>(null);
-  const [referralCodeValid, setReferralCodeValid] = useState(false);
+  const [showAssociatedAccountsDialog, setShowAssociatedAccountsDialog] = useState(false);
+  const [showAssociatedAccountForm, setShowAssociatedAccountForm] = useState(false);
+  const [associatedAccountData, setAssociatedAccountData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    mobile: "",
+    relationType: ""
+  });
   const [formData, setFormData] = useState({
-    referralCode: searchParams.get('ref') || "",
+    referralCode: "",
     firstName: "",
     lastName: "",
     honorificTitle: "",
@@ -70,7 +72,6 @@ const Register = () => {
       const file = e.target?.files?.[0];
       if (file) {
         setLoading(true);
-        setIdCardFile(file);
         toast.info("Analyse de la carte d'identité en cours...");
         
         try {
@@ -79,87 +80,35 @@ const Register = () => {
           reader.onloadend = async () => {
             try {
               const base64Image = reader.result as string;
-              
-              // Save preview for later upload
-              setIdCardPreview(base64Image);
-              
               console.log('Calling analyze-id-card function...');
               
               // Call edge function to analyze ID card
-              // Note: User may not be authenticated during registration
-              let data, error;
-              try {
-                const result = await supabase.functions.invoke('analyze-id-card', {
-                  body: { imageBase64: base64Image }
-                });
-                data = result.data;
-                error = result.error;
-              } catch (invokeError: any) {
-                console.error('Invoke error:', invokeError);
-                // Handle network errors or function not found
-                const errorMessage = invokeError?.message || invokeError?.toString() || 'Erreur inconnue';
-                if (errorMessage.includes('Failed to send') || 
-                    errorMessage.includes('fetch') || 
-                    errorMessage.includes('NetworkError') ||
-                    errorMessage.includes('Failed to fetch')) {
-                  toast.error("Impossible de contacter le serveur. Vérifiez votre connexion internet et réessayez.");
-                } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
-                  toast.error("La fonction d'analyse n'est pas disponible. Veuillez contacter le support.");
-                } else {
-                  toast.error(`Erreur de connexion: ${errorMessage}`);
-                }
-                setLoading(false);
-                return;
-              }
+              const { data, error } = await supabase.functions.invoke('analyze-id-card', {
+                body: { imageBase64: base64Image }
+              });
 
               console.log('Function response:', { data, error });
 
               if (error) {
                 console.error('Function error:', error);
-                // More detailed error handling
-                const errorMessage = error?.message || error?.toString() || 'Erreur inconnue';
-                if (errorMessage.includes('Failed to send') || 
-                    errorMessage.includes('fetch') || 
-                    errorMessage.includes('NetworkError') ||
-                    errorMessage.includes('Failed to fetch')) {
-                  toast.error("Impossible de contacter le serveur. Vérifiez votre connexion internet et réessayez.");
-                } else if (errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
-                  toast.error("Erreur d'authentification. Veuillez réessayer.");
-                } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
-                  toast.error("La fonction d'analyse n'est pas disponible. Veuillez contacter le support.");
-                } else {
-                  toast.error(`Erreur: ${errorMessage}`);
-                }
-                setLoading(false);
-                return;
+                throw error;
               }
 
               if (data.firstName || data.lastName) {
                 console.log('Extracted data:', data);
-                
-                // Store extracted data for display
-                setExtractedData({
-                  firstName: data.firstName || '',
-                  lastName: data.lastName || ''
-                });
-                
-                // Update form data - prioritize extracted data over existing
                 setFormData(prev => ({
                   ...prev,
                   firstName: data.firstName || prev.firstName,
                   lastName: data.lastName || prev.lastName
                 }));
-                
                 toast.success("Nom et prénom extraits avec succès !");
               } else {
                 console.warn('No data extracted');
-                setExtractedData(null);
                 toast.warning("Impossible d'extraire les informations. Veuillez les saisir manuellement.");
               }
             } catch (innerError: any) {
               console.error('Inner error:', innerError);
               toast.error(`Erreur: ${innerError.message || 'Erreur inconnue'}`);
-              setExtractedData(null);
             } finally {
               setLoading(false);
             }
@@ -182,78 +131,38 @@ const Register = () => {
     fileInput.click();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check if registrations are allowed
-    if (!settings.allowRegistrations) {
-      toast.error("Les inscriptions sont actuellement désactivées.");
-      return;
+    // Store form data and avatar before going to verification
+    sessionStorage.setItem('registrationData', JSON.stringify(formData));
+    if (avatarFile) {
+      sessionStorage.setItem('registrationAvatar', avatarPreview);
     }
     
-    setLoading(true);
-
-    try {
-      // Store avatar in context if present
-      if (avatarPreview) {
-        setContextAvatarPreview(avatarPreview);
-      }
-      
-      // Store ID card in context if present
-      if (idCardPreview) {
-        setContextIdCardPreview(idCardPreview);
-      }
-      
-      // Store registration data in context for the next step
-      setRegistrationData(formData);
-      navigate("/login?mode=complete");
-    } catch (error: any) {
-      toast.error(t('error'));
-    } finally {
-      setLoading(false);
-    }
+    // Move to verification step
+    setRegistrationStep('verification');
   };
 
-  // Show message if registrations are disabled
-  if (settingsLoading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-gold">Chargement...</div>
-      </div>
-    );
-  }
+  const handleVerificationComplete = (verificationId: string, status: string) => {
+    // Store verification info
+    sessionStorage.setItem('verificationId', verificationId);
+    sessionStorage.setItem('verificationStatus', status);
+    
+    toast.success("Vérification d'identité complétée !");
+    navigate("/login?mode=complete");
+  };
 
-  if (!settings.allowRegistrations) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 py-12">
-        <Card className="bg-[hsl(var(--navy-blue-light))] border-gold/20 max-w-md w-full">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              {/* <AuroraLogo /> */}
-              <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
-            </div>
-            <CardTitle className="text-gold text-2xl font-serif">
-              Inscriptions Désactivées
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-gold/80">
-              Les inscriptions sont actuellement désactivées.
-            </p>
-            <p className="text-gold/60 text-sm">
-              Veuillez contacter l'administrateur pour plus d'informations.
-            </p>
-            <Button
-              onClick={() => navigate("/login")}
-              className="bg-gold text-black hover:bg-gold/80"
-            >
-              Retour à la connexion
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const handleSkipVerification = () => {
+    // Allow registration without verification (limited account)
+    sessionStorage.setItem('verificationStatus', 'skipped');
+    toast.info("Vous pourrez vérifier votre identité plus tard dans les paramètres.");
+    navigate("/login?mode=complete");
+  };
+
+  const handleBackToForm = () => {
+    setRegistrationStep('form');
+  };
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 py-12">
@@ -280,18 +189,54 @@ const Register = () => {
 
       <div className="w-full max-w-2xl mx-auto">
         <div className="text-center mb-8">
-          {/* <AuroraLogo size="md" className="mx-auto mb-6" /> */}
-          <img src={logo} alt="Logo" className="w-32 h-32 mx-auto mb-8" />
+          <AuroraLogo size="md" className="mx-auto mb-6" />
           <h1 className="text-3xl md:text-4xl font-serif text-gold mb-2 tracking-wide">
             AURORA SOCIETY
           </h1>
-          <p className="text-gold/60 text-sm tracking-widest">{t('register')?.toUpperCase() || 'INSCRIPTION'}</p>
+          <p className="text-gold/60 text-sm tracking-widest">{t('registration')}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 bg-black/40 border border-gold/20 rounded-lg p-8">
+        {/* Quit Button */}
+        <div className="flex justify-between mb-4">
+          {registrationStep === 'verification' && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleBackToForm}
+              className="text-gold/60 hover:text-gold hover:bg-gold/10"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Retour
+            </Button>
+          )}
+          <div className="flex-1" />
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => navigate("/login")}
+            className="text-gold/60 hover:text-gold hover:bg-gold/10"
+          >
+            ✕ Quitter
+          </Button>
+        </div>
+
+        {/* Verification Step */}
+        {registrationStep === 'verification' && (
+          <RegistrationVerification
+            onComplete={handleVerificationComplete}
+            onSkip={handleSkipVerification}
+            firstName={formData.firstName}
+            lastName={formData.lastName}
+            email={formData.email}
+          />
+        )}
+
+        {/* Registration Form */}
+        {registrationStep === 'form' && (
+        <form onSubmit={handleFormSubmit} className="space-y-6 bg-black/40 border border-gold/20 rounded-lg p-8">
           {/* Avatar Upload */}
           <div className="space-y-2">
-            <Label className="text-gold/80 text-sm font-serif">{t('profilePhoto') || 'Photo de Profil'}</Label>
+            <Label className="text-gold/80 text-sm font-serif">{t('profilePhoto')}</Label>
             <div className="flex items-center gap-4">
               <Avatar className="h-24 w-24">
                 {avatarPreview ? (
@@ -302,110 +247,54 @@ const Register = () => {
                   </AvatarFallback>
                 )}
               </Avatar>
-              <div className="flex-1">
-                <Input
+              <div className="flex-1 space-y-2">
+                <input
                   type="file"
                   accept="image/*"
                   onChange={handleAvatarChange}
-                  className="bg-black border-gold/30 text-gold file:text-gold file:border-0 file:bg-gold/10 file:mr-4 file:py-2 file:px-4"
+                  id="avatar-upload"
+                  className="hidden"
                 />
-                <p className="text-xs text-gold/60 mt-1">{t('imageFormat') || 'Format JPG, PNG ou GIF recommandé'}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('avatar-upload')?.click()}
+                  className="w-full border-gold/30 text-gold hover:bg-gold/10"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {avatarFile ? avatarFile.name : t('chooseFile')}
+                </Button>
+                <p className="text-xs text-gold/60">{t('photoFormatsHint')}</p>
               </div>
             </div>
           </div>
 
           {/* Referral Code */}
           <div className="space-y-2">
-            <ReferralCodeInput
-              value={formData.referralCode}
-              onChange={(value) => setFormData(prev => ({ ...prev, referralCode: value }))}
-              onValidationChange={(isValid, referrerName) => {
-                setReferralCodeValid(isValid);
-                if (isValid && referrerName) {
-                  toast.success(`${t('referralCodeValid') || 'Code valide'} : ${referrerName}`);
-                }
-              }}
-              label={`${t('referralCode') || 'Code de Parrainage'} (${t('optional') || 'Optionnel'})`}
-              placeholder={t('enterCode') || 'AUR-XXX-XXX'}
-              className="w-full"
-            />
-            {formData.referralCode && !referralCodeValid && formData.referralCode.length >= 3 && (
-              <p className="text-xs text-gold/50">
-                {t('referralCodeHelp') || 'Le code sera validé automatiquement'}
-              </p>
-            )}
+            <Label htmlFor="referralCode" className="text-gold/80 text-sm font-serif">
+              {t('referralCode')}
+            </Label>
+            <Input
+               id="referralCode"
+               value={formData.referralCode}
+               onChange={(e) => setFormData(prev => ({ ...prev, referralCode: e.target.value }))}
+               className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
+               placeholder={t('referralCode')}
+             />
           </div>
 
           {/* ID Scanner */}
           <div className="space-y-2">
-            <Label className="text-gold/80 text-sm font-serif">{t('idCard') || 'Carte d\'Identité'}</Label>
-            <div className="flex items-center gap-4">
-              {idCardPreview && (
-                <div className="relative group">
-                  <img 
-                    src={idCardPreview} 
-                    alt="ID Card preview" 
-                    className="h-32 w-48 object-cover rounded border border-gold/30"
-                  />
-                  {/* Overlay with extracted data on hover */}
-                  {extractedData && (extractedData.firstName || extractedData.lastName) && (
-                    <div className="absolute inset-0 bg-black/80 rounded border border-gold/50 p-3 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="text-xs text-gold space-y-1.5">
-                        <p className="font-semibold text-gold text-sm mb-2">{t('extractedData') || 'Données extraites:'}</p>
-                        {extractedData.firstName && (
-                          <p className="text-gold/90">
-                            <span className="font-medium">{t('firstName')}:</span> {extractedData.firstName}
-                          </p>
-                        )}
-                        {extractedData.lastName && (
-                          <p className="text-gold/90">
-                            <span className="font-medium">{t('lastName')}:</span> {extractedData.lastName}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              <Button
-                type="button"
-                onClick={handleScanId}
-                variant="outline"
-                disabled={loading}
-                className={`flex-1 border-gold/30 text-gold hover:bg-gold/10 ${idCardPreview ? '' : 'w-full'}`}
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 mr-2 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
-                    {t('analyzingIdCard') || t('loading')}
-                  </>
-                ) : (
-                  <>
-                    <Scan className="w-4 h-4 mr-2" />
-                    {idCardPreview 
-                      ? (t('changeIdCard') || 'Changer la Carte d\'Identité')
-                      : (t('scanIdCard') || 'Scanner la Carte d\'Identité')
-                    }
-                  </>
-                )}
-              </Button>
-            </div>
-            {idCardPreview && (
-              <div className="space-y-1">
-                <p className="text-xs text-gold/60">{t('idCardUploaded') || 'Carte d\'identité téléchargée'}</p>
-                {extractedData && (extractedData.firstName || extractedData.lastName) && (
-                  <div className="text-xs text-gold/90 bg-gold/10 border border-gold/20 rounded p-2.5 space-y-1.5">
-                    <p className="font-semibold text-gold mb-1">{t('extractedData') || 'Données extraites:'}</p>
-                    {extractedData.firstName && (
-                      <p><span className="font-medium">{t('firstName')}:</span> {extractedData.firstName}</p>
-                    )}
-                    {extractedData.lastName && (
-                      <p><span className="font-medium">{t('lastName')}:</span> {extractedData.lastName}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            <Label className="text-gold/80 text-sm font-serif">{t('idCard')}</Label>
+            <Button
+              type="button"
+              onClick={handleScanId}
+              variant="outline"
+              className="w-full border-gold/30 text-gold hover:bg-gold/10"
+            >
+              <Scan className="w-4 h-4 mr-2" />
+              {t('scanId')}
+            </Button>
           </div>
 
           {/* Name */}
@@ -441,25 +330,73 @@ const Register = () => {
           {/* Honorific Title */}
           <div className="space-y-2">
             <Label htmlFor="honorificTitle" className="text-gold/80 text-sm font-serif">
-              {t('honorificTitle') || 'Titre Honorifique'}
+              {t('honorificTitle')}
             </Label>
             <Select
               value={formData.honorificTitle}
               onValueChange={(value) => setFormData(prev => ({ ...prev, honorificTitle: value }))}
             >
               <SelectTrigger className="bg-black border-gold/30 text-gold z-40">
-                <SelectValue placeholder={t('selectTitle') || 'Sélectionnez votre titre'} />
+                <SelectValue placeholder={t('selectTitle')} />
               </SelectTrigger>
-              <SelectContent className="bg-black border-gold/30 z-50 max-h-[300px] overflow-y-auto">
-                {HONORIFIC_TITLES.map((titleKey) => (
-                  <SelectItem 
-                    key={titleKey} 
-                    value={titleKey} 
-                    className="text-gold hover:bg-gold/10"
-                  >
-                    {t(`title_${titleKey}`)}
-                  </SelectItem>
-                ))}
+              <SelectContent className="bg-black border-gold/30 z-50 max-h-[400px]">
+                <SelectItem value="dr" className="text-gold hover:bg-gold/10">Docteur (Dr.)</SelectItem>
+                <SelectItem value="dre" className="text-gold hover:bg-gold/10">Docteure (Dr.)</SelectItem>
+                <SelectItem value="prof" className="text-gold hover:bg-gold/10">Professeur</SelectItem>
+                <SelectItem value="professeure" className="text-gold hover:bg-gold/10">Professeure</SelectItem>
+                <SelectItem value="maitre" className="text-gold hover:bg-gold/10">Maître</SelectItem>
+                <SelectItem value="maitresse" className="text-gold hover:bg-gold/10">Maîtresse</SelectItem>
+                <SelectItem value="son_excellence_m" className="text-gold hover:bg-gold/10">Son Excellence (masc.)</SelectItem>
+                <SelectItem value="son_excellence_f" className="text-gold hover:bg-gold/10">Son Excellence (fém.)</SelectItem>
+                <SelectItem value="son_altesse_m" className="text-gold hover:bg-gold/10">Son Altesse (masc.)</SelectItem>
+                <SelectItem value="son_altesse_f" className="text-gold hover:bg-gold/10">Son Altesse (fém.)</SelectItem>
+                <SelectItem value="son_altesse_royale_m" className="text-gold hover:bg-gold/10">Son Altesse Royale (masc.)</SelectItem>
+                <SelectItem value="son_altesse_royale_f" className="text-gold hover:bg-gold/10">Son Altesse Royale (fém.)</SelectItem>
+                <SelectItem value="son_altesse_serenissime_m" className="text-gold hover:bg-gold/10">Son Altesse Sérénissime (masc.)</SelectItem>
+                <SelectItem value="son_altesse_serenissime_f" className="text-gold hover:bg-gold/10">Son Altesse Sérénissime (fém.)</SelectItem>
+                <SelectItem value="sa_majeste_m" className="text-gold hover:bg-gold/10">Sa Majesté (masc.)</SelectItem>
+                <SelectItem value="sa_majeste_f" className="text-gold hover:bg-gold/10">Sa Majesté (fém.)</SelectItem>
+                <SelectItem value="sa_majeste_imperiale_m" className="text-gold hover:bg-gold/10">Sa Majesté Impériale (masc.)</SelectItem>
+                <SelectItem value="sa_majeste_imperiale_f" className="text-gold hover:bg-gold/10">Sa Majesté Impériale (fém.)</SelectItem>
+                <SelectItem value="son_eminence_m" className="text-gold hover:bg-gold/10">Son Éminence (masc.)</SelectItem>
+                <SelectItem value="son_eminence_f" className="text-gold hover:bg-gold/10">Son Éminence (fém.)</SelectItem>
+                <SelectItem value="sa_saintete_m" className="text-gold hover:bg-gold/10">Sa Sainteté (masc.)</SelectItem>
+                <SelectItem value="sa_saintete_f" className="text-gold hover:bg-gold/10">Sa Sainteté (fém.)</SelectItem>
+                <SelectItem value="prince" className="text-gold hover:bg-gold/10">Prince</SelectItem>
+                <SelectItem value="princesse" className="text-gold hover:bg-gold/10">Princesse</SelectItem>
+                <SelectItem value="duc" className="text-gold hover:bg-gold/10">Duc</SelectItem>
+                <SelectItem value="duchesse" className="text-gold hover:bg-gold/10">Duchesse</SelectItem>
+                <SelectItem value="marquis" className="text-gold hover:bg-gold/10">Marquis</SelectItem>
+                <SelectItem value="marquise" className="text-gold hover:bg-gold/10">Marquise</SelectItem>
+                <SelectItem value="comte" className="text-gold hover:bg-gold/10">Comte</SelectItem>
+                <SelectItem value="comtesse" className="text-gold hover:bg-gold/10">Comtesse</SelectItem>
+                <SelectItem value="vicomte" className="text-gold hover:bg-gold/10">Vicomte</SelectItem>
+                <SelectItem value="vicomtesse" className="text-gold hover:bg-gold/10">Vicomtesse</SelectItem>
+                <SelectItem value="baron" className="text-gold hover:bg-gold/10">Baron</SelectItem>
+                <SelectItem value="baronne" className="text-gold hover:bg-gold/10">Baronne</SelectItem>
+                <SelectItem value="chevalier" className="text-gold hover:bg-gold/10">Chevalier (Sir)</SelectItem>
+                <SelectItem value="chevaliere" className="text-gold hover:bg-gold/10">Chevalière (Dame)</SelectItem>
+                <SelectItem value="emir" className="text-gold hover:bg-gold/10">Émir</SelectItem>
+                <SelectItem value="emira" className="text-gold hover:bg-gold/10">Émira</SelectItem>
+                <SelectItem value="sultan" className="text-gold hover:bg-gold/10">Sultan</SelectItem>
+                <SelectItem value="sultane" className="text-gold hover:bg-gold/10">Sultane</SelectItem>
+                <SelectItem value="cheikh" className="text-gold hover:bg-gold/10">Cheikh (Sheikh)</SelectItem>
+                <SelectItem value="cheikha" className="text-gold hover:bg-gold/10">Cheikha (Sheikha)</SelectItem>
+                <SelectItem value="moulay" className="text-gold hover:bg-gold/10">Moulay</SelectItem>
+                <SelectItem value="lalla" className="text-gold hover:bg-gold/10">Lalla</SelectItem>
+                <SelectItem value="sidi" className="text-gold hover:bg-gold/10">Sidi</SelectItem>
+                <SelectItem value="empereur_japon" className="text-gold hover:bg-gold/10">Empereur 天皇 (Tennō)</SelectItem>
+                <SelectItem value="imperatrice_japon" className="text-gold hover:bg-gold/10">Impératrice 皇后 (Kōgō)</SelectItem>
+                <SelectItem value="prince_heritier_japon" className="text-gold hover:bg-gold/10">Prince héritier 皇太子</SelectItem>
+                <SelectItem value="princesse_heritiere_japon" className="text-gold hover:bg-gold/10">Princesse héritière</SelectItem>
+                <SelectItem value="samourai" className="text-gold hover:bg-gold/10">Samouraï 侍</SelectItem>
+                <SelectItem value="shogun" className="text-gold hover:bg-gold/10">Shogun 将軍</SelectItem>
+                <SelectItem value="daimyo" className="text-gold hover:bg-gold/10">Daimyo 大名</SelectItem>
+                <SelectItem value="tsar" className="text-gold hover:bg-gold/10">Tsar Царь</SelectItem>
+                <SelectItem value="tsarine" className="text-gold hover:bg-gold/10">Tsarine Царица</SelectItem>
+                <SelectItem value="grand_duc" className="text-gold hover:bg-gold/10">Grand-duc</SelectItem>
+                <SelectItem value="grande_duchesse" className="text-gold hover:bg-gold/10">Grande-duchesse</SelectItem>
+                <SelectItem value="boyard" className="text-gold hover:bg-gold/10">Boyard Боярин</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -470,20 +407,20 @@ const Register = () => {
               {t('email')}
             </Label>
             <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-              placeholder="votre@email.com"
-              required
-            />
+               id="email"
+               type="email"
+               value={formData.email}
+               onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+               className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
+               placeholder={t('emailPlaceholder')}
+               required
+             />
           </div>
 
           {/* Mobile */}
           <div className="space-y-2">
             <Label htmlFor="mobile" className="text-gold/80 text-sm font-serif">
-              {t('mobilePhone')}
+              {t('mobileNumber')}
             </Label>
             <Input
               id="mobile"
@@ -491,7 +428,7 @@ const Register = () => {
               value={formData.mobile}
               onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
               className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-              placeholder={t('phone')}
+              placeholder="+33 6 12 34 56 78"
               required
             />
           </div>
@@ -502,12 +439,12 @@ const Register = () => {
               {t('jobFunction')}
             </Label>
             <Input
-              id="jobFunction"
-              value={formData.jobFunction}
-              onChange={(e) => setFormData(prev => ({ ...prev, jobFunction: e.target.value }))}
-              className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-              placeholder={t('jobFunction')}
-            />
+               id="jobFunction"
+               value={formData.jobFunction}
+               onChange={(e) => setFormData(prev => ({ ...prev, jobFunction: e.target.value }))}
+               className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
+               placeholder={t('jobFunctionPlaceholder')}
+             />
           </div>
 
           {/* Activity Domain */}
@@ -520,21 +457,18 @@ const Register = () => {
               onValueChange={(value) => setFormData(prev => ({ ...prev, activityDomain: value }))}
             >
               <SelectTrigger className="bg-black border-gold/30 text-gold z-40">
-                <SelectValue placeholder={t('activityDomain') || 'Sélectionnez un domaine'} />
+                <SelectValue placeholder={t('selectActivityDomain')} />
               </SelectTrigger>
-              <SelectContent className="bg-black border-gold/30 z-50 max-h-[300px] overflow-y-auto">
-                {INDUSTRIES.map((industry) => {
-                  const translationKey = getIndustryTranslationKey(industry);
-                  return (
-                    <SelectItem 
-                      key={industry} 
-                      value={industry} 
-                      className="text-gold hover:bg-gold/10"
-                    >
-                      {t(translationKey) || industry}
-                    </SelectItem>
-                  );
-                })}
+              <SelectContent className="bg-black border-gold/30 z-50 max-h-[300px]">
+                {INDUSTRIES.map((industry) => (
+                  <SelectItem 
+                    key={industry} 
+                    value={industry}
+                    className="text-gold hover:bg-gold/10 focus:bg-gold/10"
+                  >
+                    {industry}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -542,7 +476,7 @@ const Register = () => {
           {/* Wealth Level */}
           <div className="space-y-2">
             <Label htmlFor="wealthAmount" className="text-gold/80 text-sm font-serif">
-              {t('wealthLevel') || 'Niveau de Patrimoine'}
+              {t('wealthLevel')}
             </Label>
             <div className="flex gap-2">
               <Input
@@ -589,15 +523,15 @@ const Register = () => {
           {/* Personal Quote */}
           <div className="space-y-2">
             <Label htmlFor="personalQuote" className="text-gold/80 text-sm font-serif">
-              {t('personalQuote')} ({t('optional')})
+              {t('personalQuote')}
             </Label>
             <Input
-              id="personalQuote"
-              value={formData.personalQuote}
-              onChange={(e) => setFormData(prev => ({ ...prev, personalQuote: e.target.value }))}
-              className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-              placeholder={t('fillLater') || 'À remplir plus tard...'}
-            />
+               id="personalQuote"
+               value={formData.personalQuote}
+               onChange={(e) => setFormData(prev => ({ ...prev, personalQuote: e.target.value }))}
+               className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
+               placeholder={t('personalQuotePlaceholder')}
+             />
           </div>
 
           {/* Founder Status */}
@@ -610,9 +544,22 @@ const Register = () => {
             />
             <div className="flex items-center gap-2">
               <Crown className="w-5 h-5 text-gold" />
-              <Label htmlFor="isFounder" className="text-gold/80 text-sm font-serif cursor-pointer">
-                {t('founderMember') || 'Membre Fondateur'}
-              </Label>
+               <Label htmlFor="isFounder" className="text-gold/80 text-sm font-serif cursor-pointer">
+                 {t('founderMember')}
+               </Label>
+            </div>
+          </div>
+
+          {/* Associated Accounts */}
+          <div 
+            className="flex items-center space-x-3 p-4 border border-gold/30 rounded-lg bg-black/40 cursor-pointer hover:bg-black/60 transition-colors"
+            onClick={() => setShowAssociatedAccountsDialog(true)}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-gold" />
+              <Label className="text-gold/80 text-sm font-serif cursor-pointer">
+                 {t('associatedAccounts')}
+               </Label>
             </div>
           </div>
 
@@ -624,15 +571,15 @@ const Register = () => {
               className="border-gold data-[state=checked]:bg-gold data-[state=checked]:text-black"
             />
             <Label htmlFor="acceptTerms" className="text-gold/80 text-sm font-serif cursor-pointer">
-              {t('acceptTerms') || 'J\'accepte les'}{" "}
-              <a 
-                href="/terms" 
-                target="_blank"
-                className="underline hover:text-gold"
-              >
-                {t('terms') || 'Conditions Générales d\'Utilisation'}
-              </a>
-            </Label>
+               {t('acceptTermsPrefix')} {" "}
+               <a 
+                 href="/terms" 
+                 target="_blank"
+                 className="underline hover:text-gold"
+               >
+                 {t('termsAndConditions')}
+               </a>
+             </Label>
           </div>
 
           {/* Submit Button */}
@@ -645,20 +592,99 @@ const Register = () => {
           >
             {loading ? t('loading') : t('continue')}
           </Button>
-
-          {/* Login Button */}
-          <div className="mt-4 text-center">
-            <Button
-              type="button"
-              variant="link"
-              onClick={() => navigate("/login")}
-              className="text-gold/60 hover:text-gold text-sm"
-            >
-              {t('signIn')}
-            </Button>
-          </div>
         </form>
+        )}
       </div>
+
+      {/* Associated Accounts Dialog */}
+      <Dialog open={showAssociatedAccountsDialog} onOpenChange={setShowAssociatedAccountsDialog}>
+        <DialogContent className="bg-black border-gold/30 text-gold max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-gold font-serif text-xl">Comptes Associés</DialogTitle>
+            <DialogDescription className="text-gold/70 text-sm leading-relaxed pt-4">
+              Les personnes associées auront accès à votre section Family et à votre section Conciergerie/marketplace/metavers.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-6">
+            <Badge
+              variant="outline"
+              onClick={() => setShowAssociatedAccountForm(!showAssociatedAccountForm)}
+              className="border-gold/50 bg-gold/10 text-gold hover:bg-gold/20 cursor-pointer px-4 py-2 text-sm"
+            >
+              Création
+            </Badge>
+
+            {showAssociatedAccountForm && (
+              <div className="space-y-4 p-4 border border-gold/30 rounded-lg bg-black/40">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="associated-firstname" className="text-gold/80">Prénom</Label>
+                    <Input
+                      id="associated-firstname"
+                      value={associatedAccountData.firstName}
+                      onChange={(e) => setAssociatedAccountData({ ...associatedAccountData, firstName: e.target.value })}
+                      className="bg-black/60 border-gold/30 text-gold"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="associated-lastname" className="text-gold/80">Nom</Label>
+                    <Input
+                      id="associated-lastname"
+                      value={associatedAccountData.lastName}
+                      onChange={(e) => setAssociatedAccountData({ ...associatedAccountData, lastName: e.target.value })}
+                      className="bg-black/60 border-gold/30 text-gold"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="associated-email" className="text-gold/80">Mail de la personne</Label>
+                    <Input
+                      id="associated-email"
+                      type="email"
+                      value={associatedAccountData.email}
+                      onChange={(e) => setAssociatedAccountData({ ...associatedAccountData, email: e.target.value })}
+                      className="bg-black/60 border-gold/30 text-gold"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="associated-mobile" className="text-gold/80">Téléphone portable de la personne</Label>
+                    <Input
+                      id="associated-mobile"
+                      type="tel"
+                      value={associatedAccountData.mobile}
+                      onChange={(e) => setAssociatedAccountData({ ...associatedAccountData, mobile: e.target.value })}
+                      className="bg-black/60 border-gold/30 text-gold"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="relation-type" className="text-gold/80">Type de relation</Label>
+                  <Select
+                    value={associatedAccountData.relationType}
+                    onValueChange={(value) => setAssociatedAccountData({ ...associatedAccountData, relationType: value })}
+                  >
+                    <SelectTrigger id="relation-type" className="bg-black/60 border-gold/30 text-gold">
+                      <SelectValue placeholder="Sélectionner..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-black border-gold/30">
+                      <SelectItem value="spouse" className="text-gold">Époux/Épouse</SelectItem>
+                      <SelectItem value="child" className="text-gold">Fils/Fille</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="pt-2">
+                  <p className="text-gold/70 text-sm">Envoi d'un lien de rattachement</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

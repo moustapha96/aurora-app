@@ -1,38 +1,32 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Building2, Trophy, Users, Globe, ChevronRight, Calendar, MapPin, Edit } from "lucide-react";
+import { Building2, Trophy, Users, Globe, Briefcase, Eye, Newspaper, FolderKanban, GripVertical, Sparkles } from "lucide-react";
+import { Header } from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { BusinessContentEditor } from "@/components/BusinessContentEditor";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { BusinessOnboarding } from "@/components/business/BusinessOnboarding";
+import { BusinessModule } from "@/components/business/BusinessModule";
+import { BusinessTimeline } from "@/components/business/BusinessTimeline";
+import { BusinessOpportunities } from "@/components/business/BusinessOpportunities";
 import { getCurrencySymbol } from "@/lib/currencySymbols";
-import { getHonorificTitleTranslation } from "@/lib/honorificTitles";
+import { PageNavigation } from "@/components/BackButton";
 
 const Business = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [privateData, setPrivateData] = useState<any>(null);
   const [businessContent, setBusinessContent] = useState<any>({});
-  const [initialBusinessContent, setInitialBusinessContent] = useState<any>({});
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [timelineEntries, setTimelineEntries] = useState<any[]>([]);
+  const [pressEntries, setPressEntries] = useState<any[]>([]);
+  const [projectsEntries, setProjectsEntries] = useState<any[]>([]);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
-
-  const isFieldModified = (fieldName: string): boolean => {
-    const currentValue = businessContent[fieldName];
-    const initialValue = initialBusinessContent[fieldName];
-    
-    if ((!currentValue || currentValue === '') && (!initialValue || initialValue === '')) {
-      return false;
-    }
-    
-    return currentValue !== initialValue;
-  };
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -78,6 +72,16 @@ const Business = () => {
       if (error) throw error;
       setProfile(profileData);
 
+      // Load private data for wealth display (only for own profile)
+      if (isOwn) {
+        const { data: privData } = await supabase
+          .from('profiles_private')
+          .select('*')
+          .eq('user_id', profileId)
+          .maybeSingle();
+        setPrivateData(privData);
+      }
+
       // Load business content
       const { data: contentData } = await supabase
         .from('business_content')
@@ -85,25 +89,41 @@ const Business = () => {
         .eq('user_id', profileId)
         .maybeSingle();
 
-      const defaultContent = {
-        company_name: '',
-        company_description: '',
-        position_title: '',
-        achievements_text: '',
-        portfolio_text: '',
-        vision_text: '',
-        company_logo_url: null,
-        company_photos: []
-      };
-
-      setBusinessContent(contentData || defaultContent);
-      
-      // Sauvegarder les valeurs initiales seulement si c'est la première fois
-      if (!initialBusinessContent.company_name && !contentData?.company_name) {
-        setInitialBusinessContent(defaultContent);
-      } else if (contentData && Object.keys(initialBusinessContent).length === 0) {
-        setInitialBusinessContent(contentData);
+      if (contentData) {
+        setBusinessContent(contentData);
+        // Check if onboarding completed
+        if (!contentData.onboarding_completed && isOwn) {
+          setShowOnboarding(true);
+        }
+      } else if (isOwn) {
+        // No content yet, show onboarding
+        setShowOnboarding(true);
       }
+
+      // Load timeline entries
+      const { data: timeline } = await supabase
+        .from('business_timeline')
+        .select('*')
+        .eq('user_id', profileId)
+        .order('display_order');
+      setTimelineEntries(timeline || []);
+
+      // Load press entries
+      const { data: press } = await supabase
+        .from('business_press')
+        .select('*')
+        .eq('user_id', profileId)
+        .order('display_order');
+      setPressEntries(press || []);
+
+      // Load projects
+      const { data: projects } = await supabase
+        .from('business_projects')
+        .select('*')
+        .eq('user_id', profileId)
+        .order('display_order');
+      setProjectsEntries(projects || []);
+
     } catch (error) {
       console.error('Error loading profile:', error);
       toast({ 
@@ -115,11 +135,134 @@ const Business = () => {
     }
   };
 
+  const handleOnboardingComplete = async (mode: string, data?: any) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const updateData: any = {
+        user_id: user.id,
+        onboarding_completed: mode !== "concierge",
+        onboarding_mode: mode,
+      };
+
+      if (data?.bio_executive) updateData.bio_executive = data.bio_executive;
+      if (data?.achievements_text) updateData.achievements_text = data.achievements_text;
+      if (data?.vision_text) updateData.vision_text = data.vision_text;
+
+      const { error } = await supabase
+        .from('business_content')
+        .upsert(updateData, { onConflict: 'user_id' });
+
+      if (error) throw error;
+
+      setShowOnboarding(false);
+      loadProfile();
+
+      toast({
+        title: mode === "concierge" ? "Demande envoyée" : "Profil créé",
+        description: mode === "concierge" 
+          ? "Votre conciergerie prépare votre section Business."
+          : "Votre section Business est prête à être complétée.",
+      });
+    } catch (error) {
+      console.error("Error saving onboarding:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleModuleUpdate = async (field: string, value: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('business_content')
+        .upsert({ 
+          user_id: user.id, 
+          [field]: value,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      if (error) throw error;
+
+      setBusinessContent((prev: any) => ({ ...prev, [field]: value }));
+      toast({ title: "Module mis à jour" });
+    } catch (error) {
+      console.error("Error updating module:", error);
+      toast({ title: "Erreur", variant: "destructive" });
+    }
+  };
+
+  const handleTimelineAdd = async (entry: any) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('business_timeline')
+        .insert({ ...entry, user_id: user.id })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setTimelineEntries((prev) => [...prev, data]);
+      toast({ title: "Étape ajoutée" });
+    } catch (error) {
+      console.error("Error adding timeline:", error);
+      toast({ title: "Erreur", variant: "destructive" });
+    }
+  };
+
+  const handleTimelineEdit = async (entry: any) => {
+    try {
+      const { error } = await supabase
+        .from('business_timeline')
+        .update({ ...entry, updated_at: new Date().toISOString() })
+        .eq('id', entry.id);
+
+      if (error) throw error;
+      setTimelineEntries((prev) => prev.map((e) => (e.id === entry.id ? entry : e)));
+      toast({ title: "Étape modifiée" });
+    } catch (error) {
+      console.error("Error updating timeline:", error);
+      toast({ title: "Erreur", variant: "destructive" });
+    }
+  };
+
+  const handleTimelineDelete = async (id: string) => {
+    try {
+      const { error } = await supabase.from('business_timeline').delete().eq('id', id);
+      if (error) throw error;
+      setTimelineEntries((prev) => prev.filter((e) => e.id !== id));
+      toast({ title: "Étape supprimée" });
+    } catch (error) {
+      console.error("Error deleting timeline:", error);
+      toast({ title: "Erreur", variant: "destructive" });
+    }
+  };
+
+  // Formater le patrimoine (only visible for own profile)
+  const formatWealth = () => {
+    if (!isOwnProfile || !privateData?.wealth_amount || !privateData?.wealth_unit || !privateData?.wealth_currency) {
+      return "N/A";
+    }
+    const amount = Math.round(parseFloat(privateData.wealth_amount));
+    const unit = privateData.wealth_unit;
+    const symbol = getCurrencySymbol(privateData.wealth_currency);
+    return `${amount} ${unit} ${symbol}`;
+  };
+
   if (loading || isCheckingAccess) {
     return (
       <>
-        <div className="min-h-screen bg-black text-gold p-6 flex items-center justify-center">
-          <p className="text-gold">{t('loading')}</p>
+        <Header />
+        <div className="min-h-screen bg-black text-gold p-6 pt-24 flex items-center justify-center">
+          <p className="text-gold">Chargement...</p>
         </div>
       </>
     );
@@ -128,7 +271,8 @@ const Business = () => {
   if (!isOwnProfile && !hasAccess) {
     return (
       <>
-        <div className="min-h-screen bg-black text-gold p-6 flex items-center justify-center">
+        <Header />
+        <div className="min-h-screen bg-black text-gold p-6 pt-24 flex items-center justify-center">
           <div className="text-center max-w-md">
             <p className="text-gold mb-4">Vous n'avez pas accès à cette section du profil.</p>
             <Button 
@@ -136,7 +280,7 @@ const Business = () => {
               onClick={() => navigate(id ? `/profile/${id}` : "/profile")}
               className="border-gold text-gold hover:bg-gold hover:text-black"
             >
-              {t('backToProfile')}
+              Retour au profil général
             </Button>
           </div>
         </div>
@@ -144,187 +288,162 @@ const Business = () => {
     );
   }
 
-  // Formater le patrimoine
-  const formatWealth = () => {
-    if (!profile.wealth_amount || !profile.wealth_unit || !profile.wealth_currency) {
-      return "N/A";
-    }
-    const amount = Math.round(parseFloat(profile.wealth_amount));
-    const unit = profile.wealth_unit;
-    const symbol = getCurrencySymbol(profile.wealth_currency);
-    return `${amount} ${unit} ${symbol}`;
-  };
+  if (!profile) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen bg-black text-gold p-6 pt-24 flex items-center justify-center">
+          <p className="text-gold">Profil non trouvé</p>
+        </div>
+      </>
+    );
+  }
 
-  const businessProfile = {
+  // Show onboarding for first-time users
+  if (showOnboarding && isOwnProfile) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen bg-black text-gold p-6 pt-24">
+          <div className="max-w-4xl mx-auto">
+            <BusinessOnboarding
+              onComplete={handleOnboardingComplete}
+              profileData={profile}
+            />
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  const aiContext = {
     name: `${profile.first_name} ${profile.last_name}`,
-    title: profile.honorific_title 
-      ? getHonorificTitleTranslation(profile.honorific_title, language, t)
-      : profile.job_function || "CEO",
-    company: profile.activity_domain || "Entreprise",
-    location: "Paris, France",
-    netWorth: formatWealth(),
-    position: profile.job_function || "Non spécifié",
+    role: profile.job_function,
+    domain: profile.activity_domain,
   };
 
   return (
     <>
-      <div className="min-h-screen bg-black text-gold p-6">
-        <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-4 mb-2">
-            <h1 className="text-4xl font-serif text-gold tracking-wide">PROFIL BUSINESS</h1>
-            {isOwnProfile && (
+      <Header />
+      <PageNavigation to={id ? `/profile/${id}` : "/profile"} />
+      <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-20 sm:pt-24 pb-8 safe-area-all">
+        <div className="max-w-5xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">Business</h1>
+              <p className="text-gold/60 text-xs sm:text-sm mt-1">Votre profil professionnel et vos opportunités</p>
+            </div>
+
+            {isOwnProfile && !showOnboarding && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                onClick={() => setIsEditorOpen(true)}
-                className="border-gold text-gold hover:bg-gold hover:text-black"
+                onClick={() => setShowOnboarding(true)}
+                className="text-gold/60 hover:text-gold hover:bg-gold/10 self-start sm:self-auto"
               >
-                <Edit className="w-4 h-4 mr-2" />
-                {t('edit')}
+                <Sparkles className="w-4 h-4 mr-2" />
+                Reconfigurer
               </Button>
             )}
           </div>
-        </div>
 
-        {/* Main Profile Card */}
-        <div className="bg-black/50 border border-gold/20 rounded-lg p-8 mb-8">
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Profile Image and Basic Info */}
-            <div className="lg:w-1/3">
-              <div className="w-40 h-40 mx-auto mb-6 rounded-full border-2 border-gold overflow-hidden">
-                <div className="w-full h-full bg-gradient-to-br from-gold/20 to-gold/5 flex items-center justify-center">
-                  <span className="text-6xl font-serif">BA</span>
-                </div>
-              </div>
-              
-              <div className="text-center lg:text-left">
-                <h2 className="text-2xl font-serif text-gold mb-2">{businessProfile.name}</h2>
-                <p className="text-gold/80 mb-2">{businessProfile.title}</p>
-                <p className="text-gold/80 mb-2">{businessProfile.company}</p>
-                <div className="flex items-center justify-center lg:justify-start text-gold/60 mb-4">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  {businessProfile.location}
-                </div>
-                
-                <div className="space-y-2 text-sm">
-                  <div className="bg-gold/10 rounded-lg p-3">
-                    <div className="text-gold/60">Fortune</div>
-                    <div className="text-gold font-semibold">{businessProfile.netWorth}</div>
-                  </div>
-                  <div className="bg-gold/10 rounded-lg p-3">
-                    <div className="text-gold/60">Fonction</div>
-                    <div className="text-gold font-semibold">{businessProfile.position}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Business Details */}
-            <div className="lg:w-2/3">
-              {businessContent.company_logo_url && (
-                <div className="mb-4">
-                  <img src={businessContent.company_logo_url} alt="Logo entreprise" className="h-20 object-contain" />
-                </div>
-              )}
-
-              <div className="mb-6">
-                <h3 className="text-xl font-serif text-gold mb-3 flex items-center">
-                  <Building2 className="w-5 h-5 mr-2" />
-                  {businessContent.company_name || "Activité Professionnelle"}
-                </h3>
-                
-                {businessContent.company_description && (
-                  <p className={`text-gold/70 mb-4 ${isFieldModified('company_description') ? 'field-modified' : ''}`}>
-                    {businessContent.company_description}
-                  </p>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="bg-gold/5 rounded-lg p-4 text-center">
-                    <div className={`text-2xl font-bold text-gold ${isFieldModified('position_title') ? 'field-modified' : ''}`}>
-                      {businessContent.position_title || businessProfile.title}
-                    </div>
-                    <div className="text-gold/60 text-sm">Fonction</div>
-                  </div>
-                  <div className="bg-gold/5 rounded-lg p-4 text-center">
-                    <div className={`text-2xl font-bold text-gold ${isFieldModified('company_name') ? 'field-modified' : ''}`}>
-                      {businessContent.company_name || businessProfile.company}
-                    </div>
-                    <div className="text-gold/60 text-sm">Entreprise</div>
-                  </div>
-                </div>
-
-                {businessContent.achievements_text && (
-                  <div className="mb-4">
-                    <h4 className="text-lg font-serif text-gold mb-2 flex items-center">
-                      <Trophy className="w-4 h-4 mr-2" />
-                      Réalisations
-                    </h4>
-                    <p className={`text-gold/70 text-sm leading-relaxed ${isFieldModified('achievements_text') ? 'field-modified' : ''}`}>
-                      {businessContent.achievements_text}
-                    </p>
-                  </div>
-                )}
-
-                {businessContent.portfolio_text && (
-                  <div className="mb-4">
-                    <h4 className="text-lg font-serif text-gold mb-2">Portfolio</h4>
-                    <p className={`text-gold/70 text-sm leading-relaxed ${isFieldModified('portfolio_text') ? 'field-modified' : ''}`}>
-                      {businessContent.portfolio_text}
-                    </p>
-                  </div>
-                )}
-
-                {businessContent.vision_text && (
-                  <div className="mb-4">
-                    <h4 className="text-lg font-serif text-gold mb-2">Vision</h4>
-                    <p className={`text-gold/70 text-sm leading-relaxed ${isFieldModified('vision_text') ? 'field-modified' : ''}`}>
-                      {businessContent.vision_text}
-                    </p>
-                  </div>
-                )}
-
-                {(!businessContent.company_description && !businessContent.achievements_text) && (
-                  <p className="text-gold/70 text-sm leading-relaxed">
-                    Membre actif du réseau Aurora. {profile.is_founder ? "Membre fondateur." : ""} {profile.is_patron ? "Patron philanthrope." : ""}
-                  </p>
+          {/* Profile Summary Card */}
+          <div className="module-card rounded-xl p-4 sm:p-6 mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gold overflow-hidden bg-gradient-to-br from-gold/20 to-gold/5 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xl sm:text-2xl font-serif">{profile.first_name?.[0]}{profile.last_name?.[0]}</span>
                 )}
               </div>
-
-              {businessContent.company_photos && businessContent.company_photos.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="text-lg font-serif text-gold mb-3">Photos de l'entreprise</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {businessContent.company_photos.map((photo: string, index: number) => (
-                      <img key={index} src={photo} alt={`Photo ${index + 1}`} className="w-full h-32 object-cover rounded-lg" />
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="text-center sm:text-left">
+                <h2 className="text-xl sm:text-2xl font-serif text-gold">{profile.first_name} {profile.last_name}</h2>
+                <p className="text-gold/70 text-sm sm:text-base">{profile.job_function || "Fonction non spécifiée"}</p>
+                <p className="text-gold/50 text-xs sm:text-sm">{profile.activity_domain} • {formatWealth()}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Back Button */}
-        <div className="text-center">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(id ? `/profile/${id}` : "/profile")}
-            className="border-gold text-gold hover:bg-gold hover:text-black"
-          >
-            Retour au profil
-          </Button>
-        </div>
-      </div>
+          {/* Modules Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Bio Executive */}
+            <BusinessModule
+              icon={Briefcase}
+              title="Bio Exécutive"
+              subtitle="Présentation concise de votre rôle actuel"
+              content={businessContent.bio_executive}
+              isEmpty={!businessContent.bio_executive}
+              editable={isOwnProfile}
+              moduleType="bio"
+              onEdit={(value) => handleModuleUpdate("bio_executive", value)}
+              aiContext={aiContext}
+            />
 
-      <BusinessContentEditor
-        open={isEditorOpen}
-        onOpenChange={setIsEditorOpen}
-        content={businessContent}
-        onSave={loadProfile}
-      />
+            {/* Timeline */}
+            <BusinessTimeline
+              entries={timelineEntries}
+              editable={isOwnProfile}
+              onAdd={handleTimelineAdd}
+              onEdit={handleTimelineEdit}
+              onDelete={handleTimelineDelete}
+            />
+
+            {/* Achievements */}
+            <BusinessModule
+              icon={Trophy}
+              title="Réalisations Majeures"
+              subtitle="Les accomplissements dont vous êtes fier"
+              content={businessContent.achievements_text}
+              isEmpty={!businessContent.achievements_text}
+              editable={isOwnProfile}
+              moduleType="achievements"
+              onEdit={(value) => handleModuleUpdate("achievements_text", value)}
+              aiContext={aiContext}
+            />
+
+            {/* Press & Distinctions */}
+            <BusinessModule
+              icon={Newspaper}
+              title="Presse & Distinctions"
+              subtitle="Couverture médiatique et prix"
+              content={pressEntries.map(p => `• ${p.title} - ${p.source}`).join('\n') || undefined}
+              isEmpty={pressEntries.length === 0}
+              editable={isOwnProfile}
+              moduleType="press"
+              onEdit={() => {}}
+            />
+
+            {/* Projects */}
+            <BusinessModule
+              icon={FolderKanban}
+              title="Projets"
+              subtitle="Initiatives actuelles et futures"
+              content={projectsEntries.map(p => `• ${p.title}`).join('\n') || undefined}
+              isEmpty={projectsEntries.length === 0}
+              editable={isOwnProfile}
+              moduleType="projects"
+              onEdit={() => {}}
+            />
+
+            {/* Vision */}
+            <BusinessModule
+              icon={Eye}
+              title="Vision & Ambitions"
+              subtitle="Votre vision pour l'avenir"
+              content={businessContent.vision_text}
+              isEmpty={!businessContent.vision_text}
+              editable={isOwnProfile}
+              moduleType="vision"
+              onEdit={(value) => handleModuleUpdate("vision_text", value)}
+              aiContext={aiContext}
+            />
+
+            {/* Opportunités d'affaires */}
+            <BusinessOpportunities />
+          </div>
+        </div>
       </div>
     </>
   );
