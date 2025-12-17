@@ -436,14 +436,14 @@ const MemberCard = () => {
             className="border-gold text-gold hover:bg-gold hover:text-black"
           >
             <Fingerprint className="w-4 h-4 mr-2" />
-            Modifier le profil
+            {t('editProfile')}
           </Button>
           <Button 
             variant="outline" 
             onClick={() => navigate("/login")}
             className="border-gold text-gold hover:bg-gold hover:text-black"
           >
-            Retour à la connexion
+            {t('backToLogin')}
           </Button>
         </div>
       </div>

@@ -13,14 +13,9 @@ serve(async (req) => {
   }
 
   try {
-    // Verify authentication
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized: Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // Authentication is optional for registration flow
+    // The function can be called during registration when user is not yet authenticated
+    // verify_jwt is set to false in config.toml
 
     let requestData;
     try {

@@ -16,6 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { INDUSTRIES } from "@/lib/industries";
 import { COUNTRIES } from "@/lib/countries";
+import { EditConnectionPermissionsDialog } from "@/components/EditConnectionPermissionsDialog";
+import { Settings } from "lucide-react";
 
 import {
   Dialog,
@@ -221,6 +223,15 @@ const Members = () => {
   const [hasAccess, setHasAccess] = useState<boolean>(true);
   const [isCheckingAccess, setIsCheckingAccess] = useState<boolean>(false);
   const [viewingProfileName, setViewingProfileName] = useState<string>("");
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+  const [currentConnectionPermissions, setCurrentConnectionPermissions] = useState<{
+    business_access: boolean;
+    family_access: boolean;
+    personal_access: boolean;
+    influence_access: boolean;
+    network_access: boolean;
+  } | null>(null);
+  const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
   
   const badgeHierarchy: { [key: string]: number } = {
     diamond: 3,
@@ -628,6 +639,102 @@ const Members = () => {
     }
   };
   
+  const loadConnectionPermissions = async (memberId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: friendship, error } = await supabase
+        .from('friendships')
+        .select('id, business_access, family_access, personal_access, influence_access, network_access')
+        .eq('user_id', user.id)
+        .eq('friend_id', memberId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading connection permissions:', error);
+        return null;
+      }
+
+      return friendship;
+    } catch (error) {
+      console.error('Error loading connection permissions:', error);
+      return null;
+    }
+  };
+
+  const handleEditPermissions = async (memberId: string, memberName: string) => {
+    const friendship = await loadConnectionPermissions(memberId);
+    if (friendship) {
+      setEditingConnectionId(friendship.id);
+      setCurrentConnectionPermissions({
+        business_access: friendship.business_access ?? true,
+        family_access: friendship.family_access ?? true,
+        personal_access: friendship.personal_access ?? true,
+        influence_access: friendship.influence_access ?? true,
+        network_access: friendship.network_access ?? true,
+      });
+      setPermissionsDialogOpen(true);
+    } else {
+      toast.error(t('errorLoadingPermissions') || 'Erreur lors du chargement des permissions');
+    }
+  };
+
+  const handleSavePermissions = async (permissions: {
+    business_access: boolean;
+    family_access: boolean;
+    personal_access: boolean;
+    influence_access: boolean;
+    network_access: boolean;
+  }) => {
+    if (!editingConnectionId) return;
+
+    try {
+      const { error } = await supabase
+        .from('friendships')
+        .update(permissions)
+        .eq('id', editingConnectionId);
+
+      if (error) throw error;
+
+      toast.success(t('permissionsUpdated') || 'Permissions mises à jour avec succès');
+      setPermissionsDialogOpen(false);
+      setEditingConnectionId(null);
+      setCurrentConnectionPermissions(null);
+      // Reload connection status to reflect changes
+      // Find the member and reload their status
+      if (selectedMember) {
+        const nameParts = selectedMember.name.split(" ");
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(" ");
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('first_name', firstName)
+          .eq('last_name', lastName)
+          .single();
+        
+        if (profile) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: friendship } = await supabase
+              .from('friendships')
+              .select('id')
+              .or(`and(user_id.eq.${user.id},friend_id.eq.${profile.id}),and(user_id.eq.${profile.id},friend_id.eq.${user.id})`)
+              .maybeSingle();
+            
+            if (friendship) {
+              setConnectionStatus(prev => ({ ...prev, [selectedMember.name]: "connected" }));
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error updating permissions:', error);
+      toast.error(t('errorUpdatingPermissions') || 'Erreur lors de la mise à jour des permissions');
+    }
+  };
+
   const handleConnectionRequest = async (memberName: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -659,27 +766,82 @@ const Members = () => {
         return;
       }
 
-      // Create connection request
+      // Check if a connection request already exists (in either direction)
+      const { data: existingRequest, error: checkError } = await supabase
+        .from('connection_requests')
+        .select('id, status, requester_id, recipient_id')
+        .or(`and(requester_id.eq.${user.id},recipient_id.eq.${recipientProfile.id}),and(requester_id.eq.${recipientProfile.id},recipient_id.eq.${user.id})`)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      // If request exists
+      if (existingRequest) {
+        // If it's already pending and we're the requester, do nothing
+        if (existingRequest.status === 'pending' && existingRequest.requester_id === user.id) {
+          toast.info(t('connectionRequestAlreadySent') || 'Demande de connexion déjà envoyée');
+          return;
+        }
+        
+        // If it's pending and we're the recipient, they already sent us a request
+        if (existingRequest.status === 'pending' && existingRequest.recipient_id === user.id) {
+          toast.info(t('connectionRequestAlreadyReceived') || 'Cette personne vous a déjà envoyé une demande');
+          return;
+        }
+
+        // If it was rejected, update it to pending
+        if (existingRequest.status === 'rejected') {
+          const { error: updateError } = await supabase
+            .from('connection_requests')
+            .update({ 
+              status: 'pending',
+              requester_id: user.id,
+              recipient_id: recipientProfile.id,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingRequest.id);
+
+          if (updateError) throw updateError;
+          
+          setConnectionStatus(prev => ({ ...prev, [memberName]: "pending" }));
+          setSelectedMember(null);
+          toast.success(t('connectionRequestResent') || 'Demande de connexion renvoyée');
+          return;
+        }
+
+        // If it's accepted, they're already connected
+        if (existingRequest.status === 'accepted') {
+          toast.info(t('alreadyConnected') || 'Vous êtes déjà connecté avec cette personne');
+          return;
+        }
+      }
+
+      // Create new connection request using upsert to handle conflicts gracefully
       const { error } = await supabase
         .from('connection_requests')
-        .insert({
+        .upsert({
           requester_id: user.id,
           recipient_id: recipientProfile.id,
           status: 'pending'
+        }, {
+          onConflict: 'requester_id,recipient_id',
+          ignoreDuplicates: false
         });
 
       if (error) {
-        if (error.code === '23505') { // Unique constraint violation
-          toast.error(t('error'));
-        } else {
-          throw error;
+        // If it's still a conflict error, check what happened
+        if (error.code === '23505') {
+          toast.info(t('connectionRequestAlreadySent') || 'Demande de connexion déjà envoyée');
+          return;
         }
-        return;
+        throw error;
       }
 
       setConnectionStatus(prev => ({ ...prev, [memberName]: "pending" }));
       setSelectedMember(null);
-      toast.success(t('success'));
+      toast.success(t('connectionRequestSent') || 'Demande de connexion envoyée');
     } catch (error) {
       console.error('Error sending connection request:', error);
       toast.error(t('error'));
@@ -1009,11 +1171,25 @@ const Members = () => {
                 </p>
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="flex flex-col gap-2">
                 {connectionStatus[selectedMember.name] === "pending" ? (
                   <div className="w-full text-center py-2 px-4 bg-muted/50 rounded-lg">
                     <p className="text-muted-foreground font-medium">{t('pendingResponse')}</p>
                   </div>
+                ) : connectionStatus[selectedMember.name] === "connected" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleEditPermissions(selectedMember.id, selectedMember.name)}
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      {t('editPermissions') || 'Modifier les permissions'}
+                    </Button>
+                    <div className="w-full text-center py-2 px-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                      <p className="text-green-500 font-medium">{t('connected') || 'Connecté'}</p>
+                    </div>
+                  </>
                 ) : (
                   <Button
                     variant="premium"
@@ -1084,6 +1260,17 @@ const Members = () => {
             {filteredMembers.length} {filteredMembers.length > 1 ? t('membersShownPlural') : t('membersShown')} {filteredMembers.length > 1 ? t('displayedPlural') : t('displayed')}
           </p>
         </div>
+
+        {/* Edit Permissions Dialog */}
+        {currentConnectionPermissions && selectedMember && (
+          <EditConnectionPermissionsDialog
+            open={permissionsDialogOpen}
+            onOpenChange={setPermissionsDialogOpen}
+            friendName={selectedMember.name}
+            currentPermissions={currentConnectionPermissions}
+            onSave={handleSavePermissions}
+          />
+        )}
       </div>
     </div>
   );

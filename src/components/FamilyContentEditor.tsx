@@ -21,6 +21,7 @@ interface FamilyContent {
   personal_quote?: string;
   portrait_url?: string;
   gallery_photos?: string[];
+  pdf_documents?: string[];
 }
 
 interface FamilyContentEditorProps {
@@ -42,6 +43,9 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
   const [portraitPreview, setPortraitPreview] = useState<string | null>(content.portrait_url || null);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>(content.gallery_photos || []);
   const [deletedGalleryUrls, setDeletedGalleryUrls] = useState<string[]>([]);
+  const [pdfFiles, setPdfFiles] = useState<File[]>([]);
+  const [pdfUrls, setPdfUrls] = useState<string[]>(content.pdf_documents || []);
+  const [deletedPdfUrls, setDeletedPdfUrls] = useState<string[]>([]);
   const [initialContent, setInitialContent] = useState<FamilyContent>(content);
   const [isFirstOpen, setIsFirstOpen] = useState(true);
   
@@ -61,6 +65,9 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
     setPortraitFile(null);
     setGalleryFiles([]);
     setDeletedGalleryUrls([]);
+    setPdfFiles([]);
+    setPdfUrls(content.pdf_documents || []);
+    setDeletedPdfUrls([]);
   }, [content, reset, open, isFirstOpen]);
 
   const isFieldModified = (fieldName: keyof FamilyContent): boolean => {
@@ -109,6 +116,20 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
     setGalleryFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setPdfFiles(prev => [...prev, ...files]);
+  };
+
+  const removePdf = (index: number) => {
+    const urlToDelete = pdfUrls[index];
+    if (urlToDelete) {
+      setDeletedPdfUrls(prev => [...prev, urlToDelete]);
+    }
+    setPdfUrls(prev => prev.filter((_, i) => i !== index));
+    setPdfFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const uploadFile = async (file: File, path: string): Promise<string | null> => {
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('personal-content')
@@ -137,6 +158,10 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
       let galleryUrls = (content.gallery_photos || []).filter(
         url => !deletedGalleryUrls.includes(url)
       );
+      // Filtrer les PDFs supprimés
+      let pdfDocuments = (content.pdf_documents || []).filter(
+        url => !deletedPdfUrls.includes(url)
+      );
 
       // Upload portrait if changed
       if (portraitFile) {
@@ -149,6 +174,13 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
         const path = `${user.id}/family/gallery-${Date.now()}-${file.name}`;
         const url = await uploadFile(file, path);
         if (url) galleryUrls.push(url);
+      }
+
+      // Upload new PDF documents
+      for (const file of pdfFiles) {
+        const path = `${user.id}/family/docs-${Date.now()}-${file.name}`;
+        const url = await uploadFile(file, path);
+        if (url) pdfDocuments.push(url);
       }
 
       // Save to database
@@ -164,7 +196,8 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
           anecdotes_text: data.anecdotes_text,
           personal_quote: data.personal_quote,
           portrait_url: portraitUrl,
-          gallery_photos: galleryUrls
+          gallery_photos: galleryUrls,
+          pdf_documents: pdfDocuments
         }, {
           onConflict: 'user_id'
         });
@@ -181,7 +214,8 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
         anecdotes_text: data.anecdotes_text,
         personal_quote: data.personal_quote,
         portrait_url: portraitUrl,
-        gallery_photos: galleryUrls
+        gallery_photos: galleryUrls,
+        pdf_documents: pdfDocuments
       };
       setInitialContent(newContent);
       setIsFirstOpen(true);
@@ -214,9 +248,10 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Tabs defaultValue="textes" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="textes">Textes</TabsTrigger>
               <TabsTrigger value="photos">Photos</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
             </TabsList>
 
             <TabsContent value="textes" className="space-y-4">
@@ -324,6 +359,57 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
                     <Input type="file" accept="image/*" multiple onChange={handleGalleryChange} />
                     <Upload className="h-5 w-5" />
                   </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="documents" className="space-y-4">
+              <div>
+                <Label>Documents PDF</Label>
+                <div className="mt-2 space-y-4">
+                  <div className="space-y-2">
+                    {pdfUrls.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Aucun document ajouté pour le moment.
+                      </p>
+                    )}
+                    {pdfUrls.map((url, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40"
+                      >
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm underline break-all"
+                        >
+                          {url.split("/").pop() || `Document ${index + 1}`}
+                        </a>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="destructive"
+                          onClick={() => removePdf(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept="application/pdf"
+                      multiple
+                      onChange={handlePdfChange}
+                    />
+                    <Upload className="h-5 w-5" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Ajoutez vos documents de famille (contrats, arbres généalogiques, scans, etc.) au
+                    format PDF.
+                  </p>
                 </div>
               </div>
             </TabsContent>

@@ -16,7 +16,6 @@ import { Upload } from "lucide-react";
 import { useRegistration } from "@/contexts/RegistrationContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { HONORIFIC_TITLES } from "@/lib/honorificTitles";
-import { extractTextFromImage } from "@/lib/ocrExtractor";
 import { ReferralCodeInput } from "@/components/ReferralCodeInput";
 import { INDUSTRIES, getIndustryTranslationKey } from "@/lib/industries";
 import logo from "@/assets/logo.png";
@@ -72,7 +71,7 @@ const Register = () => {
       if (file) {
         setLoading(true);
         setIdCardFile(file);
-        toast.info(t('analyzingIdCard') || t('loading'));
+        toast.info("Analyse de la carte d'identité en cours...");
         
         try {
           // Convert image to base64
@@ -84,81 +83,83 @@ const Register = () => {
               // Save preview for later upload
               setIdCardPreview(base64Image);
               
-              console.log('Starting text extraction from ID card...');
+              console.log('Calling analyze-id-card function...');
               
-              // Try to extract text using Edge Function first, fallback to Tesseract.js
-              let extractedResult = null;
-              let extractionError = null;
-              
+              // Call edge function to analyze ID card
+              // Note: User may not be authenticated during registration
+              let data, error;
               try {
-                // Use the OCR extractor utility with automatic fallback
-                extractedResult = await extractTextFromImage(base64Image, supabase, false);
-                console.log('Extraction successful:', extractedResult);
-              } catch (err: any) {
-                console.warn('Text extraction failed:', err);
-                extractionError = err;
-                // Image is still saved, user can fill manually
-                toast.warning(t('extractionFailed') || 'L\'extraction automatique a échoué, mais l\'image a été enregistrée. Vous pouvez remplir manuellement.');
+                const result = await supabase.functions.invoke('analyze-id-card', {
+                  body: { imageBase64: base64Image }
+                });
+                data = result.data;
+                error = result.error;
+              } catch (invokeError: any) {
+                console.error('Invoke error:', invokeError);
+                // Handle network errors or function not found
+                const errorMessage = invokeError?.message || invokeError?.toString() || 'Erreur inconnue';
+                if (errorMessage.includes('Failed to send') || 
+                    errorMessage.includes('fetch') || 
+                    errorMessage.includes('NetworkError') ||
+                    errorMessage.includes('Failed to fetch')) {
+                  toast.error("Impossible de contacter le serveur. Vérifiez votre connexion internet et réessayez.");
+                } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+                  toast.error("La fonction d'analyse n'est pas disponible. Veuillez contacter le support.");
+                } else {
+                  toast.error(`Erreur de connexion: ${errorMessage}`);
+                }
+                setLoading(false);
+                return;
               }
 
-              // Helper function to format name (capitalize first letter of each word)
-              const formatName = (name: string): string => {
-                if (!name) return '';
-                return name
-                  .trim()
-                  .split(/\s+/)
-                  .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                  .join(' ');
-              };
+              console.log('Function response:', { data, error });
 
-              // Process extracted data if available
-              if (extractedResult) {
-                const extractedFirstName = extractedResult.firstName ? formatName(extractedResult.firstName) : '';
-                const extractedLastName = extractedResult.lastName ? formatName(extractedResult.lastName) : '';
-
-                if (extractedFirstName || extractedLastName) {
-                  console.log('Extracted data:', { firstName: extractedFirstName, lastName: extractedLastName });
-                  
-                  // Store extracted data for display
-                  setExtractedData({
-                    firstName: extractedFirstName,
-                    lastName: extractedLastName
-                  });
-                  
-                  // Update form data - prioritize extracted data over existing
-                  setFormData(prev => ({
-                    ...prev,
-                    firstName: extractedFirstName || prev.firstName,
-                    lastName: extractedLastName || prev.lastName
-                  }));
-
-                  // Show success message with details
-                  const extractedFields = [];
-                  if (extractedFirstName) extractedFields.push(t('firstName'));
-                  if (extractedLastName) extractedFields.push(t('lastName'));
-                  
-                  toast.success(
-                    extractedFields.length > 0 
-                      ? `${t('success')}: ${extractedFields.join(', ')} ${t('extracted') || 'extraits'}`
-                      : t('success')
-                  );
+              if (error) {
+                console.error('Function error:', error);
+                // More detailed error handling
+                const errorMessage = error?.message || error?.toString() || 'Erreur inconnue';
+                if (errorMessage.includes('Failed to send') || 
+                    errorMessage.includes('fetch') || 
+                    errorMessage.includes('NetworkError') ||
+                    errorMessage.includes('Failed to fetch')) {
+                  toast.error("Impossible de contacter le serveur. Vérifiez votre connexion internet et réessayez.");
+                } else if (errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
+                  toast.error("Erreur d'authentification. Veuillez réessayer.");
+                } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+                  toast.error("La fonction d'analyse n'est pas disponible. Veuillez contacter le support.");
                 } else {
-                  console.warn('No name data extracted from ID card');
-                  setExtractedData(null);
-                  if (extractedResult.rawText) {
-                    // If we have raw text but couldn't parse names, show info
-                    toast.info(t('extractionPartial') || 'Texte extrait mais noms non identifiés. Veuillez remplir manuellement.');
-                  } else {
-                    toast.warning(t('noDataExtracted') || 'Aucune donnée extraite de la carte d\'identité');
-                  }
+                  toast.error(`Erreur: ${errorMessage}`);
                 }
+                setLoading(false);
+                return;
+              }
+
+              if (data.firstName || data.lastName) {
+                console.log('Extracted data:', data);
+                
+                // Store extracted data for display
+                setExtractedData({
+                  firstName: data.firstName || '',
+                  lastName: data.lastName || ''
+                });
+                
+                // Update form data - prioritize extracted data over existing
+                setFormData(prev => ({
+                  ...prev,
+                  firstName: data.firstName || prev.firstName,
+                  lastName: data.lastName || prev.lastName
+                }));
+                
+                toast.success("Nom et prénom extraits avec succès !");
               } else {
-                // No data extracted, clear extracted data
+                console.warn('No data extracted');
                 setExtractedData(null);
+                toast.warning("Impossible d'extraire les informations. Veuillez les saisir manuellement.");
               }
             } catch (innerError: any) {
               console.error('Inner error:', innerError);
-              toast.error(innerError?.message || t('error'));
+              toast.error(`Erreur: ${innerError.message || 'Erreur inconnue'}`);
+              setExtractedData(null);
             } finally {
               setLoading(false);
             }
@@ -166,14 +167,14 @@ const Register = () => {
           
           reader.onerror = () => {
             console.error('File reader error');
-            toast.error(t('errorReadingFile') || 'Erreur lors de la lecture du fichier');
+            toast.error("Erreur lors de la lecture du fichier");
             setLoading(false);
           };
           
           reader.readAsDataURL(file);
         } catch (error: any) {
           console.error('Error analyzing ID card:', error);
-          toast.error(error?.message || t('error'));
+          toast.error("Erreur lors de l'analyse de la carte. Veuillez réessayer.");
           setLoading(false);
         }
       }

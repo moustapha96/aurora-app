@@ -112,6 +112,34 @@ const AdminSettings = () => {
     emailOnError: settings.emailOnError ?? true,
   });
 
+  // System Settings
+  const [systemSettings, setSystemSettings] = useState({
+    maxReferralsPerUser: 2,
+  });
+
+  // Load system settings on mount
+  useEffect(() => {
+    const loadSystemSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('key, value')
+          .eq('key', 'max_referrals_per_user')
+          .maybeSingle();
+
+        if (!error && data) {
+          const maxReferrals = parseInt(data.value, 10);
+          if (!isNaN(maxReferrals) && maxReferrals > 0) {
+            setSystemSettings({ maxReferralsPerUser: maxReferrals });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading system settings:', error);
+      }
+    };
+    loadSystemSettings();
+  }, []);
+
   const handleSaveGeneral = async () => {
     setSaving(true);
     try {
@@ -241,6 +269,41 @@ const AdminSettings = () => {
     }
   };
 
+  const handleSaveSystemSettings = async () => {
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error(t('error'));
+        return;
+      }
+
+      // Valider que la valeur est un nombre positif
+      if (systemSettings.maxReferralsPerUser < 1) {
+        toast.error(t('maxReferralsMustBePositive') || 'Le nombre maximum de filleuls doit être supérieur à 0');
+        setSaving(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({
+          key: 'max_referrals_per_user',
+          value: systemSettings.maxReferralsPerUser.toString(),
+          description: 'Nombre maximum de filleuls qu\'un utilisateur peut parrainer avec son code de parrainage',
+        }, { onConflict: 'key' });
+
+      if (error) throw error;
+
+      toast.success(t('settingsSaved') || 'Paramètres sauvegardés avec succès');
+    } catch (error: any) {
+      console.error('Error saving system settings:', error);
+      toast.error(t('settingsSaveError') || 'Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -268,6 +331,10 @@ const AdminSettings = () => {
             <TabsTrigger value="notifications" className="text-gold data-[state=active]:bg-gold/20">
               <Bell className="mr-2 h-4 w-4" />
               {t('notifications')}
+            </TabsTrigger>
+            <TabsTrigger value="system" className="text-gold data-[state=active]:bg-gold/20">
+              <Database className="mr-2 h-4 w-4" />
+              {t('systemSettings') || 'Paramètres Système'}
             </TabsTrigger>
           </TabsList>
 
@@ -601,6 +668,92 @@ const AdminSettings = () => {
                   className="bg-gold text-black hover:bg-gold/80"
                 >
                   {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> :                   <Save className="mr-2 h-4 w-4" />}
+                  {t('save')}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* System Settings */}
+          <TabsContent value="system" className="space-y-4">
+            <Card className="bg-[hsl(var(--navy-blue-light))] border-gold/20">
+              <CardHeader>
+                <CardTitle className="text-gold">{t('systemSettings') || 'Paramètres Système'}</CardTitle>
+                <CardDescription className="text-gold/60">
+                  {t('systemSettingsDescription') || 'Gérer les paramètres système de l\'application'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="maxReferralsPerUser" className="text-gold">
+                    {t('maxReferralsPerUser') || 'Nombre maximum de filleuls par utilisateur'}
+                  </Label>
+                  <Input
+                    id="maxReferralsPerUser"
+                    type="number"
+                    min="1"
+                    value={systemSettings.maxReferralsPerUser}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value, 10);
+                      if (!isNaN(value) && value > 0) {
+                        setSystemSettings({ maxReferralsPerUser: value });
+                      }
+                    }}
+                    className="bg-black/50 border-gold/30 text-gold"
+                  />
+                  <p className="text-xs text-gold/60">
+                    {t('maxReferralsPerUserDescription') || 'Définit le nombre maximum de personnes qu\'un utilisateur peut parrainer avec son code de parrainage. La valeur par défaut est 2.'}
+                  </p>
+                </div>
+                <Button
+                  onClick={handleSaveSystemSettings}
+                  disabled={saving}
+                  className="bg-gold text-black hover:bg-gold/80"
+                >
+                  {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  {t('save')}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* System Settings */}
+          <TabsContent value="system" className="space-y-4">
+            <Card className="bg-[hsl(var(--navy-blue-light))] border-gold/20">
+              <CardHeader>
+                <CardTitle className="text-gold">{t('systemSettings') || 'Paramètres Système'}</CardTitle>
+                <CardDescription className="text-gold/60">
+                  {t('systemSettingsDescription') || 'Gérer les paramètres système de l\'application'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="maxReferralsPerUser" className="text-gold">
+                    {t('maxReferralsPerUser') || 'Nombre maximum de filleuls par utilisateur'}
+                  </Label>
+                  <Input
+                    id="maxReferralsPerUser"
+                    type="number"
+                    min="1"
+                    value={systemSettings.maxReferralsPerUser}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value, 10);
+                      if (!isNaN(value) && value > 0) {
+                        setSystemSettings({ maxReferralsPerUser: value });
+                      }
+                    }}
+                    className="bg-black/50 border-gold/30 text-gold"
+                  />
+                  <p className="text-xs text-gold/60">
+                    {t('maxReferralsPerUserDescription') || 'Définit le nombre maximum de personnes qu\'un utilisateur peut parrainer avec son code de parrainage. La valeur par défaut est 2.'}
+                  </p>
+                </div>
+                <Button
+                  onClick={handleSaveSystemSettings}
+                  disabled={saving}
+                  className="bg-gold text-black hover:bg-gold/80"
+                >
+                  {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   {t('save')}
                 </Button>
               </CardContent>

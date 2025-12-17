@@ -125,7 +125,8 @@ const EditProfile = () => {
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `avatars/${fileName}`;
+        // Le bucket s'appelle déjà "avatars", on ne doit pas le répéter dans le chemin
+        const filePath = `${user.id}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('avatars')
@@ -205,36 +206,19 @@ const EditProfile = () => {
               className="text-gold/60 hover:text-gold mr-4"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Retour
+              {t('back')}
             </Button>
             <h1 className="text-4xl font-serif text-gold tracking-wide">MODIFIER LE PROFIL</h1>
           </div>
           
-          {/* Language Selector */}
-          <Select value={language} onValueChange={setLanguage}>
-            <SelectTrigger className="w-[140px] bg-black/50 border-gold/20 text-gold">
-              <Globe className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-black border-gold/20">
-              {languages.map((lang) => (
-                <SelectItem 
-                  key={lang.code} 
-                  value={lang.code}
-                  className="text-gold hover:bg-gold/10 focus:bg-gold/10"
-                >
-                  {lang.flag} {lang.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+         
         </div>
 
         {/* Form */}
         <div className="space-y-6 bg-black/50 border border-gold/20 rounded-lg p-8">
           {/* Avatar Upload */}
           <div className="space-y-2">
-            <Label className="text-gold/80">Photo de Profil</Label>
+            <Label className="text-gold/80">{t('profilePicture')}</Label>
             <div className="flex items-center gap-4">
               <Avatar className="h-24 w-24">
                 {avatarUrl ? (
@@ -252,14 +236,14 @@ const EditProfile = () => {
                   onChange={handleAvatarChange}
                   className="bg-black/50 border-gold/20 text-gold file:text-gold file:border-0 file:bg-gold/10 file:mr-4 file:py-2 file:px-4"
                 />
-                <p className="text-xs text-gold/60 mt-1">Format JPG, PNG ou GIF recommandé</p>
+                <p className="text-xs text-gold/60 mt-1">{t('recommendedFormat')}</p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="firstName" className="text-gold/80">Prénom</Label>
+              <Label htmlFor="firstName" className="text-gold/80">{t('firstName')}</Label>
               <Input
                 id="firstName"
                 value={formData.firstName}
@@ -272,7 +256,7 @@ const EditProfile = () => {
               />
             </div>
             <div>
-              <Label htmlFor="lastName" className="text-gold/80">Nom</Label>
+              <Label htmlFor="lastName" className="text-gold/80">{t('lastName')}</Label>
               <Input
                 id="lastName"
                 value={formData.lastName}
@@ -288,24 +272,29 @@ const EditProfile = () => {
 
           <div>
             <Label htmlFor="honorificTitle" className="text-gold/80">
-              {t('honorificTitle') || 'Titre Honorifique'} ({t('optional') || 'optionnel'})
+              {t('honorificTitle')} ({t('optional')})
             </Label>
             <Select
               value={formData.honorificTitle || ""}
-              onValueChange={(value) => setFormData({ ...formData, honorificTitle: value })}
+              onValueChange={(value) =>
+                setFormData({
+                  ...formData,
+                  honorificTitle: value === "none" ? "" : value,
+                })
+              }
             >
-              <SelectTrigger 
+              <SelectTrigger
                 className={`bg-black/50 border-gold/20 ${
                   isFieldModified('honorificTitle') 
                     ? 'bg-[hsl(var(--navy-blue))]/30 border-[hsl(var(--navy-blue-light))]' 
                     : 'text-gold'
                 }`}
               >
-                <SelectValue placeholder={t('selectTitle') || 'Sélectionnez votre titre'} />
+                <SelectValue placeholder={t('selectTitle')} />
               </SelectTrigger>
               <SelectContent className="bg-black border-gold/30 z-50 max-h-[300px] overflow-y-auto">
-                <SelectItem value="" className="text-gold hover:bg-gold/10">
-                  {t('none') || 'Aucun'}
+                <SelectItem value="none" className="text-gold hover:bg-gold/10">
+                  {t('none')}
                 </SelectItem>
                 {HONORIFIC_TITLES.map((titleKey) => (
                   <SelectItem 
@@ -321,7 +310,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="mobilePhone" className="text-gold/80">Téléphone Mobile</Label>
+            <Label htmlFor="mobilePhone" className="text-gold/80">{t('mobilePhone')}</Label>
             <Input
               id="mobilePhone"
               value={formData.mobilePhone}
@@ -379,7 +368,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="country" className="text-gold/80">Pays (optionnel)</Label>
+            <Label htmlFor="country" className="text-gold/80">{t('country')} ({t('optional')})</Label>
             <Select
               value={formData.country}
               onValueChange={(value) => setFormData({ ...formData, country: value })}
@@ -389,7 +378,7 @@ const EditProfile = () => {
                   ? 'bg-[hsl(var(--navy-blue))]/30 border-[hsl(var(--navy-blue-light))] text-gold' 
                   : 'text-gold'
               }`}>
-                <SelectValue placeholder="Sélectionnez un pays" />
+                <SelectValue placeholder={t('selectCountry')} />
               </SelectTrigger>
               <SelectContent className="bg-black border-gold/20 max-h-[300px]">
                 {COUNTRIES.map((country) => (
@@ -406,18 +395,18 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label className="text-gold/80 mb-2 block">Niveau de Patrimoine</Label>
+              <Label className="text-gold/80 mb-2 block">{t('wealthLevel')}</Label>
             <div className="flex gap-2">
               <Input
                 type="number"
-                placeholder="Montant"
+                placeholder={t('amount')}
                 value={formData.wealthAmount}
                 onChange={(e) => setFormData({ ...formData, wealthAmount: e.target.value })}
                 className={`flex-1 bg-black/50 border-gold/20 ${
                   isFieldModified('wealthAmount') 
                     ? 'bg-[hsl(var(--navy-blue))]/30 border-[hsl(var(--navy-blue-light))]' 
                     : 'text-gold'
-                }`}
+                }`} 
               />
               <Select
                 value={formData.wealthUnit}

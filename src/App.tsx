@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { RegistrationProvider } from "@/contexts/RegistrationContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { MaintenanceMode } from "@/components/MaintenanceMode";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -45,6 +46,7 @@ import AdminLogs from "./pages/admin/Logs";
 import AdminReports from "./pages/admin/Reports";
 import Contact from "./pages/Contact";
 import Referrals from "./pages/Referrals";
+import Connections from "./pages/Connections";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,45 +66,292 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/register" element={<Register />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/member-card" element={<MemberCard />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/profile/:id" element={<Profile />} />
-              <Route path="/edit-profile" element={<EditProfile />} />
-              <Route path="/business" element={<Business />} />
-              <Route path="/business/:id" element={<Business />} />
-              <Route path="/members" element={<Members />} />
-              <Route path="/members/:id" element={<Members />} />
-              <Route path="/personal" element={<Personal />} />
-              <Route path="/personal/:id" element={<Personal />} />
-              <Route path="/family" element={<Family />} />
-              <Route path="/family/:id" element={<Family />} />
-              <Route path="/network" element={<Network />} />
-              <Route path="/concierge" element={<Concierge />} />
-              <Route path="/metaverse" element={<Metaverse />} />
-              <Route path="/marketplace" element={<Marketplace />} />
-              <Route path="/payment" element={<Payment />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/referrals" element={<Referrals />} />
-              <Route path="/create-test-members" element={<CreateTestMembers />} />
+              <Route
+                path="/member-card"
+                element={(
+                  <ProtectedRoute>
+                    <MemberCard />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/profile"
+                element={(
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/profile/:id"
+                element={(
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/edit-profile"
+                element={(
+                  <ProtectedRoute>
+                    <EditProfile />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/business"
+                element={(
+                  <ProtectedRoute>
+                    <Business />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/business/:id"
+                element={(
+                  <ProtectedRoute>
+                    <Business />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/members"
+                element={(
+                  <ProtectedRoute>
+                    <Members />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/members/:id"
+                element={(
+                  <ProtectedRoute>
+                    <Members />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/personal"
+                element={(
+                  <ProtectedRoute>
+                    <Personal />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/personal/:id"
+                element={(
+                  <ProtectedRoute>
+                    <Personal />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/family"
+                element={(
+                  <ProtectedRoute>
+                    <Family />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/family/:id"
+                element={(
+                  <ProtectedRoute>
+                    <Family />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/network"
+                element={(
+                  <ProtectedRoute>
+                    <Network />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/network/:id"
+                element={(
+                  <ProtectedRoute>
+                    <Network />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/concierge"
+                element={(
+                  <ProtectedRoute>
+                    <Concierge />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/metaverse"
+                element={(
+                  <ProtectedRoute>
+                    <Metaverse />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/marketplace"
+                element={(
+                  <ProtectedRoute>
+                    <Marketplace />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/payment"
+                element={(
+                  <ProtectedRoute>
+                    <Payment />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/messages"
+                element={(
+                  <ProtectedRoute>
+                    <Messages />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/referrals"
+                element={(
+                  <ProtectedRoute>
+                    <Referrals />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/connections"
+                element={(
+                  <ProtectedRoute>
+                    <Connections />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/create-test-members"
+                element={(
+                  <ProtectedRoute>
+                    <CreateTestMembers />
+                  </ProtectedRoute>
+                )}
+              />
               <Route path="/terms" element={<Terms />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route
+                path="/settings"
+                element={(
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                )}
+              />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/new-password" element={<ResetPassword />} />
               <Route path="/create-admin" element={<CreateAdmin />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
-              <Route path="/activity-history" element={<ActivityHistory />} />
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/members" element={<AdminMembers />} />
-              <Route path="/admin/roles" element={<AdminRoles />} />
-              <Route path="/admin/moderation" element={<AdminModeration />} />
-              <Route path="/admin/analytics" element={<AdminAnalytics />} />
-              <Route path="/admin/connections" element={<AdminConnections />} />
-              <Route path="/admin/content" element={<AdminContent />} />
-              <Route path="/admin/logs" element={<AdminLogs />} />
-              <Route path="/admin/reports" element={<AdminReports />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
-              <Route path="/contact" element={<Contact />} />
+              <Route
+                path="/activity-history"
+                element={(
+                  <ProtectedRoute>
+                    <ActivityHistory />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin/dashboard"
+                element={(
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin/members"
+                element={(
+                  <ProtectedRoute>
+                    <AdminMembers />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin/roles"
+                element={(
+                  <ProtectedRoute>
+                    <AdminRoles />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin/moderation"
+                element={(
+                  <ProtectedRoute>
+                    <AdminModeration />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin/analytics"
+                element={(
+                  <ProtectedRoute>
+                    <AdminAnalytics />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin/connections"
+                element={(
+                  <ProtectedRoute>
+                    <AdminConnections />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin/content"
+                element={(
+                  <ProtectedRoute>
+                    <AdminContent />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin/logs"
+                element={(
+                  <ProtectedRoute>
+                    <AdminLogs />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin/reports"
+                element={(
+                  <ProtectedRoute>
+                    <AdminReports />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/admin/settings"
+                element={(
+                  <ProtectedRoute>
+                    <AdminSettings />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/contact"
+                element={(
+                  <ProtectedRoute>
+                    <Contact />
+                  </ProtectedRoute>
+                )}
+              />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
                 </Routes>

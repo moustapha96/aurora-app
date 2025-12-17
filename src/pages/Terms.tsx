@@ -32,124 +32,135 @@ const Terms = () => {
           
           <CardContent className="prose prose-sm max-w-none space-y-8">
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">1. Acceptation des Conditions</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section1_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed">
-                En accédant et en utilisant Aurora, vous acceptez d'être lié par les présentes Conditions Générales d'Utilisation. 
-                Si vous n'acceptez pas ces conditions, veuillez ne pas utiliser nos services.
+                {t('terms_section1_body')}
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">2. Description du Service</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section2_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed mb-2">
-                Aurora est un réseau professionnel exclusif qui permet à ses membres de :
+                {t('terms_section2_intro')}
               </p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-1">
-                <li>Créer et maintenir un profil professionnel</li>
-                <li>Se connecter avec d'autres membres du réseau</li>
-                <li>Accéder à des services de conciergerie haut de gamme</li>
-                <li>Participer à une marketplace de produits d'exception</li>
-                <li>Échanger via messagerie sécurisée</li>
+                <li>{t('terms_section2_point1')}</li>
+                <li>{t('terms_section2_point2')}</li>
+                <li>{t('terms_section2_point3')}</li>
+                <li>{t('terms_section2_point4')}</li>
+                <li>{t('terms_section2_point5')}</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">3. Éligibilité et Compte</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section3_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed mb-2">
-                Pour utiliser Aurora, vous devez :
+                {t('terms_section3_intro')}
               </p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-1">
-                <li>Avoir au moins 18 ans</li>
-                <li>Fournir des informations exactes et complètes lors de votre inscription</li>
-                <li>Maintenir la sécurité de votre compte et de votre mot de passe</li>
-                <li>Nous informer immédiatement de toute utilisation non autorisée de votre compte</li>
+                <li>{t('terms_section3_point1')}</li>
+                <li>{t('terms_section3_point2')}</li>
+                <li>{t('terms_section3_point3')}</li>
+                <li>{t('terms_section3_point4')}</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">4. Utilisation Acceptable</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section4_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed mb-2">
-                Vous vous engagez à :
+                {t('terms_section4_intro')}
               </p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-1">
-                <li>Ne pas publier de contenu illégal, diffamatoire ou offensant</li>
-                <li>Respecter les droits de propriété intellectuelle d'autrui</li>
-                <li>Ne pas utiliser le service à des fins de spam ou de harcèlement</li>
-                <li>Ne pas tenter d'accéder de manière non autorisée à nos systèmes</li>
-                <li>Maintenir un comportement professionnel et respectueux</li>
+                <li>{t('terms_section4_point1')}</li>
+                <li>{t('terms_section4_point2')}</li>
+                <li>{t('terms_section4_point3')}</li>
+                <li>{t('terms_section4_point4')}</li>
+                <li>{t('terms_section4_point5')}</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">5. Propriété Intellectuelle</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section5_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Tout le contenu présent sur Aurora, incluant mais ne se limitant pas aux textes, graphiques, logos, 
-                icônes, images, clips audio et vidéo, reste la propriété d'Aurora ou de ses concédants de licence. 
-                Vous conservez la propriété du contenu que vous publiez, mais vous nous accordez une licence mondiale, 
-                non exclusive, pour utiliser, reproduire et distribuer ce contenu dans le cadre de nos services.
+                {t('terms_section5_body')}
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">6. Confidentialité</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section6_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Votre utilisation d'Aurora est également régie par notre Politique de Confidentialité. 
-                Nous nous engageons à protéger vos données personnelles conformément aux réglementations en vigueur, 
-                notamment le RGPD pour les utilisateurs européens.
+                {t('terms_section6_body')}
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">7. Services Payants</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section7_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Certains services d'Aurora peuvent être soumis à des frais. Les modalités de paiement, 
-                les tarifs et les conditions d'annulation seront clairement indiqués avant toute transaction. 
-                Tous les paiements sont sécurisés et traités conformément aux normes de l'industrie.
+                {t('terms_section7_body')}
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">8. Résiliation</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section8_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Vous pouvez résilier votre compte à tout moment. Aurora se réserve le droit de suspendre ou 
-                résilier votre compte en cas de violation de ces conditions, sans préavis et sans responsabilité.
+                {t('terms_section8_body')}
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">9. Limitation de Responsabilité</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section9_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Aurora est fourni "tel quel" sans garantie d'aucune sorte. Nous ne serons pas responsables 
-                des dommages directs, indirects, accessoires ou consécutifs résultant de votre utilisation 
-                ou de votre incapacité à utiliser nos services.
+                {t('terms_section9_body')}
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">10. Modifications des Conditions</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section10_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Nous nous réservons le droit de modifier ces conditions à tout moment. Les modifications 
-                seront effectives dès leur publication sur cette page. Votre utilisation continue du service 
-                après de telles modifications constitue votre acceptation des nouvelles conditions.
+                {t('terms_section10_body')}
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">11. Droit Applicable</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section11_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Ces conditions sont régies par le droit français. Tout litige relatif à ces conditions 
-                sera soumis à la compétence exclusive des tribunaux français.
+                {t('terms_section11_body')}
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">12. Contact</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {t('terms_section12_title')}
+              </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Pour toute question concernant ces Conditions Générales d'Utilisation, veuillez nous contacter à :
+                {t('terms_section12_body')}
               </p>
               <div className="mt-3 text-muted-foreground">
-                <p>Email : legal@aurora-network.com</p>
-                <p>Adresse : [Adresse de l'entreprise]</p>
+                <p>Email : contact@aurorasociety.ch</p>
+                <p>Adresse : 123 Rue de la Paix, 75000 Paris, France</p>
+                <p>Téléphone : +33 1 XX XX XX XX</p>
               </div>
             </section>
           </CardContent>

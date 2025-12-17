@@ -347,7 +347,7 @@ const Profile = () => {
               className="border-gold/40 text-gold hover:bg-gold hover:text-black"
             >
               <Edit className="mr-2 h-4 w-4" />
-              Modifier le profil
+              {t('editProfile')}
             </Button>
             <Button
               variant="outline"
@@ -355,7 +355,7 @@ const Profile = () => {
               className="border-gold/40 text-gold hover:bg-gold hover:text-black"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Quitter
+              {t('logout')}
             </Button>
           </div>
         )}
@@ -369,7 +369,7 @@ const Profile = () => {
               className="border-gold/40 text-gold hover:bg-gold hover:text-black"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Quitter
+              {t('logout')}
             </Button>
           </div>
         )}

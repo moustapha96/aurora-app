@@ -1,4 +1,3 @@
-import { AuroraLogo } from "./AuroraLogo";
 import { Button } from "./ui/button";
 import { Menu, Settings, User, MessageSquare, FileText, Globe, LogOut, Briefcase, Heart, Crown, Users, Network as NetworkIcon, Shield } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -25,7 +24,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
-
 const languages = [
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
   { code: 'en', name: 'English', flag: '🇬🇧' },

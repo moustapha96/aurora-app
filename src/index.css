@@ -171,4 +171,22 @@ All colors MUST be HSL. */
     outline: 2px solid hsl(30 100% 65%) !important;
     outline-offset: -2px !important;
   }
+  
+  /* Responsive images in prose content */
+  .prose img {
+    @apply max-w-full h-auto rounded-lg;
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  .prose video {
+    @apply max-w-full h-auto rounded-lg;
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  .prose iframe {
+    @apply max-w-full rounded-lg;
+    width: 100% !important;
+  }
 }

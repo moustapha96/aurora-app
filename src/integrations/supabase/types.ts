@@ -325,6 +325,7 @@ export type Database = {
           personal_quote: string | null
           philanthropy_text: string | null
           portrait_url: string | null
+          pdf_documents: Json | null
           residences_text: string | null
           updated_at: string
           user_id: string
@@ -340,6 +341,7 @@ export type Database = {
           personal_quote?: string | null
           philanthropy_text?: string | null
           portrait_url?: string | null
+          pdf_documents?: Json | null
           residences_text?: string | null
           updated_at?: string
           user_id: string
@@ -355,6 +357,7 @@ export type Database = {
           personal_quote?: string | null
           philanthropy_text?: string | null
           portrait_url?: string | null
+          pdf_documents?: Json | null
           residences_text?: string | null
           updated_at?: string
           user_id?: string

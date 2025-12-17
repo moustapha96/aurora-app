@@ -14,7 +14,11 @@ import {
   Calendar,
   UserPlus,
   Award,
-  ArrowLeft
+  ArrowLeft,
+  Share2,
+  Link,
+  Mail,
+  MessageCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -35,6 +39,39 @@ const Referrals = () => {
   const [copied, setCopied] = useState(false);
   const [referrer, setReferrer] = useState<any>(null);
   const [loadingReferrer, setLoadingReferrer] = useState(true);
+  const [maxReferrals, setMaxReferrals] = useState<number>(2);
+
+  const currentReferralsCount = referrals.length;
+  const remainingSlots = Math.max(0, maxReferrals - currentReferralsCount);
+
+  // Charger la limite maximale depuis les paramètres système
+  useEffect(() => {
+    const loadMaxReferrals = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'max_referrals_per_user')
+          .maybeSingle();
+
+        if (!error && data) {
+          const limit = parseInt(data.value, 10);
+          if (!isNaN(limit) && limit > 0) {
+            setMaxReferrals(limit);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading max referrals setting:', error);
+      }
+    };
+    loadMaxReferrals();
+  }, []);
+
+  const getSharePayload = () => {
+    const shareText = `${t('referralInvite') || 'Rejoignez-moi sur Aurora Society avec mon code de parrainage'}: ${referralCode}`;
+    const shareUrl = `${window.location.origin}/register?ref=${referralCode}`;
+    return { shareText, shareUrl };
+  };
 
   useEffect(() => {
     const loadReferrer = async () => {
@@ -64,8 +101,9 @@ const Referrals = () => {
   };
 
   const handleShareCode = () => {
-    const shareText = `${t('referralInvite') || 'Rejoignez-moi sur Aurora Society avec mon code de parrainage'}: ${referralCode}`;
-    const shareUrl = `${window.location.origin}/register?ref=${referralCode}`;
+    if (!referralCode) return;
+
+    const { shareText, shareUrl } = getSharePayload();
     
     if (navigator.share) {
       navigator.share({
@@ -78,6 +116,34 @@ const Referrals = () => {
       navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
       toast.success(t('linkCopied') || 'Lien copié !');
     }
+  };
+
+  const handleCopyLinkOnly = async () => {
+    if (!referralCode) return;
+    const { shareUrl } = getSharePayload();
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success(t('linkCopied') || 'Lien copié !');
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+      toast.error(t('error') || 'Erreur lors de la copie du lien');
+    }
+  };
+
+  const handleShareByEmail = () => {
+    if (!referralCode) return;
+    const { shareText, shareUrl } = getSharePayload();
+    const subject = encodeURIComponent(t('referralInvite') || 'Invitation Aurora Society');
+    const body = encodeURIComponent(`${shareText}\n\n${shareUrl}`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!referralCode) return;
+    const { shareText, shareUrl } = getSharePayload();
+    const message = encodeURIComponent(`${shareText}\n${shareUrl}`);
+    const whatsappUrl = `https://wa.me/?text=${message}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
   const formatDate = (dateString: string) => {
@@ -170,13 +236,60 @@ const Referrals = () => {
                     )}
                   </Button>
                 </div>
-                <Button
-                  onClick={handleShareCode}
-                  className="w-full bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20"
-                  variant="outline"
-                >
-                  {t('shareCode') || 'Partager mon code'}
-                </Button>
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleShareCode}
+                    className="w-full bg-gold/10 text-gold border border-gold/30 hover:bg-gold/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
+                    variant="outline"
+                    disabled={currentReferralsCount >= maxReferrals}
+                  >
+                    <Share2 className="h-4 w-4" />
+                    {t('shareCodeSystem') || (t('shareCode') || 'Partager mon code')}
+                  </Button>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="bg-black/40 border-gold/30 text-gold hover:bg-gold/10 flex items-center gap-2 justify-center text-xs py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleCopyLinkOnly}
+                      disabled={currentReferralsCount >= maxReferrals}
+                    >
+                      <Link className="h-3 w-3" />
+                      {t('shareCodeCopyLink') || 'Copier le lien'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="bg-black/40 border-gold/30 text-gold hover:bg-gold/10 flex items-center gap-2 justify-center text-xs py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleShareByEmail}
+                      disabled={currentReferralsCount >= maxReferrals}
+                    >
+                      <Mail className="h-3 w-3" />
+                      {t('shareCodeEmail') || 'Email'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="bg-black/40 border-gold/30 text-gold hover:bg-gold/10 flex items-center gap-2 justify-center text-xs py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleShareWhatsApp}
+                      disabled={currentReferralsCount >= maxReferrals}
+                    >
+                      <MessageCircle className="h-3 w-3" />
+                      {t('shareCodeWhatsApp') || 'WhatsApp'}
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-gold/60 text-center">
+                    {currentReferralsCount >= maxReferrals
+                      ? (t('referralLimitReached') || `Vous avez atteint la limite de ${maxReferrals} filleuls pour votre code de parrainage.`)
+                      : (
+                          <>
+                            {t('referralRemainingPrefix') || 'Vous pouvez encore parrainer'} {remainingSlots} {remainingSlots === 1 ? (t('membersShown') || 'membre') : (t('membersShownPlural') || 'membres')} {t('referralRemainingSuffix') || `avec ce code (maximum ${maxReferrals}).`}
+                          </>
+                        )}
+                  </p>
+                </div>
                 <p className="text-sm text-gold/60 text-center">
                   {t('referralCodeHelp') || 'Partagez ce code avec vos contacts pour les inviter à rejoindre Aurora Society'}
                 </p>
@@ -294,6 +407,9 @@ const Referrals = () => {
                       ({referrals.length})
                     </span>
                   )}
+                <span className="ml-auto text-xs text-gold/60 font-normal">
+                  Limite : {currentReferralsCount}/{maxReferrals}
+                </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
