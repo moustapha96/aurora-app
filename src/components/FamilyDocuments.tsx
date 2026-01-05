@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { 
   FileText, 
   Upload, 
@@ -39,6 +40,7 @@ interface FamilyDocumentsProps {
 
 export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [documents, setDocuments] = useState<FamilyDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -77,7 +79,7 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
     setIsUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t("notAuthenticated"));
 
       for (const file of Array.from(files)) {
         const filePath = `${user.id}/${Date.now()}-${file.name}`;
@@ -104,15 +106,15 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
       }
 
       toast({
-        title: "Documents ajoutés",
-        description: `${files.length} document(s) ajouté(s) avec succès`
+        title: t("documentsAdded"),
+        description: `${files.length} ${t("documentsAddedSuccessfully")}`
       });
       loadDocuments();
     } catch (error) {
       console.error('Error uploading:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible d'ajouter le document",
+        title: t("error"),
+        description: t("cannotAddDocument"),
         variant: "destructive"
       });
     } finally {
@@ -137,15 +139,15 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
       if (error) throw error;
 
       toast({
-        title: "Document supprimé",
-        description: "Le document a été supprimé avec succès"
+        title: t("documentDeleted"),
+        description: t("documentDeletedSuccessfully")
       });
       loadDocuments();
     } catch (error) {
       console.error('Error deleting:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le document",
+        title: t("error"),
+        description: t("cannotDeleteDocument"),
         variant: "destructive"
       });
     }
@@ -165,8 +167,8 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
     } catch (error) {
       console.error('Error getting preview:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible d'afficher le document",
+        title: t("error"),
+        description: t("cannotDisplayDocument"),
         variant: "destructive"
       });
     }
@@ -192,8 +194,8 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
     } catch (error) {
       console.error('Error downloading:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de télécharger le document",
+        title: t("error"),
+        description: t("cannotDownloadDocument"),
         variant: "destructive"
       });
     }
@@ -232,10 +234,10 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
             <FileText className="w-5 h-5 text-primary" />
-            Documents privés
+            {t("privateDocuments")}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Ces documents sont privés et accessibles uniquement par vous dans l'application.
+            {t("privateDocumentsDesc")}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -248,7 +250,7 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
                   ) : (
                     <Upload className="w-4 h-4" />
                   )}
-                  <span className="text-sm">Ajouter un document</span>
+                  <span className="text-sm">{t("addDocument")}</span>
                 </div>
               </Label>
               <Input
@@ -265,7 +267,7 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
 
           {documents.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-4">
-              Aucun document privé
+              {t("noPrivateDocuments")}
             </p>
           ) : (
             <div className="space-y-2">
@@ -279,7 +281,7 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
                     <div>
                       <p className="text-sm font-medium">{doc.file_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatFileSize(doc.file_size)} • {new Date(doc.created_at).toLocaleDateString('fr-FR')}
+                        {formatFileSize(doc.file_size)} • {new Date(doc.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -289,7 +291,7 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handlePreview(doc)}
-                        title="Visualiser"
+                        title={t("view")}
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -298,7 +300,7 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDownload(doc)}
-                      title="Télécharger"
+                        title={t("download")}
                     >
                       <Download className="w-4 h-4" />
                     </Button>
@@ -308,7 +310,7 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
                         size="icon"
                         onClick={() => handleDelete(doc)}
                         className="text-destructive hover:text-destructive"
-                        title="Supprimer"
+                        title={t("delete")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

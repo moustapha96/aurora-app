@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+const DEFAULT_INACTIVITY_TIMEOUT = 10; // 10 minutes default
 const WARNING_BEFORE_LOGOUT = 60 * 1000; // 1 minute warning
 const TOKEN_REFRESH_INTERVAL = 4 * 60 * 1000; // Refresh token every 4 minutes
 
@@ -29,6 +29,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const navigate = useNavigate();
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [inactivityTimeout, setInactivityTimeout] = useState(DEFAULT_INACTIVITY_TIMEOUT * 60 * 1000);
   
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -38,11 +39,36 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const isPublicRoute = PUBLIC_ROUTES.some(route => location.pathname.startsWith(route));
 
+  // Fetch inactivity timeout from admin settings
+  useEffect(() => {
+    const fetchInactivityTimeout = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('admin_settings')
+          .select('setting_value')
+          .eq('setting_key', 'inactivity_timeout_minutes')
+          .maybeSingle();
+
+        if (!error && data?.setting_value) {
+          const minutes = parseInt(data.setting_value, 10);
+          if (!isNaN(minutes) && minutes > 0) {
+            setInactivityTimeout(minutes * 60 * 1000);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching inactivity timeout:', err);
+      }
+    };
+
+    fetchInactivityTimeout();
+  }, []);
+
   // Logout user due to inactivity
   const logoutUser = useCallback(async () => {
     console.log('Session expired due to inactivity');
+    const timeoutMinutes = Math.round(inactivityTimeout / 60000);
     toast.error('Session expirée', {
-      description: 'Vous avez été déconnecté après 10 minutes d\'inactivité.',
+      description: `Vous avez été déconnecté après ${timeoutMinutes} minutes d'inactivité.`,
       duration: 5000,
     });
     
@@ -85,13 +111,13 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Set warning timer (1 minute before logout)
     warningTimerRef.current = setTimeout(() => {
       showWarning();
-    }, INACTIVITY_TIMEOUT - WARNING_BEFORE_LOGOUT);
+    }, inactivityTimeout - WARNING_BEFORE_LOGOUT);
 
     // Set logout timer
     inactivityTimerRef.current = setTimeout(() => {
       logoutUser();
-    }, INACTIVITY_TIMEOUT);
-  }, [isAuthenticated, isPublicRoute, logoutUser, showWarning]);
+    }, inactivityTimeout);
+  }, [isAuthenticated, isPublicRoute, logoutUser, showWarning, inactivityTimeout]);
 
   // Refresh token automatically
   const refreshToken = useCallback(async () => {
@@ -104,7 +130,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Check if user is active
       const timeSinceLastActivity = Date.now() - lastActivityRef.current;
-      if (timeSinceLastActivity < INACTIVITY_TIMEOUT) {
+      if (timeSinceLastActivity < inactivityTimeout) {
         const { data, error: refreshError } = await supabase.auth.refreshSession();
         
         if (refreshError) {

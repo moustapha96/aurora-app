@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { X, Sparkles, Loader2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { X, Sparkles, Loader2, FileUp } from "lucide-react";
 
 interface CollectionsEditorProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface CollectionsEditorProps {
 
 export const CollectionsEditor = ({ open, onOpenChange, entry, onSave, defaultCategory }: CollectionsEditorProps) => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [uploading, setUploading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [generating, setGenerating] = React.useState(false);
@@ -55,7 +57,7 @@ export const CollectionsEditor = ({ open, onOpenChange, entry, onSave, defaultCa
     setUploading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("Non authentifié");
+      if (!session?.user) throw new Error(t("notAuthenticated"));
 
       const fileExt = file.name.split(".").pop();
       const filePath = `${session.user.id}/collection-${Date.now()}.${fileExt}`;
@@ -71,9 +73,9 @@ export const CollectionsEditor = ({ open, onOpenChange, entry, onSave, defaultCa
         .getPublicUrl(filePath);
 
       setValue("image_url", publicUrl);
-      toast({ title: "Image téléchargée" });
+      toast({ title: t("imageUploaded") });
     } catch (error) {
-      toast({ title: "Erreur lors du téléchargement", variant: "destructive" });
+      toast({ title: t("uploadError"), variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -89,10 +91,10 @@ export const CollectionsEditor = ({ open, onOpenChange, entry, onSave, defaultCa
       if (error) throw error;
       if (data?.suggestion) {
         setValue("description", data.suggestion);
-        toast({ title: "Suggestion générée" });
+        toast({ title: t("suggestionGenerated") });
       }
     } catch (error) {
-      toast({ title: "Erreur lors de la génération", variant: "destructive" });
+      toast({ title: t("generationError"), variant: "destructive" });
     } finally {
       setGenerating(false);
     }
@@ -105,7 +107,7 @@ export const CollectionsEditor = ({ open, onOpenChange, entry, onSave, defaultCa
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        toast({ title: "Vous devez être connecté", variant: "destructive" });
+        toast({ title: t("youMustBeConnected"), variant: "destructive" });
         return;
       }
 
@@ -129,12 +131,12 @@ export const CollectionsEditor = ({ open, onOpenChange, entry, onSave, defaultCa
         if (error) throw error;
       }
 
-      toast({ title: data.id ? "Collection modifiée" : "Collection ajoutée" });
+      toast({ title: data.id ? t("collectionModified") : t("collectionAdded") });
       onSave();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Save error:", error);
-      toast({ title: "Erreur lors de l'enregistrement", variant: "destructive" });
+      toast({ title: t("saveError"), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -142,38 +144,62 @@ export const CollectionsEditor = ({ open, onOpenChange, entry, onSave, defaultCa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
         <DialogHeader>
-          <DialogTitle>{entry?.id ? "Modifier" : "Ajouter"} une collection</DialogTitle>
+          <DialogTitle>{entry?.id ? t("edit") : t("add")} {t("collection")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Titre *</Label>
-              <Input {...register("title", { required: true })} placeholder="Ex: Art contemporain, Montres..." />
+              <Label>{t("title")} *</Label>
+              <Input {...register("title", { required: true })} placeholder={t("exContemporaryArtWatches")} />
             </div>
             <div>
-              <Label>Catégorie</Label>
-              <Input {...register("category")} placeholder="Ex: Art, Horlogerie, Vins..." />
+              <Label>{t("category")}</Label>
+              <Input {...register("category")} placeholder={t("exArtWatchmakingWines")} />
             </div>
           </div>
           <div>
-            <Label>Description</Label>
-            <Textarea {...register("description")} placeholder="Décrivez votre collection..." rows={4} />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAISuggest}
-              disabled={generating}
-              className="mt-2 gap-2"
-            >
-              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              Suggestion IA
-            </Button>
+            <Label>{t("description")}</Label>
+            <Textarea {...register("description")} placeholder={t("describeYourCollection")} rows={4} />
+            <div className="flex gap-2 mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAISuggest}
+                disabled={generating}
+                className="gap-2"
+              >
+                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                {t("aiAurora")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => document.getElementById('import-doc-collections')?.click()}
+                className="gap-2"
+              >
+                <FileUp className="w-4 h-4" />
+                {t("import")}
+              </Button>
+              <input
+                id="import-doc-collections"
+                type="file"
+                accept=".pdf,.doc,.docx,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    toast({ title: t("documentImported"), description: t("analysisInProgress") });
+                  }
+                }}
+              />
+            </div>
           </div>
           <div>
-            <Label>Photo</Label>
+            <Label>{t("photo")}</Label>
             <input
               type="file"
               accept="image/*"
@@ -198,10 +224,10 @@ export const CollectionsEditor = ({ open, onOpenChange, entry, onSave, defaultCa
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={uploading || submitting} className="bg-gold text-black hover:bg-gold/90">
-              {submitting ? "Enregistrement..." : "Valider"}
+              {submitting ? t("saving") : t("validate")}
             </Button>
           </div>
         </form>

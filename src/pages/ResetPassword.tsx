@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Lock, Check } from "lucide-react";
 import { AuroraLogo } from "@/components/AuroraLogo";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -18,6 +19,7 @@ const ResetPassword = () => {
   const [isChecking, setIsChecking] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   useEffect(() => {
     const checkSession = async () => {
@@ -28,8 +30,8 @@ const ResetPassword = () => {
         setIsValidSession(true);
       } else {
         toast({
-          title: "Lien invalide ou expiré",
-          description: "Veuillez demander un nouveau lien de réinitialisation.",
+          title: t('invalidLink'),
+          description: t('requestNewLink'),
           variant: "destructive",
         });
         setTimeout(() => navigate("/login"), 2000);
@@ -38,7 +40,7 @@ const ResetPassword = () => {
     };
 
     checkSession();
-  }, [navigate, toast]);
+  }, [navigate, toast, t]);
 
   const getPasswordStrength = () => {
     if (password.length === 0) return 0;
@@ -58,8 +60,8 @@ const ResetPassword = () => {
 
     if (password.length < 8) {
       toast({
-        title: "Mot de passe trop court",
-        description: "Le mot de passe doit contenir au moins 8 caractères.",
+        title: t('passwordTooShort'),
+        description: t('passwordTooShortDesc'),
         variant: "destructive",
       });
       return;
@@ -67,8 +69,8 @@ const ResetPassword = () => {
 
     if (password !== confirmPassword) {
       toast({
-        title: "Mots de passe différents",
-        description: "Les mots de passe ne correspondent pas.",
+        title: t('passwordMismatch'),
+        description: t('passwordMismatchDesc'),
         variant: "destructive",
       });
       return;
@@ -76,8 +78,8 @@ const ResetPassword = () => {
 
     if (passwordStrength < 3) {
       toast({
-        title: "Mot de passe trop faible",
-        description: "Utilisez des majuscules, minuscules, chiffres et caractères spéciaux.",
+        title: t('passwordTooWeak'),
+        description: t('passwordTooWeakDesc'),
         variant: "destructive",
       });
       return;
@@ -90,7 +92,7 @@ const ResetPassword = () => {
 
       if (error) {
         toast({
-          title: "Erreur",
+          title: t('error'),
           description: error.message,
           variant: "destructive",
         });
@@ -99,16 +101,16 @@ const ResetPassword = () => {
         await supabase.auth.signOut();
         
         toast({
-          title: "Mot de passe mis à jour",
-          description: "Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
+          title: t('passwordUpdated'),
+          description: t('passwordUpdatedDesc'),
         });
         
         navigate("/login");
       }
     } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Une erreur est survenue. Veuillez réessayer.",
+        title: t('error'),
+        description: t('saveError'),
         variant: "destructive",
       });
     } finally {
@@ -119,7 +121,7 @@ const ResetPassword = () => {
   if (isChecking) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-pulse text-gold">Vérification...</div>
+        <div className="animate-pulse text-gold">{t('verifying')}</div>
       </div>
     );
   }
@@ -128,7 +130,7 @@ const ResetPassword = () => {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-center">
-          <p>Redirection vers la page de connexion...</p>
+          <p>{t('redirectingToLogin')}</p>
         </div>
       </div>
     );
@@ -144,9 +146,9 @@ const ResetPassword = () => {
 
         {/* Title */}
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-display text-gold">Nouveau mot de passe</h1>
+          <h1 className="text-2xl font-display text-gold">{t('newPassword')}</h1>
           <p className="text-white/60 text-sm">
-            Créez votre nouveau mot de passe sécurisé
+            {t('createSecurePassword')}
           </p>
         </div>
 
@@ -155,7 +157,7 @@ const ResetPassword = () => {
           {/* New Password */}
           <div className="space-y-2">
             <Label htmlFor="password" className="text-white/80">
-              Nouveau mot de passe
+              {t('newPasswordLabel')}
             </Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
@@ -197,9 +199,9 @@ const ResetPassword = () => {
                   ))}
                 </div>
                 <p className="text-xs text-white/40">
-                  {passwordStrength <= 2 && "Faible"}
-                  {passwordStrength === 3 && "Moyen"}
-                  {passwordStrength >= 4 && "Fort"}
+                  {passwordStrength <= 2 && t('weak')}
+                  {passwordStrength === 3 && t('medium')}
+                  {passwordStrength >= 4 && t('strong')}
                 </p>
               </div>
             )}
@@ -208,7 +210,7 @@ const ResetPassword = () => {
           {/* Confirm Password */}
           <div className="space-y-2">
             <Label htmlFor="confirmPassword" className="text-white/80">
-              Confirmer le mot de passe
+              {t('confirmNewPassword')}
             </Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
@@ -236,10 +238,10 @@ const ResetPassword = () => {
                 {password === confirmPassword ? (
                   <>
                     <Check className="h-3 w-3 text-green-500" />
-                    <span className="text-xs text-green-500">Les mots de passe correspondent</span>
+                    <span className="text-xs text-green-500">{t('passwordsMatch')}</span>
                   </>
                 ) : (
-                  <span className="text-xs text-red-500">Les mots de passe ne correspondent pas</span>
+                  <span className="text-xs text-red-500">{t('passwordsDontMatch')}</span>
                 )}
               </div>
             )}
@@ -251,7 +253,7 @@ const ResetPassword = () => {
             disabled={isLoading || password.length < 8 || password !== confirmPassword}
             className="w-full bg-gold hover:bg-gold/90 text-black font-medium"
           >
-            {isLoading ? "Mise à jour..." : "Mettre à jour le mot de passe"}
+            {isLoading ? t('updating') : t('updatePassword')}
           </Button>
         </form>
 
@@ -261,7 +263,7 @@ const ResetPassword = () => {
             onClick={() => navigate("/login")}
             className="text-white/60 hover:text-gold text-sm transition-colors"
           >
-            Retour à la connexion
+            {t('backToLogin')}
           </button>
         </div>
       </div>

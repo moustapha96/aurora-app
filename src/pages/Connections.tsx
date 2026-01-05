@@ -10,6 +10,7 @@ import { ArrowLeft, Settings, Trash2, MessageCircle, Calendar, Shield, User } fr
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Header } from "@/components/Header";
+import { PageNavigation } from "@/components/BackButton";
 import {
   Dialog,
   DialogContent,
@@ -128,8 +129,8 @@ const Connections = () => {
     } catch (error) {
       console.error("Error loading connections:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les connexions",
+        title: t('error'),
+        description: t('unableToLoadConnections'),
         variant: "destructive",
       });
     } finally {
@@ -169,8 +170,8 @@ const Connections = () => {
       if (error) throw error;
 
       toast({
-        title: "Permissions mises à jour",
-        description: "Les permissions d'accès ont été modifiées",
+        title: t('permissionsUpdated'),
+        description: t('permissionsUpdatedDesc'),
       });
 
       setShowPermissionsDialog(false);
@@ -178,8 +179,8 @@ const Connections = () => {
     } catch (error) {
       console.error("Error updating permissions:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour les permissions",
+        title: t('error'),
+        description: t('unableToUpdatePermissions'),
         variant: "destructive",
       });
     }
@@ -213,8 +214,8 @@ const Connections = () => {
       if (error1 && error2) throw error1;
 
       toast({
-        title: "Connexion supprimée",
-        description: "La connexion a été supprimée des deux côtés",
+        title: t('connectionDeleted'),
+        description: t('connectionDeletedDesc'),
       });
 
       setShowDeleteDialog(false);
@@ -222,15 +223,15 @@ const Connections = () => {
     } catch (error) {
       console.error("Error deleting connection:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de supprimer la connexion",
+        title: t('error'),
+        description: t('unableToDeleteConnection'),
         variant: "destructive",
       });
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("fr-FR", {
+    return new Date(dateString).toLocaleDateString(t('locale') || "fr-FR", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -239,37 +240,36 @@ const Connections = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">Chargement...</div>
-      </div>
+      <>
+        <Header />
+        <div className="min-h-screen bg-background flex items-center justify-center pt-32 sm:pt-36">
+          <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
+        </div>
+      </>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <PageNavigation to="/member-card" />
       
-      <div className="container mx-auto px-4 pt-20 sm:pt-24 pb-8 max-w-4xl safe-area-all">
-        <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Mes Connexions</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">{connections.length} connexion(s)</p>
-          </div>
+      <div className="container mx-auto px-4 pt-32 sm:pt-36 pb-8 max-w-4xl safe-area-all">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('myConnectionsTitle')}</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">{connections.length} {t('connectionCountLabel')}</p>
         </div>
 
         {connections.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <User className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">Aucune connexion</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">{t('noConnectionTitle')}</h3>
               <p className="text-muted-foreground text-center mb-4">
-                Vous n'avez pas encore de connexions. Explorez le répertoire des membres pour en créer.
+                {t('noConnectionDesc')}
               </p>
               <Button onClick={() => navigate("/members")}>
-                Voir les membres
+                {t('viewMembersBtn')}
               </Button>
             </CardContent>
           </Card>
@@ -304,23 +304,23 @@ const Connections = () => {
                       )}
                       <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                         <Calendar className="h-3 w-3" />
-                        <span className="truncate">Connecté le {formatDate(connection.createdAt)}</span>
+                        <span className="truncate">{t('connectedOn')} {formatDate(connection.createdAt)}</span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 mt-2 sm:mt-0">
                       <div className="hidden sm:flex flex-wrap gap-1">
                         {connection.businessAccess && (
-                          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">Business</span>
+                          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">{t('business')}</span>
                         )}
                         {connection.familyAccess && (
-                          <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">Family</span>
+                          <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">{t('familySocial')}</span>
                         )}
                         {connection.personalAccess && (
-                          <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">Personal</span>
+                          <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">{t('personal')}</span>
                         )}
                         {connection.influenceAccess && (
-                          <span className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded">Influence</span>
+                          <span className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded">{t('influence')}</span>
                         )}
                       </div>
                       
@@ -328,7 +328,7 @@ const Connections = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => navigate("/messages")}
-                        title="Envoyer un message"
+                        title={t('sendMessage')}
                       >
                         <MessageCircle className="h-4 w-4" />
                       </Button>
@@ -337,7 +337,7 @@ const Connections = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => openPermissionsDialog(connection)}
-                        title="Gérer les permissions"
+                        title={t('managePermissions')}
                       >
                         <Settings className="h-4 w-4" />
                       </Button>
@@ -347,7 +347,7 @@ const Connections = () => {
                         size="icon"
                         onClick={() => confirmDelete(connection)}
                         className="text-destructive hover:text-destructive"
-                        title="Supprimer la connexion"
+                        title={t('deleteConnection')}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -366,10 +366,10 @@ const Connections = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Permissions d'accès
+              {t('accessPermissions')}
             </DialogTitle>
             <DialogDescription>
-              Gérez les sections de votre profil auxquelles {selectedConnection?.firstName} peut accéder.
+              {`${t('manageProfileSectionsAccess')} ${selectedConnection?.firstName}`}
             </DialogDescription>
           </DialogHeader>
           
@@ -377,7 +377,7 @@ const Connections = () => {
             <div className="flex items-center justify-between">
               <Label htmlFor="business" className="flex items-center gap-2">
                 <span className="w-3 h-3 bg-blue-500 rounded-full" />
-                Business Access
+                {t('businessAccess')}
               </Label>
               <Switch
                 id="business"
@@ -389,7 +389,7 @@ const Connections = () => {
             <div className="flex items-center justify-between">
               <Label htmlFor="family" className="flex items-center gap-2">
                 <span className="w-3 h-3 bg-green-500 rounded-full" />
-                Family Access
+                {t('familyAccess')}
               </Label>
               <Switch
                 id="family"
@@ -401,7 +401,7 @@ const Connections = () => {
             <div className="flex items-center justify-between">
               <Label htmlFor="personal" className="flex items-center gap-2">
                 <span className="w-3 h-3 bg-purple-500 rounded-full" />
-                Personal Access
+                {t('personalAccess')}
               </Label>
               <Switch
                 id="personal"
@@ -413,7 +413,7 @@ const Connections = () => {
             <div className="flex items-center justify-between">
               <Label htmlFor="influence" className="flex items-center gap-2">
                 <span className="w-3 h-3 bg-orange-500 rounded-full" />
-                Influence Access
+                {t('influenceAccess')}
               </Label>
               <Switch
                 id="influence"
@@ -425,10 +425,10 @@ const Connections = () => {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPermissionsDialog(false)}>
-              Annuler
+              {t('cancel')}
             </Button>
             <Button onClick={savePermissions}>
-              Enregistrer
+              {t('save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -438,15 +438,15 @@ const Connections = () => {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer la connexion ?</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteConnectionConfirm')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action supprimera la connexion avec {selectedConnection?.firstName} {selectedConnection?.lastName} des deux côtés. Cette action est irréversible.
+              {`${t('deleteConnectionConfirmDesc')} ${selectedConnection?.firstName} ${selectedConnection?.lastName}`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={deleteConnection} className="bg-destructive text-destructive-foreground">
-              Supprimer
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

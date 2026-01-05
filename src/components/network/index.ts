@@ -1,4 +1,4 @@
-export { NetworkOnboarding } from "./NetworkOnboarding";
+// NetworkOnboarding removed - direct editing mode enabled
 export { NetworkModule } from "./NetworkModule";
 export { NetworkMedia } from "./NetworkMedia";
 export { NetworkEvents } from "./NetworkEvents";

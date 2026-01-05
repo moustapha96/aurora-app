@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface TimelineEntry {
   id: string;
@@ -36,6 +37,7 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimelineEntry | null>(null);
   const [formData, setFormData] = useState({
@@ -83,28 +85,16 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
               <Calendar className="w-5 h-5 text-gold" />
             </div>
             <div>
-              <CardTitle className="text-lg font-serif text-gold">Timeline Carrière</CardTitle>
-              <p className="text-sm text-gold/60">Vos dates clés, vos maisons, vos étapes.</p>
-            </div>
+              <CardTitle className="text-lg font-serif text-gold">{t("businessTimelineCareer")}</CardTitle>
+              <p className="text-sm text-gold/60">{t("businessTimelineSubtitle")}</p>
           </div>
-
-          {editable && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleOpenDialog()}
-              className="border-gold/30 text-gold hover:bg-gold/10"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Ajouter
-            </Button>
-          )}
+          </div>
         </CardHeader>
 
         <CardContent>
           {sortedEntries.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-gold/50 mb-4">Aucune étape de carrière ajoutée.</p>
+              <p className="text-gold/50 mb-4">{t("businessNoCareerStep")}</p>
               {editable && (
                 <Button
                   variant="outline"
@@ -112,7 +102,7 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
                   onClick={() => handleOpenDialog()}
                   className="border-gold/30 text-gold hover:bg-gold/10"
                 >
-                  Remplir
+                  {t("fill")}
                 </Button>
               )}
             </div>
@@ -152,14 +142,14 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
                             className="text-gold hover:bg-gold/10 cursor-pointer"
                           >
                             <Edit className="w-4 h-4 mr-2" />
-                            Modifier
+                            {t("edit")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => onDelete?.(entry.id)}
                             className="text-red-400 hover:bg-red-500/10 cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer
+                            {t("delete")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -177,14 +167,14 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
         <DialogContent className="bg-black border-gold/20">
           <DialogHeader>
             <DialogTitle className="text-gold font-serif">
-              {editingEntry ? "Modifier l'étape" : "Ajouter une étape"}
+              {editingEntry ? t("businessEditStep") : t("businessAddStep")}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-gold">Année</Label>
+                <Label className="text-gold">{t("year")}</Label>
                 <Input
                   value={formData.year}
                   onChange={(e) => setFormData({ ...formData, year: e.target.value })}
@@ -193,32 +183,32 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-gold">Entreprise</Label>
+                <Label className="text-gold">{t("company")}</Label>
                 <Input
                   value={formData.company}
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  placeholder="Nom de l'entreprise"
+                  placeholder={t("companyName")}
                   className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-gold">Titre / Poste</Label>
+              <Label className="text-gold">{t("businessTitlePosition")}</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="CEO, Fondateur, Directeur..."
+                placeholder={t("businessTitlePlaceholder")}
                 className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-gold">Description (optionnel)</Label>
+              <Label className="text-gold">{t("descriptionOptional")}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Décrivez cette étape..."
+                placeholder={t("businessDescribeStep")}
                 className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30"
               />
             </div>
@@ -229,14 +219,14 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
                 onClick={() => setIsDialogOpen(false)}
                 className="border-gold/30 text-gold hover:bg-gold/10"
               >
-                Annuler
+                {t("cancel")}
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={!formData.year || !formData.title}
                 className="bg-gold text-black hover:bg-gold/90"
               >
-                Enregistrer
+                {t("save")}
               </Button>
             </div>
           </div>

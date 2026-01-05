@@ -260,6 +260,51 @@ export const camera = {
 };
 
 /**
+ * Initialize notifications
+ */
+export const initNotifications = async () => {
+  if (!isNative) return;
+  
+  try {
+    const { initPushNotifications, initLocalNotifications, setupPushNotificationListeners, setupLocalNotificationListeners } = await import('@/services/notificationService');
+    
+    // Initialize push notifications (peut échouer si Firebase n'est pas configuré)
+    // On continue même si ça échoue pour ne pas bloquer le démarrage de l'app
+    try {
+      await initPushNotifications();
+    } catch (pushError: any) {
+      // Ignorer les erreurs Firebase pour ne pas faire planter l'app
+      if (pushError?.message?.includes('Firebase') || pushError?.message?.includes('firebase')) {
+        console.warn('Push notifications disabled (Firebase not configured)');
+      } else {
+        console.error('Push notifications initialization error:', pushError);
+      }
+    }
+    
+    // Initialize local notifications (fonctionne sans Firebase)
+    try {
+      await initLocalNotifications();
+      setupLocalNotificationListeners();
+    } catch (localError) {
+      console.error('Local notifications initialization error:', localError);
+    }
+    
+    // Setup push listeners seulement si push notifications est disponible
+    try {
+      setupPushNotificationListeners();
+    } catch (error) {
+      // Ignorer silencieusement si le plugin n'est pas disponible
+      console.warn('Could not setup push notification listeners');
+    }
+    
+    console.log('Notifications initialized (push may be disabled if Firebase is not configured)');
+  } catch (error) {
+    console.log('Notifications initialization failed, continuing anyway:', error);
+    // Ne pas faire planter l'app si les notifications échouent
+  }
+};
+
+/**
  * Initialize all native features
  */
 export const initNativeFeatures = async () => {
@@ -273,6 +318,7 @@ export const initNativeFeatures = async () => {
   await initStatusBar();
   await initAppLifecycle();
   await initKeyboard();
+  await initNotifications();
   
   // Hide splash screen after a delay to ensure app is ready
   setTimeout(async () => {

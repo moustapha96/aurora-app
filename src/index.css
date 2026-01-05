@@ -2,116 +2,130 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Aurora Society Design System - Luxury Premium Interface
-All colors MUST be HSL. */
+/* Aurora Society Design System - Midnight Opulence
+   All colors MUST be HSL format */
 
 @layer base {
   :root {
-    /* Aurora Society Color Palette */
-    --background: 0 0% 3%;
-    --foreground: 45 100% 85%;
+    /* Midnight Opulence Palette */
+    --background: 0 0% 2%;                    /* #050505 Noir profond */
+    --foreground: 40 30% 93%;                 /* #EFEEED Ivoire */
 
-    --card: 0 0% 5%;
-    --card-foreground: 45 100% 85%;
+    --card: 0 0% 7%;                          /* #111111 Noir charbon */
+    --card-foreground: 40 30% 93%;            /* #EFEEED Ivoire */
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 45 100% 85%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 40 30% 93%;
 
-    --primary: 45 85% 65%;
-    --primary-foreground: 0 0% 3%;
+    --primary: 38 80% 71%;                    /* #EFC07B Or chaud */
+    --primary-foreground: 0 0% 2%;            /* #050505 Noir profond */
 
-    --secondary: 0 0% 8%;
-    --secondary-foreground: 45 100% 85%;
+    --secondary: 0 0% 7%;                     /* #111111 Noir charbon */
+    --secondary-foreground: 40 30% 93%;       /* #EFEEED Ivoire */
 
     --muted: 0 0% 10%;
-    --muted-foreground: 45 50% 65%;
+    --muted-foreground: 38 20% 78%;           /* #D0C8BA Texte secondaire */
 
-    --accent: 45 90% 60%;
-    --accent-foreground: 0 0% 3%;
+    --accent: 218 50% 16%;                    /* #16213E Bleu marine profond */
+    --accent-foreground: 40 30% 93%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 45 100% 85%;
+    --destructive: 350 50% 30%;               /* #7A1F2A Rouge très sombre */
+    --destructive-foreground: 40 30% 93%;
 
-    --border: 45 30% 20%;
+    --border: 38 40% 20%;
     --input: 0 0% 10%;
-    --ring: 45 100% 70%;
+    --ring: 38 80% 71%;
 
-    --radius: 0.75rem;
+    --radius: 0.375rem;                       /* 6px - coins légèrement arrondis */
 
-    /* Aurora Society Custom Tokens */
-    --gold: 45 100% 70%;
-    --gold-light: 45 100% 80%;
-    --gold-dark: 45 100% 55%;
-    --black-deep: 0 0% 3%;
-    --black-medium: 0 0% 8%;
-    --black-light: 0 0% 12%;
-    --black-elevated: 0 0% 10%;
-    --navy-blue: 220 60% 25%;
-    --navy-blue-light: 220 80% 12%;
+    /* Aurora Society Custom Tokens - Midnight Opulence */
+    --gold: 38 80% 71%;                       /* #EFC07B Or chaud */
+    --gold-light: 38 90% 80%;
+    --gold-dark: 38 70% 55%;
+    --black-deep: 0 0% 2%;                    /* #050505 */
+    --black-charcoal: 0 0% 7%;                /* #111111 */
+    --black-medium: 0 0% 10%;
+    --black-light: 0 0% 15%;
+    --black-elevated: 0 0% 12%;
     
-    /* Card Surfaces - Elevated and Premium */
-    --card-elevated: 0 0% 7%;
-    --card-surface: 0 0% 9%;
+    /* Bleus Marine */
+    --navy-deep: 218 50% 16%;                 /* #16213E Bleu marine profond */
+    --navy-secondary: 213 72% 22%;            /* #0F3460 Bleu nuit secondaire */
+    
+    /* Card Surfaces */
+    --card-elevated: 0 0% 9%;
+    --card-surface: 0 0% 7%;
     --card-hover: 0 0% 11%;
     
+    /* Textes */
+    --text-ivory: 40 30% 93%;                 /* #EFEEED */
+    --text-secondary: 38 20% 78%;             /* #D0C8BA */
+    
     /* Gradients */
-    --gradient-gold: linear-gradient(135deg, hsl(45 100% 70%) 0%, hsl(45 90% 60%) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(0 0% 3%) 0%, hsl(0 0% 8%) 100%);
-    --gradient-overlay: linear-gradient(135deg, hsl(0 0% 3% / 0.9) 0%, hsl(0 0% 8% / 0.8) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 8%) 0%, hsl(0 0% 5%) 100%);
-    --gradient-card-hover: linear-gradient(145deg, hsl(0 0% 10%) 0%, hsl(0 0% 7%) 100%);
-    --gradient-premium: linear-gradient(135deg, hsl(0 0% 8%) 0%, hsl(45 10% 6%) 50%, hsl(0 0% 5%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(38 80% 71%) 0%, hsl(38 70% 55%) 100%);
+    --gradient-navy: linear-gradient(180deg, hsl(0 0% 2%) 0%, hsl(218 50% 16%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 2%) 0%, hsl(0 0% 7%) 100%);
+    --gradient-overlay: linear-gradient(135deg, hsl(0 0% 2% / 0.9) 0%, hsl(218 50% 16% / 0.3) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 9%) 0%, hsl(0 0% 5%) 100%);
+    --gradient-card-hover: linear-gradient(145deg, hsl(0 0% 11%) 0%, hsl(0 0% 7%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(0 0% 2%) 0%, hsl(218 50% 16% / 0.4) 70%, hsl(0 0% 2%) 100%);
+    --gradient-philosophy: linear-gradient(180deg, hsl(0 0% 2%) 0%, hsl(218 50% 16% / 0.2) 50%, hsl(0 0% 2%) 100%);
     
     /* Shadows */
-    --shadow-gold: 0 4px 20px hsl(45 100% 70% / 0.3);
-    --shadow-elegant: 0 8px 32px hsl(0 0% 0% / 0.4);
-    --shadow-premium: 0 12px 48px hsl(45 100% 70% / 0.2);
-    --shadow-card: 0 4px 16px hsl(0 0% 0% / 0.3), 0 0 1px hsl(45 100% 70% / 0.1);
-    --shadow-card-hover: 0 8px 24px hsl(0 0% 0% / 0.4), 0 0 2px hsl(45 100% 70% / 0.15);
-    --shadow-glow: 0 0 20px hsl(45 100% 70% / 0.08);
+    --shadow-gold: 0 4px 20px hsl(38 80% 71% / 0.2);
+    --shadow-elegant: 0 8px 32px hsl(0 0% 0% / 0.5);
+    --shadow-premium: 0 12px 48px hsl(38 80% 71% / 0.15);
+    --shadow-card: 0 4px 16px hsl(0 0% 0% / 0.4);
+    --shadow-card-hover: 0 8px 24px hsl(0 0% 0% / 0.5), 0 0 2px hsl(38 80% 71% / 0.1);
+    --shadow-glow: 0 0 20px hsl(38 80% 71% / 0.06);
+    --shadow-button: 0 2px 8px hsl(0 0% 0% / 0.3);
     
-    /* Animations */
+    /* Animations - Douces, jamais ludiques */
     --transition-luxury: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-page: 0.25s ease-out;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar */
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 40 30% 93%;
+    --sidebar-primary: 38 80% 71%;
+    --sidebar-primary-foreground: 0 0% 2%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 40 30% 93%;
+    --sidebar-border: 38 40% 15%;
+    --sidebar-ring: 38 80% 71%;
+    
+    /* Polo Module Palette */
+    --polo-green: 145 40% 25%;              /* Vert profond terrain */
+    --polo-green-light: 145 35% 35%;
+    --polo-brown: 25 35% 30%;               /* Marron cuir/cheval */
+    --polo-brown-light: 30 30% 40%;
+    --polo-cream: 40 30% 90%;               /* Blanc cassé */
+    --polo-cream-dark: 40 25% 80%;
+    --polo-dark: 145 30% 10%;               /* Fond sombre polo */
   }
 
   .dark {
-    /* Dark mode uses same luxury theme */
-    --background: 0 0% 3%;
-    --foreground: 45 100% 85%;
-    --card: 0 0% 5%;
-    --card-foreground: 45 100% 85%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 45 100% 85%;
-    --primary: 45 85% 65%;
-    --primary-foreground: 0 0% 3%;
-    --secondary: 0 0% 8%;
-    --secondary-foreground: 45 100% 85%;
+    /* Dark mode = même thème, pas de light mode */
+    --background: 0 0% 2%;
+    --foreground: 40 30% 93%;
+    --card: 0 0% 7%;
+    --card-foreground: 40 30% 93%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 40 30% 93%;
+    --primary: 38 80% 71%;
+    --primary-foreground: 0 0% 2%;
+    --secondary: 0 0% 7%;
+    --secondary-foreground: 40 30% 93%;
     --muted: 0 0% 10%;
-    --muted-foreground: 45 50% 65%;
-    --accent: 45 90% 60%;
-    --accent-foreground: 0 0% 3%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 45 100% 85%;
-    --border: 45 30% 20%;
+    --muted-foreground: 38 20% 78%;
+    --accent: 218 50% 16%;
+    --accent-foreground: 40 30% 93%;
+    --destructive: 350 50% 30%;
+    --destructive-foreground: 40 30% 93%;
+    --border: 38 40% 20%;
     --input: 0 0% 10%;
-    --ring: 45 100% 70%;
+    --ring: 38 80% 71%;
   }
 }
 
@@ -121,34 +135,78 @@ All colors MUST be HSL. */
   }
 
   body {
-    @apply bg-background text-foreground font-serif;
-    font-family: 'Playfair Display', 'Georgia', serif;
+    @apply bg-background text-foreground;
+    font-family: 'Inter', 'SF Pro', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Typographies Luxe */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif;
-    font-family: 'Playfair Display', 'Georgia', serif;
-    letter-spacing: 0.025em;
+    font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+
+  h1 {
+    @apply text-primary;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 400;
+  }
+
+  h2 {
+    @apply text-foreground;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    letter-spacing: 0.06em;
+  }
+
+  h3 {
+    @apply text-foreground;
+    font-size: clamp(1.125rem, 2vw, 1.5rem);
+    letter-spacing: 0.04em;
+  }
+
+  /* Liens */
+  a {
+    @apply text-foreground transition-colors duration-300;
+  }
+
+  a:hover {
+    @apply text-primary;
   }
 }
 
 @layer components {
+  /* Gradients utilitaires */
   .gradient-gold {
     background: var(--gradient-gold);
+  }
+  
+  .gradient-navy {
+    background: var(--gradient-navy);
   }
   
   .gradient-dark {
     background: var(--gradient-dark);
   }
   
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+  
   .gradient-card {
     background: var(--gradient-card);
   }
   
-  .gradient-premium {
-    background: var(--gradient-premium);
+  .gradient-philosophy {
+    background: var(--gradient-philosophy);
   }
   
+  /* Shadows */
   .shadow-gold {
     box-shadow: var(--shadow-gold);
   }
@@ -165,29 +223,51 @@ All colors MUST be HSL. */
     box-shadow: var(--shadow-card);
   }
   
+  /* Transitions */
   .transition-luxury {
     transition: var(--transition-luxury);
   }
   
-  /* Premium Module Card Style */
-  .module-card {
-    background: var(--gradient-card);
-    border: 1px solid hsl(45 100% 70% / 0.15);
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+  
+  /* Promise Card - Cartes de contenu selon specs */
+  .promise-card {
+    @apply rounded-xl p-6;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--primary) / 0.15);
     box-shadow: var(--shadow-card);
     transition: var(--transition-smooth);
   }
   
+  .promise-card:hover {
+    border-color: hsl(var(--primary) / 0.3);
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+  
+  /* Module Card - Pour les sections internes */
+  .module-card {
+    background: var(--gradient-card);
+    border: 1px solid hsl(var(--primary) / 0.12);
+    box-shadow: var(--shadow-card);
+    transition: var(--transition-smooth);
+    @apply rounded-xl;
+  }
+  
   .module-card:hover {
     background: var(--gradient-card-hover);
-    border-color: hsl(45 100% 70% / 0.25);
+    border-color: hsl(var(--primary) / 0.25);
     box-shadow: var(--shadow-card-hover), var(--shadow-glow);
   }
   
-  /* Section Container with subtle gradient */
+  /* Section Container avec gradient subtil */
   .section-container {
-    background: linear-gradient(180deg, hsl(0 0% 4%) 0%, hsl(0 0% 3%) 100%);
+    background: linear-gradient(180deg, hsl(0 0% 3%) 0%, hsl(0 0% 2%) 100%);
   }
   
+  /* Aurora Glow Effect */
   .aurora-glow {
     position: relative;
   }
@@ -207,11 +287,43 @@ All colors MUST be HSL. */
   }
   
   .aurora-glow:hover::before {
-    opacity: 0.1;
+    opacity: 0.08;
   }
   
+  /* Input fields avec bordure fine ivoire */
+  .input-luxury {
+    @apply w-full px-4 py-3 rounded-md;
+    background: hsl(var(--input));
+    border: 1px solid hsl(var(--foreground) / 0.2);
+    color: hsl(var(--foreground));
+    transition: var(--transition-smooth);
+  }
+  
+  .input-luxury:focus {
+    outline: none;
+    border-color: hsl(var(--navy-deep));
+    box-shadow: 0 0 0 2px hsl(var(--navy-deep) / 0.3);
+  }
+  
+  .input-luxury::placeholder {
+    color: hsl(var(--muted-foreground) / 0.5);
+  }
+  
+  /* Loader simple cercle fin doré */
+  .loader-gold {
+    @apply w-8 h-8 rounded-full;
+    border: 2px solid hsl(var(--primary) / 0.2);
+    border-top-color: hsl(var(--primary));
+    animation: spin-slow 1.2s linear infinite;
+  }
+  
+  @keyframes spin-slow {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Field modified indicator */
   .field-modified {
-    outline: 2px solid hsl(30 100% 65%) !important;
+    outline: 2px solid hsl(38 80% 60%) !important;
     outline-offset: -2px !important;
   }
   
@@ -227,13 +339,59 @@ All colors MUST be HSL. */
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent 0%, hsl(45 100% 70% / 0.4) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, hsl(38 80% 71% / 0.4) 50%, transparent 100%);
+  }
+  
+  /* Hero section animations séquentielles */
+  .hero-animate-1 {
+    animation: fadeSlideIn 0.6s ease-out 0.1s both;
+  }
+  .hero-animate-2 {
+    animation: fadeSlideIn 0.6s ease-out 0.2s both;
+  }
+  .hero-animate-3 {
+    animation: fadeSlideIn 0.6s ease-out 0.35s both;
+  }
+  .hero-animate-4 {
+    animation: fadeSlideIn 0.6s ease-out 0.5s both;
+  }
+  .hero-animate-5 {
+    animation: fadeSlideIn 0.6s ease-out 0.65s both;
+  }
+  
+  @keyframes fadeSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Page transitions */
+  .page-enter {
+    animation: pageIn 0.25s ease-out;
+  }
+  
+  @keyframes pageIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  /* Text styles selon specs */
+  .text-ivory {
+    color: hsl(var(--text-ivory));
+  }
+  
+  .text-secondary-muted {
+    color: hsl(var(--text-secondary));
   }
 }
 
 /* ===== Capacitor / Mobile Native Styles ===== */
 
-/* CSS Variables for native features */
 :root {
   --keyboard-height: 0px;
   --safe-area-top: env(safe-area-inset-top, 0px);
@@ -242,7 +400,6 @@ All colors MUST be HSL. */
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
-/* Safe area padding for iOS notch and home indicator */
 .safe-area-top {
   padding-top: var(--safe-area-top);
 }
@@ -258,7 +415,6 @@ All colors MUST be HSL. */
   padding-right: var(--safe-area-right);
 }
 
-/* Keyboard handling */
 body.keyboard-visible {
   --keyboard-offset: var(--keyboard-height);
 }
@@ -272,38 +428,32 @@ body.keyboard-visible .keyboard-hide {
   display: none !important;
 }
 
-/* Native scroll behavior */
 .native-scroll {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
 
-/* Prevent text selection on native (for UI elements) */
 .no-select {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* Tap highlight removal for native feel */
 .native-tap {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Active states for native feel */
 .native-active:active {
   opacity: 0.7;
-  transform: scale(0.98);
+  transform: scale(0.97);
   transition: all 0.1s ease;
 }
 
-/* iOS-style momentum scrolling */
 .momentum-scroll {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Fixed bottom navigation with safe area */
 .fixed-bottom-nav {
   position: fixed;
   bottom: 0;
@@ -315,22 +465,19 @@ body.keyboard-visible .keyboard-hide {
   z-index: 50;
 }
 
-/* Pull to refresh container */
 .pull-to-refresh {
   overscroll-behavior-y: contain;
 }
 
-/* Native-like card press effect */
 .card-press {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .card-press:active {
-  transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* Disable hover effects on touch devices */
 @media (hover: none) and (pointer: coarse) {
   .hover\:bg-muted:hover {
     background-color: transparent;
@@ -341,14 +488,22 @@ body.keyboard-visible .keyboard-hide {
   }
 }
 
-/* iOS status bar area */
 @supports (padding-top: env(safe-area-inset-top)) {
   .ios-header {
     padding-top: calc(env(safe-area-inset-top) + 0.5rem);
   }
 }
 
-/* Android navigation bar area */
 .android-nav-padding {
   padding-bottom: 48px;
+}
+
+/* Progress bar shimmer animation */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(calc(100vw + 100%));
+  }
 }

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { X, Sparkles, Loader2 } from "lucide-react";
 
 interface GastronomieEditorProps {
@@ -19,6 +20,7 @@ interface GastronomieEditorProps {
 
 export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCategory }: GastronomieEditorProps) => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [uploading, setUploading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [generating, setGenerating] = React.useState(false);
@@ -55,7 +57,7 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
     setUploading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("Non authentifié");
+      if (!session?.user) throw new Error(t("notAuthenticated"));
 
       const fileExt = file.name.split(".").pop();
       const filePath = `${session.user.id}/gastro-${Date.now()}.${fileExt}`;
@@ -71,9 +73,9 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
         .getPublicUrl(filePath);
 
       setValue("image_url", publicUrl);
-      toast({ title: "Image téléchargée" });
+      toast({ title: t("imageUploaded") });
     } catch (error) {
-      toast({ title: "Erreur lors du téléchargement", variant: "destructive" });
+      toast({ title: t("uploadError"), variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -89,10 +91,10 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
       if (error) throw error;
       if (data?.suggestion) {
         setValue("description", data.suggestion);
-        toast({ title: "Suggestion générée" });
+        toast({ title: t("suggestionGenerated") });
       }
     } catch (error) {
-      toast({ title: "Erreur lors de la génération", variant: "destructive" });
+      toast({ title: t("generationError"), variant: "destructive" });
     } finally {
       setGenerating(false);
     }
@@ -105,7 +107,7 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        toast({ title: "Vous devez être connecté", variant: "destructive" });
+        toast({ title: t("youMustBeConnected"), variant: "destructive" });
         return;
       }
 
@@ -129,12 +131,12 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
         if (error) throw error;
       }
 
-      toast({ title: data.id ? "Entrée modifiée" : "Entrée ajoutée" });
+      toast({ title: data.id ? t("entryModified") : t("entryAdded") });
       onSave();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Save error:", error);
-      toast({ title: "Erreur lors de l'enregistrement", variant: "destructive" });
+      toast({ title: t("saveError"), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -142,24 +144,24 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
         <DialogHeader>
-          <DialogTitle>{entry?.id ? "Modifier" : "Ajouter"} Gastronomie</DialogTitle>
+          <DialogTitle>{entry?.id ? t("edit") : t("add")} {t("gastronomy")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Titre *</Label>
-              <Input {...register("title", { required: true })} placeholder="Ex: Cave à vins, Tables étoilées..." />
+              <Label>{t("title")} *</Label>
+              <Input {...register("title", { required: true })} placeholder={t("exWineCellarStarredTables")} />
             </div>
             <div>
-              <Label>Catégorie</Label>
-              <Input {...register("category")} placeholder="Ex: Œnologie, Cuisine, Cigares..." />
+              <Label>{t("category")}</Label>
+              <Input {...register("category")} placeholder={t("exOenologyCuisineCigars")} />
             </div>
           </div>
           <div>
-            <Label>Description</Label>
-            <Textarea {...register("description")} placeholder="Décrivez votre passion gastronomique..." rows={4} />
+            <Label>{t("description")}</Label>
+            <Textarea {...register("description")} placeholder={t("describeYourGastronomicPassion")} rows={4} />
             <Button
               type="button"
               variant="outline"
@@ -169,11 +171,11 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
               className="mt-2 gap-2"
             >
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              Suggestion IA
+              {t("aiSuggestion")}
             </Button>
           </div>
           <div>
-            <Label>Photo</Label>
+            <Label>{t("photo")}</Label>
             <input
               type="file"
               accept="image/*"
@@ -198,10 +200,10 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={uploading || submitting} className="bg-gold text-black hover:bg-gold/90">
-              {submitting ? "Enregistrement..." : "Valider"}
+              {submitting ? t("saving") : t("validate")}
             </Button>
           </div>
         </form>

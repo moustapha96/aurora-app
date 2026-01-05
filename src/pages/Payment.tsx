@@ -112,7 +112,7 @@ const Payment = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    {t('expirationDate')}
+                    {t('cardExpirationDate')}
                   </label>
                   <input
                     type="text"
@@ -155,7 +155,7 @@ const Payment = () => {
                 className="w-full h-12 text-base font-serif"
                 onClick={() => {
                   // TODO: Implement payment logic
-                  alert("Paiement effectué avec succès !");
+                  alert(t('paymentSuccess'));
                   navigate("/profile");
                 }}
               >

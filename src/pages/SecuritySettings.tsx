@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,12 +23,13 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/Header";
+import { PageNavigation } from "@/components/BackButton";
 import { usePlatformContext } from "@/contexts/PlatformContext";
 import { useWebAuthn } from "@/hooks/useWebAuthn";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
-import { BiometricService } from "@/services/biometricService";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,9 +50,10 @@ interface DeviceInfo {
   biometricIcon: React.ReactNode;
 }
 
-const SecuritySettings: React.FC = () => {
-  const navigate = useNavigate();
+// Composant interne qui utilise les hooks normalement
+const SecuritySettingsContent: React.FC = () => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const debugEnabled = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1';
   const debugToast = (title: string, description: string, variant?: 'default' | 'destructive') => {
     if (!debugEnabled) return;
@@ -67,55 +68,32 @@ const SecuritySettings: React.FC = () => {
   console.log('SecuritySettings - Composant rendu');
   console.log('UserAgent:', navigator.userAgent);
   
-  // Safe platform context with fallback - compatible iOS/Android/Web
-  const platformContext = (() => {
-    try {
-      return usePlatformContext();
-    } catch (e) {
-      console.error('Platform context error:', e);
-      return { isWeb: true, isNative: false, isIOS: false, isAndroid: false, platform: 'web' as const };
-    }
-  })();
-  const { isWeb, isNative, isIOS, isAndroid } = platformContext;
+  // Platform context - hooks must be called at top level (React Rules of Hooks)
+  const { isWeb, isNative, isIOS, isAndroid } = usePlatformContext();
   
-  // WebAuthn for web - with safe defaults for mobile compatibility
-  const webAuthnResult = (() => {
-    try {
-      return useWebAuthn();
-    } catch (e) {
-      console.error('WebAuthn hook error:', e);
-      return null;
-    }
-  })();
-  
+  // WebAuthn for web
   const {
-    isSupported: webAuthnSupported = false,
-    isPlatformAvailable: webAuthnAvailable = false,
-    isEnabled: webAuthnEnabled = false,
+    isSupported: webAuthnSupported,
+    isPlatformAvailable: webAuthnAvailable,
+    isEnabled: webAuthnEnabled,
     credentials: webAuthnCredentials = [],
-    isLoading: webAuthnLoading = false,
-    register: registerWebAuthn = async () => ({ success: false, error: 'WebAuthn non disponible' }),
-    removeCredential: removeWebAuthnCredential = async () => false,
-    biometricType = 'none' as const,
-    capabilities: webAuthnCapabilities = null,
-  } = webAuthnResult || {};
+    isLoading: webAuthnLoading,
+    register: registerWebAuthn,
+    removeCredential: removeWebAuthnCredential,
+    biometricType,
+    capabilities: webAuthnCapabilities,
+  } = useWebAuthn();
   
-  // Native biometric for mobile - with safe defaults for web compatibility
-  const biometricResult = (() => {
-    try {
-      return useBiometricAuth();
-    } catch (e) {
-      console.error('Biometric hook error:', e);
-      return null;
-    }
-  })();
-  
+  // Native biometric for mobile
   const {
-    isAvailable: nativeBiometricAvailable = false,
-    isEnabled: nativeBiometricEnabled = false,
-    biometryType: nativeBiometryType = 'none' as const,
-    loading: nativeBiometricLoading = false,
-  } = biometricResult || {};
+    isAvailable: nativeBiometricAvailable,
+    isEnabled: nativeBiometricEnabled,
+    biometryType: nativeBiometryType,
+    loading: nativeBiometricLoading,
+    enable: enableNativeBiometric,
+    disable: disableNativeBiometric,
+    refresh: refreshBiometricStatus,
+  } = useBiometricAuth();
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -130,7 +108,7 @@ const SecuritySettings: React.FC = () => {
         type: 'ios',
         name: 'iPhone / iPad',
         icon: <Smartphone className="w-5 h-5" />,
-        biometricName: 'Face ID / Touch ID',
+        biometricName: t('biometricFaceID') + ' / ' + t('biometricTouchID'),
         biometricIcon: <ScanFace className="w-5 h-5" />
       };
     }
@@ -141,7 +119,7 @@ const SecuritySettings: React.FC = () => {
         type: 'android',
         name: 'Appareil Android',
         icon: <Smartphone className="w-5 h-5" />,
-        biometricName: 'Empreinte digitale',
+        biometricName: t('webAuthEmpreinteDigitale'),
         biometricIcon: <Fingerprint className="w-5 h-5" />
       };
     }
@@ -152,7 +130,7 @@ const SecuritySettings: React.FC = () => {
         type: 'windows',
         name: 'Windows',
         icon: <Monitor className="w-5 h-5" />,
-        biometricName: 'Windows Hello',
+        biometricName: t('webAuthWindowsHello'),
         biometricIcon: <ScanFace className="w-5 h-5" />
       };
     }
@@ -163,7 +141,7 @@ const SecuritySettings: React.FC = () => {
         type: 'macos',
         name: 'Mac / iPhone / iPad',
         icon: <Laptop className="w-5 h-5" />,
-        biometricName: 'Touch ID / Face ID',
+        biometricName: t('biometricTouchID') + ' / ' + t('biometricFaceID'),
         biometricIcon: <Fingerprint className="w-5 h-5" />
       };
     }
@@ -174,7 +152,7 @@ const SecuritySettings: React.FC = () => {
         type: 'linux',
         name: 'Linux',
         icon: <Monitor className="w-5 h-5" />,
-        biometricName: 'Authentificateur',
+        biometricName: t('webAuthAuthenticator'),
         biometricIcon: <Fingerprint className="w-5 h-5" />
       };
     }
@@ -182,9 +160,9 @@ const SecuritySettings: React.FC = () => {
     // Par défaut pour les autres cas
     return {
       type: 'unknown',
-      name: 'Appareil inconnu',
+      name: t('deviceUnknown'),
       icon: <Monitor className="w-5 h-5" />,
-      biometricName: 'Biométrie',
+      biometricName: t('biometric'),
       biometricIcon: <Fingerprint className="w-5 h-5" />
     };
   };
@@ -200,8 +178,8 @@ const SecuritySettings: React.FC = () => {
 
   useEffect(() => {
     debugToast(
-      'Device détecté',
-      `${deviceInfo.name} • ${deviceInfo.biometricName} • ${isNative ? 'App native' : 'Web'}`
+      t('deviceDetected'),
+      `${deviceInfo.name} • ${deviceInfo.biometricName} • ${isNative ? t('nativeApp') : t('webApp')}`
     );
   }, [debugEnabled, deviceInfo.name, deviceInfo.biometricName, isNative]);
 
@@ -227,14 +205,14 @@ const SecuritySettings: React.FC = () => {
     
     if (result.success) {
       toast({
-        title: "Authentification activée",
-        description: `${deviceInfo.biometricName} est maintenant configuré pour ce compte`,
+        title: t('authActivated'),
+        description: t('authActivatedDesc').replace('{biometric}', deviceInfo.biometricName),
       });
     } else {
-      debugToast('WebAuthn erreur', result.error || "Impossible d'activer l'authentification biométrique", 'destructive');
+      debugToast('WebAuthn erreur', result.error || t('errorActivateAuth'), 'destructive');
       toast({
-        title: "Erreur",
-        description: result.error || "Impossible d'activer l'authentification biométrique",
+        title: t('errorTitle'),
+        description: result.error || t('errorActivateAuth'),
         variant: "destructive",
       });
     }
@@ -247,13 +225,13 @@ const SecuritySettings: React.FC = () => {
     
     if (success) {
       toast({
-        title: "Appareil supprimé",
-        description: "L'authentification biométrique a été désactivée pour cet appareil",
+        title: t('deviceRemoved'),
+        description: t('deviceRemovedDesc'),
       });
     } else {
       toast({
-        title: "Erreur",
-        description: "Impossible de supprimer l'appareil",
+        title: t('errorTitle'),
+        description: t('errorRemoveDevice'),
         variant: "destructive",
       });
     }
@@ -263,25 +241,25 @@ const SecuritySettings: React.FC = () => {
   const handleEnableNativeBiometric = async () => {
     setEnablingNative(true);
     try {
-      const result = await BiometricService.enableBiometric();
+      const result = await enableNativeBiometric();
       if (result.success) {
         toast({
-          title: "Biométrie activée",
-          description: `${deviceInfo.biometricName} est maintenant activé`,
+          title: t('biometricEnabledTitle'),
+          description: t('biometricEnabledDesc').replace('{biometric}', deviceInfo.biometricName),
         });
       } else {
-        debugToast('Native biométrie erreur', result.error || 'Impossible d\'activer la biométrie', 'destructive');
+        debugToast('Native biométrie erreur', result.error || t('errorActivateBiometric'), 'destructive');
         toast({
-          title: "Erreur",
-          description: result.error || "Impossible d'activer la biométrie",
+          title: t('errorTitle'),
+          description: result.error || t('errorActivateBiometric'),
           variant: "destructive",
         });
       }
     } catch (error: any) {
-      debugToast('Native biométrie exception', error?.message || 'Erreur lors de l\'activation', 'destructive');
+      debugToast('Native biométrie exception', error?.message || t('errorActivateBiometric'), 'destructive');
       toast({
-        title: "Erreur",
-        description: error.message || "Erreur lors de l'activation",
+        title: t('errorTitle'),
+        description: error.message || t('errorActivateBiometric'),
         variant: "destructive",
       });
     }
@@ -291,15 +269,15 @@ const SecuritySettings: React.FC = () => {
   const handleDisableNativeBiometric = async () => {
     setEnablingNative(true);
     try {
-      await BiometricService.disableBiometric();
+      await disableNativeBiometric();
       toast({
-        title: "Biométrie désactivée",
-        description: "L'authentification biométrique a été désactivée",
+        title: t('biometricDisabledTitle'),
+        description: t('biometricDisabledDesc'),
       });
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: error.message || "Erreur lors de la désactivation",
+        title: t('errorTitle'),
+        description: error.message || t('errorDeactivateBiometric'),
         variant: "destructive",
       });
     }
@@ -334,16 +312,12 @@ const SecuritySettings: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <PageNavigation to="/settings" />
       
-      <main className="container mx-auto px-4 pt-20 sm:pt-24 pb-8 max-w-2xl safe-area-inset">
-        <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Sécurité Biométrique</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">Gérez vos méthodes d'authentification</p>
-          </div>
+      <main className="container mx-auto px-4 pt-32 sm:pt-36 pb-8 max-w-2xl safe-area-inset">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('securityBiometricTitle')}</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">{t('securityManageAuth')}</p>
         </div>
 
         <div className="space-y-4 sm:space-y-6">
@@ -352,10 +326,10 @@ const SecuritySettings: React.FC = () => {
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 {deviceInfo.icon}
-                Appareil Détecté
+                {t('deviceDetected')}
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Configuration automatique basée sur votre appareil
+                {t('deviceAutoConfig')}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
@@ -365,22 +339,22 @@ const SecuritySettings: React.FC = () => {
                   <div>
                     <p className="font-medium text-sm sm:text-base">{deviceInfo.name}</p>
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      {deviceInfo.biometricName} {isNative ? '(App native)' : '(Web)'}
+                      {deviceInfo.biometricName} {isNative ? `(${t('deviceNativeApp')})` : `(${t('deviceWeb')})`}
                     </p>
                   </div>
                 </div>
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 self-start sm:self-auto">
-                  {isNative ? 'Mobile' : 'Web'}
+                  {isNative ? t('deviceMobile') : t('deviceWeb')}
                 </Badge>
               </div>
               
               {/* Debug info for mobile */}
               {isNative && (
                 <div className="mt-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                  <p className="text-xs text-green-600 font-medium">✓ Application native détectée</p>
+                  <p className="text-xs text-green-600 font-medium">✓ {t('deviceNativeDetected')}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Biométrie: {nativeBiometricAvailable ? 'Disponible' : 'Non disponible'} | 
-                    Type: {nativeBiometryType === 'face' ? 'Face ID' : nativeBiometryType === 'fingerprint' ? 'Empreinte' : 'Aucun'}
+                    {t('biometric')}: {nativeBiometricAvailable ? t('biometricAvailable') : t('biometricNotAvailable')} | 
+                    {t('biometricType')}: {nativeBiometryType === 'face' ? t('biometricFaceID') : nativeBiometryType === 'fingerprint' ? t('biometricFingerprint') : t('biometricNone')}
                   </p>
                 </div>
               )}
@@ -393,30 +367,39 @@ const SecuritySettings: React.FC = () => {
               <CardHeader className="p-4 sm:p-6">
                 <CardTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg">
                   <Shield className="w-5 h-5 text-primary shrink-0" />
-                  <span>Authentification Web</span>
+                  <span>{t('webAuthTitle')}</span>
                   {webAuthnEnabled && (
                     <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
-                      Activée
+                      {t('webAuthEnabled')}
                     </Badge>
                   )}
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   {webAuthnSupported 
-                    ? `Utilisez ${deviceInfo.biometricName} pour vous connecter.`
-                    : "WebAuthn n'est pas supporté sur ce navigateur."
+                    ? t('webAuthUseBiometric').replace('{biometric}', deviceInfo.biometricName)
+                    : t('webAuthNotSupported')
                   }
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
-                {!webAuthnSupported ? (
+                {/* Détection iframe - WebAuthn ne fonctionne pas dans les iframes */}
+                {window.self !== window.top ? (
+                  <div className="flex items-start gap-2 p-3 sm:p-4 bg-yellow-500/10 rounded-lg text-yellow-600 text-xs sm:text-sm">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">{t('webAuthPreviewMode')}</p>
+                      <p className="mt-1">{t('webAuthPreviewDesc').replace('{biometric}', deviceInfo.biometricName)}</p>
+                    </div>
+                  </div>
+                ) : !webAuthnSupported ? (
                   <div className="flex items-start gap-2 p-3 sm:p-4 bg-destructive/10 rounded-lg text-destructive text-xs sm:text-sm">
                     <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>Utilisez un navigateur moderne (Chrome, Safari, Firefox, Edge)</span>
+                    <span>{t('webAuthUseModernBrowser')}</span>
                   </div>
                 ) : !webAuthnAvailable ? (
                   <div className="flex items-start gap-2 p-3 sm:p-4 bg-yellow-500/10 rounded-lg text-yellow-600 text-xs sm:text-sm">
                     <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>Aucun authentificateur détecté. Configurez {deviceInfo.biometricName} sur votre appareil.</span>
+                    <span>{t('webAuthNoAuthenticator').replace('{biometric}', deviceInfo.biometricName)}</span>
                   </div>
                 ) : (
                   <>
@@ -428,7 +411,7 @@ const SecuritySettings: React.FC = () => {
                           <span className="font-medium">{webAuthnCapabilities.deviceName}</span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Méthode disponible: {biometricType === 'faceId' ? 'Reconnaissance faciale' : biometricType === 'fingerprint' ? 'Empreinte digitale' : biometricType === 'touchId' ? 'Touch ID' : biometricType === 'windowsHello' ? 'Windows Hello' : 'Authentificateur'}
+                          {t('webAuthMethodAvailable')}: {biometricType === 'faceId' ? t('webAuthRecognitionFaciale') : biometricType === 'fingerprint' ? t('webAuthEmpreinteDigitale') : biometricType === 'touchId' ? t('webAuthTouchID') : biometricType === 'windowsHello' ? t('webAuthWindowsHello') : t('webAuthAuthenticator')}
                         </p>
                       </div>
                     )}
@@ -436,7 +419,7 @@ const SecuritySettings: React.FC = () => {
                     {/* Registered devices */}
                     {webAuthnCredentials.length > 0 && (
                       <div className="space-y-3">
-                        <h4 className="text-sm font-medium text-muted-foreground">Appareils enregistrés</h4>
+                        <h4 className="text-sm font-medium text-muted-foreground">{t('registeredDevicesTitle')}</h4>
                         {webAuthnCredentials.map((cred) => (
                           <div 
                             key={cred.id} 
@@ -445,11 +428,11 @@ const SecuritySettings: React.FC = () => {
                             <div className="flex items-center gap-3">
                               {getDeviceIcon(cred.device_name)}
                               <div>
-                                <p className="text-sm font-medium">{cred.device_name || "Appareil"}</p>
+                                <p className="text-sm font-medium">{cred.device_name || t('deviceDefault')}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  Ajouté le {format(new Date(cred.created_at), "d MMMM yyyy", { locale: fr })}
+                                  {t('deviceAddedOn')} {format(new Date(cred.created_at), "d MMMM yyyy", { locale: fr })}
                                   {cred.last_used_at && (
-                                    <> • Utilisé le {format(new Date(cred.last_used_at), "d MMM", { locale: fr })}</>
+                                    <> • {t('deviceUsedOn')} {format(new Date(cred.last_used_at), "d MMM", { locale: fr })}</>
                                   )}
                                 </p>
                               </div>
@@ -472,18 +455,18 @@ const SecuritySettings: React.FC = () => {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Supprimer cet appareil ?</AlertDialogTitle>
+                                  <AlertDialogTitle>{t('deleteDeviceTitle')}</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Vous ne pourrez plus utiliser l'authentification biométrique depuis {cred.device_name || "cet appareil"}.
+                                    {t('deleteDeviceDesc').replace('{device}', cred.device_name || t('deviceDefault'))}
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => handleRemoveWebAuthnCredential(cred.id)}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   >
-                                    Supprimer
+                                    {t('deleteDevice')}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -503,14 +486,14 @@ const SecuritySettings: React.FC = () => {
                       {isRegistering ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          Configuration en cours...
+                          {t('configuringDevice')}
                         </>
                       ) : (
                         <>
                           <Plus className="w-4 h-4" />
                           {webAuthnCredentials.length > 0 
-                            ? "Ajouter un autre appareil" 
-                            : `Activer ${deviceInfo.biometricName}`
+                            ? t('addAnotherDevice') 
+                            : t('activateBiometricDevice').replace('{biometric}', deviceInfo.biometricName)
                           }
                         </>
                       )}
@@ -530,14 +513,14 @@ const SecuritySettings: React.FC = () => {
                   <span>{deviceInfo.biometricName}</span>
                   {nativeBiometricEnabled && (
                     <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
-                      Activée
+                      {t('webAuthEnabled')}
                     </Badge>
                   )}
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   {nativeBiometricAvailable 
-                    ? `Déverrouillez l'application avec ${deviceInfo.biometricName}.`
-                    : `${deviceInfo.biometricName} n'est pas configuré sur cet appareil.`
+                    ? t('nativeBiometricUnlock').replace('{biometric}', deviceInfo.biometricName)
+                    : t('nativeBiometricNotConfigured').replace('{biometric}', deviceInfo.biometricName)
                   }
                 </CardDescription>
               </CardHeader>
@@ -545,7 +528,7 @@ const SecuritySettings: React.FC = () => {
                 {!nativeBiometricAvailable ? (
                   <div className="flex items-start gap-2 p-3 sm:p-4 bg-yellow-500/10 rounded-lg text-yellow-600 text-xs sm:text-sm">
                     <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>Configurez {deviceInfo.biometricName} dans les paramètres de votre appareil.</span>
+                    <span>{t('nativeBiometricConfigure').replace('{biometric}', deviceInfo.biometricName)}</span>
                   </div>
                 ) : (
                   <>
@@ -558,12 +541,12 @@ const SecuritySettings: React.FC = () => {
                         )}
                         <div>
                           <p className="font-medium">
-                            {nativeBiometricEnabled ? 'Biométrie activée' : 'Biométrie désactivée'}
+                            {nativeBiometricEnabled ? t('biometricEnabled') : t('biometricDisabled')}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {nativeBiometryType === 'face' ? 'Face ID' : 
-                             nativeBiometryType === 'fingerprint' ? 'Empreinte digitale' : 
-                             'Authentification biométrique'}
+                            {nativeBiometryType === 'face' ? t('biometricFaceID') : 
+                             nativeBiometryType === 'fingerprint' ? t('webAuthEmpreinteDigitale') : 
+                             t('biometricAuthType')}
                           </p>
                         </div>
                       </div>
@@ -589,12 +572,12 @@ const SecuritySettings: React.FC = () => {
                         {enablingNative ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            Activation en cours...
+                            {t('activatingBiometric')}
                           </>
                         ) : (
                           <>
                             {deviceInfo.biometricIcon}
-                            Activer {deviceInfo.biometricName}
+                            {t('activateBiometricNative').replace('{biometric}', deviceInfo.biometricName)}
                           </>
                         )}
                       </Button>
@@ -610,25 +593,25 @@ const SecuritySettings: React.FC = () => {
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Shield className="w-5 h-5" />
-                Conseils de sécurité
+                {t('securityTipsTitle')}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-2 sm:space-y-3">
               <div className="flex items-start gap-2 sm:gap-3 text-xs sm:text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                <span>Connexion rapide et sécurisée</span>
+                <span>{t('securityTip1')}</span>
               </div>
               <div className="flex items-start gap-2 sm:gap-3 text-xs sm:text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                <span>Données biométriques stockées sur votre appareil</span>
+                <span>{t('securityTip2')}</span>
               </div>
               <div className="flex items-start gap-2 sm:gap-3 text-xs sm:text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                <span>Possibilité d'enregistrer plusieurs appareils</span>
+                <span>{t('securityTip3')}</span>
               </div>
               <div className="flex items-start gap-2 sm:gap-3 text-xs sm:text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                <span>Mot de passe disponible en cas de besoin</span>
+                <span>{t('securityTip4')}</span>
               </div>
             </CardContent>
           </Card>
@@ -636,6 +619,113 @@ const SecuritySettings: React.FC = () => {
       </main>
     </div>
   );
+};
+
+// Composant wrapper avec gestion d'erreur
+const SecuritySettings: React.FC = () => {
+  const { t } = useLanguage();
+  const [error, setError] = useState<Error | null>(null);
+
+  // Error boundary manuel avec useEffect
+  useEffect(() => {
+    const errorHandler = (event: ErrorEvent) => {
+      console.error('SecuritySettings error:', event.error);
+      setError(event.error);
+    };
+
+    const unhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('SecuritySettings unhandled rejection:', event.reason);
+      setError(new Error(event.reason?.message || t('unexpectedError')));
+    };
+
+    window.addEventListener('error', errorHandler);
+    window.addEventListener('unhandledrejection', unhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', errorHandler);
+      window.removeEventListener('unhandledrejection', unhandledRejection);
+    };
+  }, []);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <PageNavigation to="/settings" />
+        <main className="container mx-auto px-4 pt-32 sm:pt-36 pb-8 max-w-2xl safe-area-inset">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                {t('errorTitle')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {error.message || t('errorLoadingPage')}
+              </p>
+              <Button 
+                onClick={() => {
+                  setError(null);
+                  window.location.reload();
+                }}
+                className="w-full"
+              >
+                {t('retry')}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => window.history.back()}
+                className="w-full"
+              >
+                {t('back')}
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  try {
+    return <SecuritySettingsContent />;
+  } catch (err: any) {
+    console.error('Error rendering SecuritySettings:', err);
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <PageNavigation to="/settings" />
+        <main className="container mx-auto px-4 pt-32 sm:pt-36 pb-8 max-w-2xl safe-area-inset">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                {t('errorTitle')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {err?.message || t('errorLoadingPage')}
+              </p>
+              <Button 
+                onClick={() => window.location.reload()}
+                className="w-full"
+              >
+                {t('reloadPage')}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => window.history.back()}
+                className="w-full"
+              >
+                {t('back')}
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 };
 
 export default SecuritySettings;

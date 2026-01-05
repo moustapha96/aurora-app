@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { AdminPagination } from '@/components/ui/admin-pagination';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ActivityLog {
   id: string;
@@ -34,16 +36,26 @@ interface ActivityLog {
 }
 
 export default function AdminLogs() {
+  const { t } = useLanguage();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [tableFilter, setTableFilter] = useState('all');
   const [operationFilter, setOperationFilter] = useState('all');
   const [tables, setTables] = useState<string[]>([]);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     fetchLogs();
   }, []);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, tableFilter, operationFilter]);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -52,7 +64,7 @@ export default function AdminLogs() {
         .from('activity_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(500);
+        .limit(1000);
 
       if (error) throw error;
 
@@ -78,11 +90,11 @@ export default function AdminLogs() {
 
       setLogs(data?.map(log => ({
         ...log,
-        user_name: log.user_id ? profileMap.get(log.user_id) || 'Utilisateur inconnu' : 'Système'
+        user_name: log.user_id ? profileMap.get(log.user_id) || t('adminUnknownUser') : t('adminSystem')
       })) || []);
     } catch (error) {
       console.error('Error fetching logs:', error);
-      toast.error('Erreur lors du chargement des logs');
+      toast.error(t('adminLogsLoadError'));
     } finally {
       setLoading(false);
     }
@@ -123,22 +135,34 @@ export default function AdminLogs() {
     return <Badge className={colors[tableName] || 'bg-muted text-muted-foreground'}>{tableName}</Badge>;
   };
 
-  const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
-      log.table_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.record_id?.includes(searchTerm);
-    const matchesTable = tableFilter === 'all' || log.table_name === tableFilter;
-    const matchesOperation = operationFilter === 'all' || log.operation === operationFilter;
-    return matchesSearch && matchesTable && matchesOperation;
-  });
+  const filteredLogs = useMemo(() => {
+    return logs.filter(log => {
+      const matchesSearch = 
+        log.table_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.record_id?.includes(searchTerm);
+      const matchesTable = tableFilter === 'all' || log.table_name === tableFilter;
+      const matchesOperation = operationFilter === 'all' || log.operation === operationFilter;
+      return matchesSearch && matchesTable && matchesOperation;
+    });
+  }, [logs, searchTerm, tableFilter, operationFilter]);
+
+  // Paginate filtered logs
+  const paginatedLogs = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredLogs.slice(startIndex, startIndex + pageSize);
+  }, [filteredLogs, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredLogs.length / pageSize);
+  const startIndex = filteredLogs.length > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const endIndex = Math.min(currentPage * pageSize, filteredLogs.length);
 
   const exportLogs = () => {
     const csvContent = [
-      ['Date', 'Utilisateur', 'Table', 'Opération', 'Record ID'].join(','),
+      ['Date', t('adminUser'), 'Table', t('adminOperation'), 'Record ID'].join(','),
       ...filteredLogs.map(log => [
         new Date(log.created_at).toISOString(),
-        log.user_name || 'Système',
+        log.user_name || t('adminSystem'),
         log.table_name,
         log.operation,
         log.record_id || ''
@@ -150,7 +174,7 @@ export default function AdminLogs() {
     link.href = URL.createObjectURL(blob);
     link.download = `activity_logs_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    toast.success(`${filteredLogs.length} logs exportés`);
+    toast.success(t('adminLogsExported').replace('{count}', filteredLogs.length.toString()));
   };
 
   const stats = {
@@ -160,12 +184,21 @@ export default function AdminLogs() {
     deletes: logs.filter(l => l.operation === 'DELETE').length,
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Logs d'Activité</h1>
-          <p className="text-muted-foreground">Historique complet des opérations sur la base de données</p>
+          <h1 className="text-2xl font-bold">{t('adminActivityLogs')}</h1>
+          <p className="text-muted-foreground">{t('adminActivityLogsDescription')}</p>
         </div>
 
         {/* Stats */}
@@ -174,28 +207,28 @@ export default function AdminLogs() {
             <CardContent className="p-4 text-center">
               <Database className="h-6 w-6 mx-auto mb-2 text-primary" />
               <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total logs</p>
+              <p className="text-xs text-muted-foreground">{t('adminTotalLogs')}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Plus className="h-6 w-6 mx-auto mb-2 text-green-500" />
               <p className="text-2xl font-bold">{stats.inserts}</p>
-              <p className="text-xs text-muted-foreground">Insertions</p>
+              <p className="text-xs text-muted-foreground">{t('adminInsertions')}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Edit className="h-6 w-6 mx-auto mb-2 text-blue-500" />
               <p className="text-2xl font-bold">{stats.updates}</p>
-              <p className="text-xs text-muted-foreground">Modifications</p>
+              <p className="text-xs text-muted-foreground">{t('adminModifications')}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <Trash2 className="h-6 w-6 mx-auto mb-2 text-red-500" />
               <p className="text-2xl font-bold">{stats.deletes}</p>
-              <p className="text-xs text-muted-foreground">Suppressions</p>
+              <p className="text-xs text-muted-foreground">{t('adminDeletions')}</p>
             </CardContent>
           </Card>
         </div>
@@ -207,20 +240,20 @@ export default function AdminLogs() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <ScrollText className="h-5 w-5" />
-                  Journal des opérations
+                  {t('adminOperationsLog')}
                 </CardTitle>
                 <CardDescription>
-                  Toutes les entrées et sorties de la base de données
+                  {t('adminAllDatabaseOperations')}
                 </CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={exportLogs}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Exporter CSV
+                <Button variant="outline" size="sm" onClick={exportLogs} className="h-9 sm:h-10 px-2 sm:px-4">
+                  <Download className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{t('adminExportCSV')}</span>
                 </Button>
                 <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
                   <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                  Actualiser
+                  {t('adminRefresh')}
                 </Button>
               </div>
             </div>
@@ -232,7 +265,7 @@ export default function AdminLogs() {
                 <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Rechercher..."
+                    placeholder={t('search')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -244,7 +277,7 @@ export default function AdminLogs() {
                     <SelectValue placeholder="Table" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Toutes les tables</SelectItem>
+                    <SelectItem value="all">{t('adminAllTables')}</SelectItem>
                     {tables.map(table => (
                       <SelectItem key={table} value={table}>{table}</SelectItem>
                     ))}
@@ -252,10 +285,10 @@ export default function AdminLogs() {
                 </Select>
                 <Select value={operationFilter} onValueChange={setOperationFilter}>
                   <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Opération" />
+                    <SelectValue placeholder={t('adminOperation')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Toutes</SelectItem>
+                    <SelectItem value="all">{t('adminAll')}</SelectItem>
                     <SelectItem value="INSERT">INSERT</SelectItem>
                     <SelectItem value="UPDATE">UPDATE</SelectItem>
                     <SelectItem value="DELETE">DELETE</SelectItem>
@@ -267,55 +300,69 @@ export default function AdminLogs() {
               {loading ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-                  Chargement des logs...
+                  {t('adminLoadingLogs')}
                 </div>
               ) : filteredLogs.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <ScrollText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  Aucun log trouvé
+                  {t('adminNoLogsFound')}
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {filteredLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-muted">
-                          {getOperationIcon(log.operation)}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            {getTableBadge(log.table_name)}
-                            {getOperationBadge(log.operation)}
+                <>
+                  <div className="space-y-2">
+                    {paginatedLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-muted">
+                            {getOperationIcon(log.operation)}
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                            <User className="h-3 w-3" />
-                            <span>{log.user_name}</span>
-                            <span>•</span>
-                            <Calendar className="h-3 w-3" />
-                            <span>
-                              {new Date(log.created_at).toLocaleDateString('fr-FR', {
-                                day: 'numeric',
-                                month: 'short',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit'
-                              })}
-                            </span>
-                            {log.record_id && (
-                              <>
-                                <span>•</span>
-                                <span className="font-mono text-xs">ID: {log.record_id.substring(0, 8)}...</span>
-                              </>
-                            )}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              {getTableBadge(log.table_name)}
+                              {getOperationBadge(log.operation)}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                              <User className="h-3 w-3" />
+                              <span>{log.user_name}</span>
+                              <span>•</span>
+                              <Calendar className="h-3 w-3" />
+                              <span>
+                                {new Date(log.created_at).toLocaleDateString('fr-FR', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit'
+                                })}
+                              </span>
+                              {log.record_id && (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-mono text-xs">ID: {log.record_id.substring(0, 8)}...</span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  <AdminPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={filteredLogs.length}
+                    pageSize={pageSize}
+                    onPageChange={handlePageChange}
+                    onPageSizeChange={handlePageSizeChange}
+                    startIndex={startIndex}
+                    endIndex={endIndex}
+                  />
+                </>
               )}
             </div>
           </CardContent>

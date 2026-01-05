@@ -1,266 +1,248 @@
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { ServiceCard } from "@/components/ServiceCard";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { 
   Plane, 
-  Calendar, 
-  ShoppingBag, 
   Home, 
   Utensils, 
-  Gem,
-  Clock,
-  Globe,
-  Shield,
-  Sparkles,
-  Car,
   Heart,
-  Briefcase,
-  ArrowLeft
+  Users
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { PageNavigation } from "@/components/BackButton";
+import { LinkedAccountGuard } from "@/components/LinkedAccountGuard";
 
-const Concierge = () => {
+const ConciergeContent = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
 
-  const serviceCategories = [
+  const domaines = [
     {
       icon: Plane,
-      title: "Voyages & Mobilité",
-      description: "Jets privés, yachts, villas, hôtels rares",
-      services: [
-        "Jets privés",
-        "Yachts et super-yachts",
-        "Villas de prestige",
-        "Voyages sur mesure ultra-discrets"
+      title: t('travelMobility'),
+      points: [
+        t('travelMobilityP1'),
+        t('travelMobilityP2'),
+        t('travelMobilityP3')
       ]
     },
     {
       icon: Home,
-      title: "Immobilier de Prestige",
-      description: "Propriétés d'exception hors des circuits publics",
-      services: [
-        "Villas off-market",
-        "Domaines privés",
-        "Pieds-à-terre internationaux",
-        "Conseil en acquisition"
+      title: t('luxuryRealEstate'),
+      points: [
+        t('luxuryRealEstateP1'),
+        t('luxuryRealEstateP2')
       ]
     },
     {
       icon: Utensils,
-      title: "Art de Vivre",
-      description: "Expériences culturelles et gastronomiques uniques",
-      services: [
-        "Dîners privés exclusifs",
-        "Accès backstage",
-        "Expériences culturelles uniques",
-        "Tables étoilées réservées"
+      title: t('artOfLiving'),
+      points: [
+        t('artOfLivingP1'),
+        t('artOfLivingP2')
       ]
     },
     {
       icon: Heart,
-      title: "Santé & Longévité Premium",
-      description: "Services médicaux et bien-être de pointe",
-      services: [
-        "Médecins internationaux",
-        "Bilans de santé premium",
-        "Cliniques privées de pointe",
-        "Médecine de prévention et anti-âge",
-        "Retraites bien-être ultra haut de gamme",
-        "Coaching santé discret"
-      ]
-    },
-    {
-      icon: Briefcase,
-      title: "Éducation & Héritiers",
-      description: "Accompagnement des nouvelles générations",
-      services: [
-        "Écoles et universités internationales",
-        "Mentors d'excellence",
-        "Orientation éducative haut de gamme",
-        "Accès progressif à l'écosystème"
-      ]
-    },
-    {
-      icon: Calendar,
-      title: "Événements Privés",
-      description: "Organisation d'événements d'exception",
-      services: [
-        "Galas et soirées privées",
-        "Mariages de prestige",
-        "Anniversaires extraordinaires",
-        "Événements corporatifs exclusifs"
-      ]
-    },
-    {
-      icon: ShoppingBag,
-      title: "Shopping Privé",
-      description: "Accès privilégié aux maisons de luxe",
-      services: [
-        "Personal shopper dédié",
-        "Accès collections privées",
-        "Ventes privées exclusives",
-        "Stylisme personnel"
-      ]
-    },
-    {
-      icon: Gem,
-      title: "Art & Collections",
-      description: "Expertise et acquisitions d'œuvres d'art",
-      services: [
-        "Conseil en acquisition d'art",
-        "Accès ventes privées et enchères",
-        "Gestion de collections",
-        "Expertise et authentification"
-      ]
-    },
-    {
-      icon: Car,
-      title: "Automobile",
-      description: "Véhicules d'exception et services",
-      services: [
-        "Location de véhicules de luxe",
-        "Chauffeurs privés",
-        "Acquisition de véhicules de collection",
-        "Maintenance et entretien premium"
+      title: t('healthSerenity'),
+      points: [
+        t('healthSerenityP1'),
+        t('healthSerenityP2')
       ]
     }
   ];
 
-  const features = [
-    {
-      icon: Clock,
-      title: "Disponibilité 24/7",
-      description: "Notre équipe est à votre service jour et nuit, partout dans le monde"
-    },
-    {
-      icon: Globe,
-      title: "Réseau Mondial",
-      description: "Accès à un réseau d'excellence dans plus de 100 villes"
-    },
-    {
-      icon: Shield,
-      title: "Confidentialité Absolue",
-      description: "Discrétion et sécurité garanties pour tous vos services"
-    },
-    {
-      icon: Sparkles,
-      title: "Sur-Mesure",
-      description: "Chaque demande est unique et mérite une attention personnalisée"
-    }
-  ];
+  const handleContactConcierge = () => {
+    navigate("/contact");
+  };
 
   return (
     <div className="min-h-screen bg-background safe-area-all">
       <Header />
+      <PageNavigation to="/member-card" />
       
-      <main className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-16">
-        {/* Back Button */}
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate(-1)}
-          className="mb-4 sm:mb-6 hover:bg-primary/10"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Retour
-        </Button>
+      <main className="pt-32 sm:pt-36 pb-16">
 
         {/* Hero Section */}
-        <div className="text-center mb-10 sm:mb-16">
-          <Badge className="mb-4 gradient-gold text-black-deep font-serif">
-            Luxe, Art de Vivre & Santé Premium
-          </Badge>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-serif text-primary mb-4 sm:mb-6">
-            Le luxe du temps, de la fluidité et de la tranquillité
-          </h1>
-          <p className="text-base sm:text-xl text-muted-foreground max-w-3xl mx-auto mb-4">
-            Un service de conciergerie ultra haut de gamme pour organiser, simplifier et sublimer la vie de nos membres.
-          </p>
-          <p className="text-sm sm:text-lg text-muted-foreground/70 max-w-2xl mx-auto mb-6 sm:mb-8 italic">
-            Un seul interlocuteur pour tout ce qui compte réellement.
-          </p>
-          <Button variant="premium" size="lg" className="text-base sm:text-lg">
-            Contacter votre concierge
-          </Button>
-        </div>
+        <section className="container mx-auto px-4 sm:px-6 text-center mb-20 sm:mb-28">
+          <div className="max-w-[700px] mx-auto">
+            <Badge className="mb-6 bg-primary/20 text-primary border-primary/30 font-sans text-xs tracking-wide">
+              {t('conciergeBadge')}
+            </Badge>
+            
+            <div className="mb-14 space-y-4">
+              <p className="text-xl sm:text-2xl font-serif text-primary uppercase tracking-wide">
+                {t('luxuryOfTime')}
+              </p>
+              <p className="text-xl sm:text-2xl font-serif text-primary uppercase tracking-wide">
+                {t('dailyFluidity')}
+              </p>
+              <p className="text-xl sm:text-2xl font-serif text-primary uppercase tracking-wide">
+                {t('peaceOfMind')}
+              </p>
+            </div>
+            
+            <p className="text-base sm:text-lg text-foreground/80 mb-6 leading-relaxed">
+              {t('conciergeHeroDesc')}
+            </p>
+            
+            <p className="text-lg sm:text-xl font-serif text-primary mb-12">
+              {t('singleContact')}
+            </p>
+            
+            <Button 
+              variant="premium" 
+              size="lg" 
+              onClick={handleContactConcierge}
+              className="text-sm sm:text-base"
+            >
+              {t('contactYourConcierge')}
+            </Button>
+          </div>
+        </section>
 
-        {/* Features */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-20">
-          {features.map((feature, index) => (
-            <Card key={index} className="border-primary/20 aurora-glow hover:border-primary/50 transition-luxury">
-              <CardHeader className="text-center">
-                <div className="flex justify-center mb-4">
-                  <div className="p-3 rounded-full border border-primary/30">
-                    <feature.icon className="w-6 h-6 text-primary" />
-                  </div>
-                </div>
-                <CardTitle className="text-lg font-serif">{feature.title}</CardTitle>
-                <CardDescription>{feature.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
+        {/* Notre rôle */}
+        <section className="container mx-auto px-4 sm:px-6 mb-20 sm:mb-28">
+          <div className="max-w-[800px] mx-auto text-center">
+            <h2 className="text-xl sm:text-2xl font-serif text-primary mb-6">
+              {t('ourWayToServe')}
+            </h2>
+            
+            <div className="text-foreground/80 leading-relaxed">
+              <p className="text-sm sm:text-base">
+                {t('noServiceCatalog')}
+              </p>
+            </div>
+          </div>
+        </section>
 
-        {/* Services */}
-        <div className="mb-12 sm:mb-16">
-          <h2 className="text-2xl sm:text-4xl font-serif text-primary text-center mb-8 sm:mb-12">
-            Nos Services d'Excellence
-          </h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {serviceCategories.map((category, index) => (
-              <Card key={index} className="group border-primary/20 aurora-glow hover:border-primary/50 transition-luxury cursor-pointer">
-                <CardHeader>
-                  <div className="flex justify-center mb-4">
-                    <div className="p-4 rounded-full border border-primary/30 group-hover:border-primary transition-luxury">
-                      <category.icon className="w-8 h-8 text-primary" />
+        {/* Domaines d'expertise */}
+        <section className="container mx-auto px-4 sm:px-6 mb-20 sm:mb-28">
+          <div className="max-w-[900px] mx-auto">
+            <h2 className="text-xl sm:text-2xl font-serif text-primary text-center mb-12">
+              {t('expertiseDomains')}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 mb-12">
+              {domaines.map((domaine, index) => (
+                <div key={index} className="flex gap-4">
+                  <div className="flex-shrink-0 mt-1">
+                    <div className="w-10 h-10 rounded-full border border-primary/30 flex items-center justify-center">
+                      <domaine.icon className="w-5 h-5 text-primary" />
                     </div>
                   </div>
-                  <CardTitle className="text-center text-2xl font-serif group-hover:text-primary transition-luxury">
-                    {category.title}
-                  </CardTitle>
-                  <CardDescription className="text-center">
-                    {category.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-sans font-medium text-foreground mb-3">
+                      {domaine.title}
+                    </h3>
+                    <ul className="space-y-2">
+                      {domaine.points.map((point, idx) => (
+                        <li key={idx} className="text-sm text-muted-foreground leading-relaxed flex items-start">
+                          <span className="text-primary/60 mr-2 mt-1.5 w-1 h-1 rounded-full bg-primary/60 flex-shrink-0" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Projets familiaux - centré en bas */}
+            <div className="flex justify-center">
+              <div className="flex gap-4 max-w-md">
+                <div className="flex-shrink-0 mt-1">
+                  <div className="w-10 h-10 rounded-full border border-primary/30 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-primary" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-sans font-medium text-foreground mb-3">
+                    {t('familyProjects')}
+                  </h3>
                   <ul className="space-y-2">
-                    {category.services.map((service, idx) => (
-                      <li key={idx} className="flex items-start text-sm text-muted-foreground">
-                        <span className="text-primary mr-2">•</span>
-                        <span>{service}</span>
-                      </li>
-                    ))}
+                    <li className="text-sm text-muted-foreground leading-relaxed flex items-start">
+                      <span className="text-primary/60 mr-2 mt-1.5 w-1 h-1 rounded-full bg-primary/60 flex-shrink-0" />
+                      <span>{t('familyProjectsP1')}</span>
+                    </li>
                   </ul>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* CTA Section */}
-        <div className="text-center bg-card border border-primary/20 rounded-2xl p-6 sm:p-12 aurora-glow">
-          <h2 className="text-2xl sm:text-3xl font-serif text-primary mb-4">
-            Prêt à vivre une expérience d'exception ?
-          </h2>
-          <p className="text-sm sm:text-base text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto">
-            Notre équipe de concierges experts est à votre disposition pour concrétiser 
-            vos demandes les plus exigeantes, où que vous soyez dans le monde.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-            <Button variant="premium" size="lg">
-              Contactez votre concierge
-            </Button>
-            <Button variant="luxury" size="lg">
-              En savoir plus
+        {/* Nos engagements */}
+        <section className="container mx-auto px-4 sm:px-6 mb-20 sm:mb-28">
+          <div className="max-w-[1000px] mx-auto">
+            <h2 className="text-xl sm:text-2xl font-serif text-primary text-center mb-12">
+              {t('fourCommitments')}
+            </h2>
+            
+            <div className="max-w-[800px] mx-auto space-y-10 text-foreground/80 leading-relaxed">
+              <div>
+                <p className="font-sans font-medium text-foreground text-base sm:text-lg mb-2">
+                  {t('availability247')}
+                </p>
+                <p className="text-sm sm:text-base">
+                  {t('availability247Desc')}
+                </p>
+              </div>
+              
+              <div>
+                <p className="font-sans font-medium text-foreground text-base sm:text-lg mb-2">
+                  {t('globalNetworkEngagement')}
+                </p>
+                <p className="text-sm sm:text-base">
+                  {t('globalNetworkEngagementDesc')}
+                </p>
+              </div>
+              
+              <div>
+                <p className="font-sans font-medium text-foreground text-base sm:text-lg mb-2">
+                  {t('absoluteConfidentialityEngagement')}
+                </p>
+                <p className="text-sm sm:text-base">
+                  {t('absoluteConfidentialityEngagementDesc')}
+                </p>
+              </div>
+              
+              <div>
+                <p className="font-sans font-medium text-foreground text-base sm:text-lg mb-2">
+                  {t('realBespoke')}
+                </p>
+                <p className="text-sm sm:text-base">
+                  {t('realBespokeDesc')}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA final */}
+        <section className="container mx-auto px-4 sm:px-6 py-16 sm:py-20">
+          <div className="max-w-[700px] mx-auto text-center">
+            <Button 
+              variant="premium" 
+              size="lg" 
+              onClick={handleContactConcierge}
+              className="text-sm sm:text-base px-10 py-6"
+            >
+              {t('contactYourConcierge')}
             </Button>
           </div>
-        </div>
+        </section>
       </main>
     </div>
+  );
+};
+
+const Concierge = () => {
+  return (
+    <LinkedAccountGuard section="concierge">
+      <ConciergeContent />
+    </LinkedAccountGuard>
   );
 };
 

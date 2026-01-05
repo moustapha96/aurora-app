@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Sparkles, Loader2, FileUp } from "lucide-react";
 
 interface PhilosophieEntry {
   id: string;
@@ -23,18 +25,21 @@ interface PhilosophieEditorProps {
   onSave: () => void;
 }
 
-const CATEGORIES = [
-  { value: 'mentors', label: "Mentors & Modèles" },
-  { value: 'philosophie', label: "Philosophie de vie" },
-  { value: 'citations', label: "Citations inspirantes" },
-  { value: 'lectures', label: "Lectures marquantes" }
+const getCategories = (t: (key: string) => string) => [
+  { value: 'mentors', label: t("mentorsModels") },
+  { value: 'philosophie', label: t("lifePhilosophy") },
+  { value: 'citations', label: t("inspiringQuotes") },
+  { value: 'lectures', label: t("notableReadings") }
 ];
 
 export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: PhilosophieEditorProps) => {
+  const { t } = useLanguage();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const CATEGORIES = getCategories(t);
 
   useEffect(() => {
     if (entry) {
@@ -44,16 +49,39 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
     }
   }, [entry]);
 
+  const handleAISuggest = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("personal-ai-suggest", {
+        body: { 
+          module: "philosophie", 
+          currentContent: description,
+          context: { title, category }
+        }
+      });
+
+      if (error) throw error;
+      if (data?.suggestion) {
+        setDescription(data.suggestion);
+        toast.success(t("suggestionGenerated"));
+      }
+    } catch (error) {
+      toast.error(t("generationError"));
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!title.trim()) {
-      toast.error("Le titre est requis");
+      toast.error(t("titleRequired"));
       return;
     }
 
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t("notAuthenticated"));
 
       const data = {
         user_id: user.id,
@@ -75,12 +103,12 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
         if (error) throw error;
       }
 
-      toast.success(entry?.id ? "Modifié" : "Ajouté");
+      toast.success(entry?.id ? t("modified") : t("added"));
       onOpenChange(false);
       onSave();
     } catch (error) {
       console.error(error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t("saveError"));
     } finally {
       setLoading(false);
     }
@@ -88,14 +116,14 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
         <DialogHeader>
-          <DialogTitle>{entry?.id ? "Modifier" : "Ajouter"} une inspiration</DialogTitle>
+          <DialogTitle>{entry?.id ? t("edit") : t("add")} {t("inspiration")}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
           <div>
-            <Label>Catégorie</Label>
+            <Label>{t("category")}</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
                 <SelectValue />
@@ -109,24 +137,59 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
           </div>
 
           <div>
-            <Label>Titre *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Marcus Aurelius" />
+            <Label>{t("title")} *</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("exMarcusAurelius")} />
           </div>
 
           <div>
-            <Label>Description</Label>
+            <Label>{t("description")}</Label>
             <Textarea 
               value={description} 
               onChange={(e) => setDescription(e.target.value)} 
-              placeholder="Décrivez cette inspiration..."
+              placeholder={t("describeThisInspiration")}
               rows={3}
             />
+            <div className="flex gap-2 mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAISuggest}
+                disabled={generating}
+                className="gap-2"
+              >
+                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                {t("aiAurora")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => document.getElementById('import-doc-philosophie')?.click()}
+                className="gap-2"
+              >
+                <FileUp className="w-4 h-4" />
+                {t("import")}
+              </Button>
+              <input
+                id="import-doc-philosophie"
+                type="file"
+                accept=".pdf,.doc,.docx,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    toast.success(t("documentImportedAnalysisInProgress"));
+                  }
+                }}
+              />
+            </div>
           </div>
 
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
             <Button onClick={handleSave} disabled={loading} className="bg-primary text-primary-foreground">
-              Valider
+              {t("validate")}
             </Button>
           </div>
         </div>

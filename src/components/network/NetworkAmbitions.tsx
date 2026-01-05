@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NetworkModule } from "./NetworkModule";
-import { Target, Plus, Pencil, Trash2, Loader2, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+import { Target, Plus, Trash2, Loader2, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { TruncatedText } from "@/components/ui/truncated-text";
+import { InlineEditableField } from "@/components/ui/inline-editable-field";
 
 interface AmbitionItem {
   id: string;
@@ -57,17 +57,6 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
   const handleAddToCategory = (category: CategoryType) => {
     resetForm();
     setFormData(prev => ({ ...prev, category: CATEGORY_LABELS[category] }));
-    setIsDialogOpen(true);
-  };
-
-  const handleOpenEdit = (item: AmbitionItem) => {
-    setEditingItem(item);
-    setFormData({
-      title: item.title,
-      category: item.category || "",
-      timeline: item.timeline || "",
-      description: item.description || ""
-    });
     setIsDialogOpen(true);
   };
 
@@ -149,6 +138,20 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
     }
   };
 
+  const handleInlineUpdate = async (id: string, field: string, value: string) => {
+    try {
+      const { error } = await supabase
+        .from("network_ambitions")
+        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      onUpdate();
+    } catch (error) {
+      console.error("Update error:", error);
+      toast.error("Erreur lors de la sauvegarde");
+    }
+  };
+
   // Filter items by category
   const getItemsByCategory = (cat: CategoryType) => {
     const label = CATEGORY_LABELS[cat].toLowerCase();
@@ -181,17 +184,28 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
               <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <h4 className="font-medium text-sm text-foreground">{item.title}</h4>
+                    <InlineEditableField
+                      value={item.title}
+                      onSave={(value) => handleInlineUpdate(item.id, "title", value)}
+                      placeholder="Titre"
+                      disabled={!isEditable}
+                      className="font-medium text-sm text-foreground"
+                    />
                     {item.timeline && (
                       <span className="text-xs text-muted-foreground">Horizon: {item.timeline}</span>
                     )}
-                    {item.description && <TruncatedText text={item.description} maxLines={2} />}
+                    {isEditable ? (
+                      <InlineEditableField
+                        value={item.description || ""}
+                        onSave={(value) => handleInlineUpdate(item.id, "description", value)}
+                        placeholder="Description"
+                        multiline
+                        className="text-xs text-muted-foreground"
+                      />
+                    ) : item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
                   </div>
                   {isEditable && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEdit(item)}>
-                        <Pencil className="w-3 h-3" />
-                      </Button>
                       <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
                         <Trash2 className="w-3 h-3" />
                       </Button>

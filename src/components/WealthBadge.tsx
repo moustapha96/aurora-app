@@ -62,7 +62,7 @@ export const WealthBadge = ({
   const currencySymbol = wealthCurrency ? getCurrencySymbol(wealthCurrency) : "€";
 
   return (
-    <div className={cn("absolute -bottom-1 -right-1 flex flex-col items-center justify-center", className)}>
+    <div className={cn("absolute flex flex-col items-center justify-center", className || "-bottom-1 -right-1")}>
       <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border-2 border-black", circleBg)}>
         <CircleIcon className={cn("w-5 h-5", circleColor)} />
       </div>

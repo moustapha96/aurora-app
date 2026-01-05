@@ -1,13 +1,11 @@
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
-import { RefreshCw, Loader2 } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  NetworkOnboarding,
   NetworkMedia,
   NetworkEvents,
   NetworkInfluence,
@@ -16,6 +14,7 @@ import {
   NetworkAmbitions
 } from "@/components/network";
 import { PageNavigation } from "@/components/BackButton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Network = () => {
   const navigate = useNavigate();
@@ -25,7 +24,6 @@ const Network = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
-  const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   
   const [mediaData, setMediaData] = useState<any[]>([]);
   const [eventsData, setEventsData] = useState<any[]>([]);
@@ -69,15 +67,6 @@ const Network = () => {
         setHasAccess(true);
       }
 
-      // Check onboarding status
-      const { data: networkContent } = await supabase
-        .from('network_content')
-        .select('onboarding_completed')
-        .eq('user_id', targetUserId)
-        .single();
-
-      setOnboardingCompleted(networkContent?.onboarding_completed || false);
-
       await loadModulesData(targetUserId);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -104,149 +93,6 @@ const Network = () => {
     setAmbitionsData(ambitions.data || []);
   };
 
-  const handleOnboardingSelect = async (mode: string, importedData?: any) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // If we have imported data from CV, save it to the database
-      if (mode === 'import' && importedData) {
-        const savePromises = [];
-
-        // Save media entries
-        if (importedData.media?.length > 0) {
-          const mediaEntries = importedData.media.map((item: any, index: number) => ({
-            user_id: user.id,
-            title: item.title || 'Sans titre',
-            platform: item.platform || '',
-            description: item.description || '',
-            url: item.url || '',
-            display_order: index
-          }));
-          savePromises.push(supabase.from('network_media').insert(mediaEntries));
-        }
-
-        // Save events entries
-        if (importedData.events?.length > 0) {
-          const eventsEntries = importedData.events.map((item: any, index: number) => ({
-            user_id: user.id,
-            title: item.title || 'Sans titre',
-            event_type: item.event_type || '',
-            location: item.location || '',
-            date: item.date || '',
-            description: item.description || '',
-            display_order: index
-          }));
-          savePromises.push(supabase.from('network_events').insert(eventsEntries));
-        }
-
-        // Save influence entries
-        if (importedData.influence?.length > 0) {
-          const influenceEntries = importedData.influence.map((item: any, index: number) => ({
-            user_id: user.id,
-            title: item.title || 'Sans titre',
-            category: item.category || '',
-            metric: item.metric || '',
-            value: item.value || '',
-            description: item.description || '',
-            display_order: index
-          }));
-          savePromises.push(supabase.from('network_influence').insert(influenceEntries));
-        }
-
-        // Save philanthropy entries
-        if (importedData.philanthropy?.length > 0) {
-          const philanthropyEntries = importedData.philanthropy.map((item: any, index: number) => ({
-            user_id: user.id,
-            title: item.title || 'Sans titre',
-            organization: item.organization || '',
-            role: item.role || '',
-            cause: item.cause || '',
-            description: item.description || '',
-            display_order: index
-          }));
-          savePromises.push(supabase.from('network_philanthropy').insert(philanthropyEntries));
-        }
-
-        // Save clubs entries
-        if (importedData.clubs?.length > 0) {
-          const clubsEntries = importedData.clubs.map((item: any, index: number) => ({
-            user_id: user.id,
-            title: item.title || 'Sans titre',
-            club_type: item.club_type || '',
-            role: item.role || '',
-            since_year: item.since_year || '',
-            description: item.description || '',
-            display_order: index
-          }));
-          savePromises.push(supabase.from('network_clubs').insert(clubsEntries));
-        }
-
-        // Save ambitions entries
-        if (importedData.ambitions?.length > 0) {
-          const ambitionsEntries = importedData.ambitions.map((item: any, index: number) => ({
-            user_id: user.id,
-            title: item.title || 'Sans titre',
-            category: item.category || '',
-            timeline: item.timeline || '',
-            description: item.description || '',
-            display_order: index
-          }));
-          savePromises.push(supabase.from('network_ambitions').insert(ambitionsEntries));
-        }
-
-        // Execute all saves
-        await Promise.all(savePromises);
-      }
-
-      const { error } = await supabase
-        .from('network_content')
-        .upsert({
-          user_id: user.id,
-          onboarding_mode: mode,
-          onboarding_completed: true,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-
-      if (error) throw error;
-
-      setOnboardingCompleted(true);
-      
-      // Reload the data
-      await loadModulesData(user.id);
-      
-      if (mode === 'import' && importedData) {
-        toast.success("Données importées avec succès");
-      } else if (mode === 'ai') {
-        toast.info("Vous pouvez maintenant utiliser les suggestions Aurora dans chaque module");
-      } else if (mode === 'concierge') {
-        toast.info("Un conseiller vous contactera prochainement");
-      } else {
-        toast.success("Configuration sauvegardée");
-      }
-    } catch (error) {
-      console.error('Error saving onboarding:', error);
-      toast.error("Erreur lors de la sauvegarde");
-    }
-  };
-
-  const handleResetOnboarding = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('network_content')
-        .update({ onboarding_completed: false })
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      setOnboardingCompleted(false);
-    } catch (error) {
-      console.error('Error resetting onboarding:', error);
-    }
-  };
-
   const refreshData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -256,9 +102,12 @@ const Network = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <>
+        <Header />
+        <div className="min-h-screen bg-background flex items-center justify-center pt-32 sm:pt-36">
+          <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
+        </div>
+      </>
     );
   }
 
@@ -267,11 +116,11 @@ const Network = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-6 pt-32 pb-16 text-center">
-          <h1 className="text-3xl font-serif text-primary mb-4">Accès restreint</h1>
+          <h1 className="text-3xl font-serif text-primary mb-4">{t('restrictedAccess')}</h1>
           <p className="text-muted-foreground mb-8">
-            Vous n'avez pas accès à cette section du profil.
+            {t('noAccessToSection')}
           </p>
-          <Button onClick={() => navigate(-1)}>Retour</Button>
+          <Button onClick={() => navigate(-1)}>{t('back')}</Button>
         </main>
       </div>
     );
@@ -284,64 +133,45 @@ const Network = () => {
       
       {/* Sticky Sub-Header */}
       <div className="sticky top-16 z-40 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-          <div className="hidden sm:block w-20" />
-          <div className="text-center flex-1">
-            <h2 className="text-base sm:text-lg font-serif text-primary">Réseaux, Influence & Lifestyle</h2>
-            <p className="text-muted-foreground/70 text-xs hidden sm:block">Un réseau privé, humain et efficace — Sans recherche libre, sans exposition</p>
-          </div>
-          {isOwnProfile && onboardingCompleted && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetOnboarding}
-              className="gap-2 self-center sm:self-auto"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Reconfigurer
-            </Button>
-          )}
-          {!isOwnProfile && <div className="hidden sm:block w-24" />}
+        <div className="container mx-auto px-4 sm:px-6 py-3">
+          <h2 className="text-base sm:text-lg font-serif text-primary">{t('networkPage')}</h2>
+          <p className="text-muted-foreground/70 text-xs hidden sm:block">{t('networkSubtitle')}</p>
         </div>
       </div>
 
       <main className="container mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-16">
-        {isOwnProfile && !onboardingCompleted ? (
-          <NetworkOnboarding onSelect={handleOnboardingSelect} />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <NetworkMedia
-              data={mediaData}
-              isEditable={isOwnProfile}
-              onUpdate={refreshData}
-            />
-            <NetworkEvents
-              data={eventsData}
-              isEditable={isOwnProfile}
-              onUpdate={refreshData}
-            />
-            <NetworkInfluence
-              data={influenceData}
-              isEditable={isOwnProfile}
-              onUpdate={refreshData}
-            />
-            <NetworkLifestyle
-              data={philanthropyData}
-              isEditable={isOwnProfile}
-              onUpdate={refreshData}
-            />
-            <NetworkPortfolio
-              data={portfolioData}
-              isEditable={isOwnProfile}
-              onUpdate={refreshData}
-            />
-            <NetworkAmbitions
-              data={ambitionsData}
-              isEditable={isOwnProfile}
-              onUpdate={refreshData}
-            />
-          </div>
-        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <NetworkMedia
+            data={mediaData}
+            isEditable={isOwnProfile}
+            onUpdate={refreshData}
+          />
+          <NetworkEvents
+            data={eventsData}
+            isEditable={isOwnProfile}
+            onUpdate={refreshData}
+          />
+          <NetworkInfluence
+            data={influenceData}
+            isEditable={isOwnProfile}
+            onUpdate={refreshData}
+          />
+          <NetworkLifestyle
+            data={philanthropyData}
+            isEditable={isOwnProfile}
+            onUpdate={refreshData}
+          />
+          <NetworkPortfolio
+            data={portfolioData}
+            isEditable={isOwnProfile}
+            onUpdate={refreshData}
+          />
+          <NetworkAmbitions
+            data={ambitionsData}
+            isEditable={isOwnProfile}
+            onUpdate={refreshData}
+          />
+        </div>
       </main>
     </div>
   );

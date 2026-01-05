@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { Plane, Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plane, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PersonalModule } from "./PersonalModule";
 import { VoyagesEditor } from "./editors/VoyagesEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { TruncatedText } from "@/components/ui/truncated-text";
+import { InlineEditableField } from "@/components/ui/inline-editable-field";
 
 interface VoyageEntry {
   id: string;
@@ -50,12 +50,6 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
     setEditorOpen(true);
   };
 
-  const handleEdit = (entry: VoyageEntry) => {
-    setEditingEntry(entry);
-    setAddCategory(null);
-    setEditorOpen(true);
-  };
-
   const handleEditorClose = (open: boolean) => {
     setEditorOpen(open);
     if (!open) {
@@ -77,6 +71,20 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
     } catch (error) {
       console.error("Delete error:", error);
       toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+    }
+  };
+
+  const handleInlineUpdate = async (id: string, field: string, value: string) => {
+    try {
+      const { error } = await supabase
+        .from("personal_voyages")
+        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      onDataChange();
+    } catch (error) {
+      console.error("Update error:", error);
+      toast({ title: "Erreur lors de la sauvegarde", variant: "destructive" });
     }
   };
 
@@ -110,15 +118,33 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
               <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <h4 className="font-medium text-sm text-foreground">{item.destination}</h4>
-                    {item.period && <span className="text-xs text-gold">{item.period}</span>}
-                    {item.description && <TruncatedText text={item.description} maxLines={2} />}
+                    <InlineEditableField
+                      value={item.destination}
+                      onSave={(value) => handleInlineUpdate(item.id, "destination", value)}
+                      placeholder="Destination"
+                      disabled={!isEditable}
+                      className="font-medium text-sm text-foreground"
+                    />
+                    {isEditable ? (
+                      <InlineEditableField
+                        value={item.period || ""}
+                        onSave={(value) => handleInlineUpdate(item.id, "period", value)}
+                        placeholder="Période"
+                        className="text-xs text-gold"
+                      />
+                    ) : item.period && <span className="text-xs text-gold">{item.period}</span>}
+                    {isEditable ? (
+                      <InlineEditableField
+                        value={item.description || ""}
+                        onSave={(value) => handleInlineUpdate(item.id, "description", value)}
+                        placeholder="Description"
+                        multiline
+                        className="text-xs text-muted-foreground"
+                      />
+                    ) : item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
                   </div>
                   {isEditable && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEdit(item)}>
-                        <Pencil className="w-3 h-3" />
-                      </Button>
                       <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
                         <Trash2 className="w-3 h-3" />
                       </Button>

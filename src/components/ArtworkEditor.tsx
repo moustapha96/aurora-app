@@ -115,10 +115,10 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({ open: controlledOp
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size={artwork ? "sm" : "default"}>
-          {artwork ? <Pencil className="w-4 h-4" /> : <><Plus className="w-4 h-4 mr-2" />Ajouter une œuvre</>}
+          {artwork ? <Pencil className="w-4 h-4" /> : <><Plus className="w-4 h-4 sm:mr-2" /><span className="hidden sm:inline">Ajouter une œuvre</span></>}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
         <DialogHeader>
           <DialogTitle>{artwork ? "Modifier l'œuvre" : "Ajouter une œuvre"}</DialogTitle>
         </DialogHeader>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -20,9 +21,12 @@ import {
   Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage, languages } from "@/contexts/LanguageContext";
+import type { Language } from "@/contexts/LanguageContext";
 import { Header } from "@/components/Header";
+import { PageNavigation } from "@/components/BackButton";
 import { IdentityVerification } from "@/components/IdentityVerification";
+import NotificationSettings from "@/components/NotificationSettings";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,8 +115,8 @@ const Settings = () => {
     }
 
     toast({
-      title: "Paramètre mis à jour",
-      description: "Vos préférences ont été enregistrées",
+      title: t('settingUpdated'),
+      description: t('preferenceSaved'),
     });
   };
 
@@ -137,16 +141,16 @@ const Settings = () => {
       await supabase.auth.signOut();
       
       toast({
-        title: "Compte supprimé",
-        description: "Votre compte a été définitivement supprimé",
+        title: t('delete'),
+        description: t('deleteForever'),
       });
       
       navigate("/login");
     } catch (error) {
       console.error("Error deleting account:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le compte",
+        title: t('error'),
+        description: t('deleteAccountWarning'),
         variant: "destructive",
       });
     }
@@ -167,24 +171,27 @@ const Settings = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">Chargement...</div>
-      </div>
+      <>
+        <Header />
+        <div className="min-h-screen bg-background flex items-center justify-center pt-32 sm:pt-36">
+          <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
+        </div>
+      </>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
-      <div className="container mx-auto px-4 pt-20 sm:pt-24 pb-8 max-w-2xl safe-area-all">
+      <PageNavigation to="/member-card" />
+      <div className="container mx-auto px-4 pt-32 sm:pt-36 pb-8 max-w-2xl safe-area-all">
         <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Paramètres</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">Gérez vos préférences</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('settingsPageTitle')}</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">{t('managePreferences')}</p>
           </div>
         </div>
 
@@ -194,38 +201,49 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="h-5 w-5" />
-                Langue
+                {t('language')}
               </CardTitle>
-              <CardDescription>Choisissez la langue de l'application</CardDescription>
+              <CardDescription>{t('chooseLanguage')}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {languages.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Globe className="h-4 w-4 mr-2" />
+                    {languages.find(l => l.code === language)?.name || t('language')}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48">
+                  {languages.map((lang: { code: Language; name: string; flag: string }) => (
+                    <DropdownMenuItem
+                      key={lang.code}
+                      onClick={() => setLanguage(lang.code)}
+                      className={language === lang.code ? "bg-accent" : ""}
+                    >
+                      <span className="mr-2">{lang.flag}</span>
                       {lang.name}
-                    </SelectItem>
+                    </DropdownMenuItem>
                   ))}
-                </SelectContent>
-              </Select>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </CardContent>
           </Card>
 
-          {/* Notifications */}
+          {/* Mobile Push Notifications */}
+          <NotificationSettings />
+
+          {/* Email Notifications */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
-                Notifications
+                {t('emailNotifications')}
               </CardTitle>
-              <CardDescription>Gérez vos préférences de notifications</CardDescription>
+              <CardDescription>{t('manageEmailPreferences')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label htmlFor="email-notif">Notifications par email</Label>
+                <Label htmlFor="email-notif">{t('emailNotificationsLabel')}</Label>
                 <Switch
                   id="email-notif"
                   checked={settings.emailNotifications}
@@ -234,16 +252,7 @@ const Settings = () => {
               </div>
               <Separator />
               <div className="flex items-center justify-between">
-                <Label htmlFor="push-notif">Notifications push</Label>
-                <Switch
-                  id="push-notif"
-                  checked={settings.pushNotifications}
-                  onCheckedChange={(checked) => updateSetting("pushNotifications", checked)}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <Label htmlFor="message-notif">Nouveaux messages</Label>
+                <Label htmlFor="message-notif">{t('newMessages')}</Label>
                 <Switch
                   id="message-notif"
                   checked={settings.messageNotifications}
@@ -252,7 +261,7 @@ const Settings = () => {
               </div>
               <Separator />
               <div className="flex items-center justify-between">
-                <Label htmlFor="connection-notif">Demandes de connexion</Label>
+                <Label htmlFor="connection-notif">{t('connectionRequestsLabel')}</Label>
                 <Switch
                   id="connection-notif"
                   checked={settings.connectionNotifications}
@@ -267,13 +276,13 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Eye className="h-5 w-5" />
-                Confidentialité
+                {t('privacy')}
               </CardTitle>
-              <CardDescription>Contrôlez qui peut voir vos informations</CardDescription>
+              <CardDescription>{t('controlWhoSees')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Visibilité du profil</Label>
+                <Label>{t('profileVisibility')}</Label>
                 <Select 
                   value={settings.profileVisibility} 
                   onValueChange={(value) => updateSetting("profileVisibility", value)}
@@ -282,15 +291,15 @@ const Settings = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="public">Public (tous les membres)</SelectItem>
-                    <SelectItem value="connections">Connexions uniquement</SelectItem>
-                    <SelectItem value="private">Privé (vous seul)</SelectItem>
+                    <SelectItem value="public">{t('publicAllMembers')}</SelectItem>
+                    <SelectItem value="connections">{t('connectionsOnly')}</SelectItem>
+                    <SelectItem value="private">{t('privateOnlyYou')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Separator />
               <div className="flex items-center justify-between">
-                <Label htmlFor="show-wealth">Afficher le badge de richesse</Label>
+                <Label htmlFor="show-wealth">{t('showWealthBadge')}</Label>
                 <Switch
                   id="show-wealth"
                   checked={settings.showWealthBadge}
@@ -299,7 +308,7 @@ const Settings = () => {
               </div>
               <Separator />
               <div className="flex items-center justify-between">
-                <Label htmlFor="show-location">Afficher la localisation</Label>
+                <Label htmlFor="show-location">{t('showLocation')}</Label>
                 <Switch
                   id="show-location"
                   checked={settings.showLocation}
@@ -309,17 +318,17 @@ const Settings = () => {
             </CardContent>
           </Card>
           {/* Identity Verification */}
-          <IdentityVerification />
+          <IdentityVerification onVerificationChange={loadSettings} />
 
           {/* Biometric Authentication - Link to dedicated page */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Fingerprint className="h-5 w-5" />
-                Authentification Biométrique
+                {t('biometricAuthSettings')}
               </CardTitle>
               <CardDescription>
-                Configurez Face ID, Touch ID ou Windows Hello pour une connexion sécurisée
+                {t('configureBiometric')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -329,7 +338,7 @@ const Settings = () => {
                 onClick={() => navigate("/security-settings")}
               >
                 <Shield className="h-4 w-4 mr-2" />
-                Gérer la sécurité biométrique
+                {t('manageBiometric')}
               </Button>
             </CardContent>
           </Card>
@@ -339,14 +348,14 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Sécurité
+                {t('security')}
               </CardTitle>
-              <CardDescription>Paramètres de sécurité de votre compte</CardDescription>
+              <CardDescription>{t('securityDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button variant="outline" className="w-full" onClick={() => navigate("/login?mode=reset")}>
                 <Lock className="h-4 w-4 mr-2" />
-                Changer le mot de passe
+                {t('changePassword')}
               </Button>
             </CardContent>
           </Card>
@@ -356,9 +365,9 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Compte
+                {t('accountSection')}
               </CardTitle>
-              <CardDescription>Gestion de votre compte</CardDescription>
+              <CardDescription>{t('accountManagementSettings')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button 
@@ -366,34 +375,34 @@ const Settings = () => {
                 className="w-full"
                 onClick={() => navigate("/edit-profile")}
               >
-                Modifier le profil
+                {t('editProfile')}
               </Button>
               <Button 
                 variant="outline" 
                 className="w-full"
                 onClick={() => navigate("/landing-preview")}
               >
-                Gérer la page d'atterrissage
+                {t('manageLanding')}
               </Button>
               <Separator />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="w-full">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Supprimer le compte
+                  <Button variant="destructive" className="w-full h-9 sm:h-10 px-2 sm:px-4">
+                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{t('deleteAccount')}</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Supprimer votre compte ?</AlertDialogTitle>
+                    <AlertDialogTitle>{t('deleteAccountConfirm')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Cette action est irréversible. Toutes vos données, connexions, messages et contenus seront définitivement supprimés.
+                      {t('deleteAccountWarning')}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground">
-                      Supprimer définitivement
+                      {t('deleteAccountPermanently')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

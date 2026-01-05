@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface BusinessOnboardingProps {
   onComplete: (mode: string, data?: any) => void;
@@ -20,10 +21,11 @@ interface BusinessOnboardingProps {
 }
 
 type OnboardingMode = "import" | "ai" | "concierge" | "manual" | null;
-type OnboardingStep = "choose" | "import" | "ai-questions" | "ai-generating" | "concierge" | "preview";
+type OnboardingStep = "choose" | "import" | "ai-questions" | "ai-generating" | "concierge" | "preview" | "edit";
 
 export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComplete, profileData }) => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [selectedMode, setSelectedMode] = useState<OnboardingMode>(null);
   const [currentStep, setCurrentStep] = useState<OnboardingStep>("choose");
   const [isLoading, setIsLoading] = useState(false);
@@ -46,41 +48,39 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     {
       id: "import" as OnboardingMode,
       icon: Upload,
-      title: "Importer mes informations",
-      description: "CV, LinkedIn, bio, site…",
+      title: t('businessImportInfo'),
+      description: t('businessImportDescription'),
     },
     {
       id: "ai" as OnboardingMode,
       icon: Sparkles,
-      title: "Laisser Aurora (IA) faire une première version",
-      description: "Répondez à 3 questions, nous faisons le reste.",
+      title: t('businessAIGenerate'),
+      description: t('businessAIDescription'),
     },
     {
       id: "concierge" as OnboardingMode,
       icon: Phone,
-      title: "Demander à mon contact personnel de s'en charger",
-      description: "Conciergerie privée Aurora.",
+      title: t('businessConciergeRequest'),
+      description: t('businessConciergeDescription'),
     },
     {
       id: "manual" as OnboardingMode,
       icon: Edit3,
-      title: "Compléter moi-même, module par module",
-      description: "Pour les profils qui aiment le détail.",
+      title: t('businessManualComplete'),
+      description: t('businessManualDescription'),
     },
   ];
 
   const handleModeSelect = (mode: OnboardingMode) => {
     setSelectedMode(mode);
-  };
-
-  const handleContinue = () => {
-    if (selectedMode === "import") {
+    // Navigation directe au clic sur le pavé
+    if (mode === "import") {
       setCurrentStep("import");
-    } else if (selectedMode === "ai") {
+    } else if (mode === "ai") {
       setCurrentStep("ai-questions");
-    } else if (selectedMode === "concierge") {
+    } else if (mode === "concierge") {
       setCurrentStep("concierge");
-    } else if (selectedMode === "manual") {
+    } else if (mode === "manual") {
       onComplete("manual");
     }
   };
@@ -91,8 +91,8 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
       const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
       if (!validTypes.includes(file.type)) {
         toast({
-          title: "Format non supporté",
-          description: "Veuillez uploader un fichier PDF, Word ou texte.",
+          title: t('businessUnsupportedFormat'),
+          description: t('businessUploadPDFWordText'),
           variant: "destructive",
         });
         return;
@@ -104,8 +104,8 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
   const handleImport = async () => {
     if (!uploadedFile && !importSources.trim()) {
       toast({
-        title: "Information requise",
-        description: "Veuillez uploader un CV ou entrer une URL LinkedIn.",
+        title: t('businessInformationRequired'),
+        description: t('businessUploadCVOrLinkedIn'),
         variant: "destructive",
       });
       return;
@@ -160,17 +160,17 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
         setGeneratedData(data.data);
         setCurrentStep("preview");
         toast({
-          title: "Import réussi",
-          description: "Vos informations ont été analysées.",
+          title: t('businessImportSuccess'),
+          description: t('businessInformationAnalyzed'),
         });
       } else {
-        throw new Error(data.error || "Erreur lors de l'import");
+        throw new Error(data.error || t('businessImportError'));
       }
     } catch (error: any) {
       console.error("Import error:", error);
       toast({
-        title: "Erreur d'import",
-        description: error.message || "Impossible d'analyser vos informations. Réessayez.",
+        title: t('businessImportErrorTitle'),
+        description: error.message || t('businessCannotAnalyzeInfo'),
         variant: "destructive",
       });
       setCurrentStep("import");
@@ -212,8 +212,8 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     } catch (error) {
       console.error("AI generation error:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de générer le profil. Réessayez.",
+        title: t('error'),
+        description: t('businessCannotGenerateProfile'),
         variant: "destructive",
       });
       setCurrentStep("ai-questions");
@@ -228,8 +228,8 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
 
   const handleConciergeSubmit = async () => {
     toast({
-      title: "Demande envoyée",
-      description: "Votre section Business sera préparée par notre équipe. Vous serez notifié.",
+      title: t('businessRequestSent'),
+      description: t('businessConciergePreparing'),
     });
     onComplete("concierge", { pending: true, message: conciergeMessage });
   };
@@ -239,9 +239,9 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="space-y-8">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">Bienvenue dans votre univers Business</h2>
+          <h2 className="text-2xl font-serif text-gold mb-4">{t('businessWelcomeToBusinessUniverse')}</h2>
           <p className="text-gold/70 max-w-xl mx-auto">
-            Nous allons créer, avec vous, la version la plus élégante et fidèle de votre parcours.
+            {t('businessCreateElegantVersion')}
           </p>
         </div>
 
@@ -249,37 +249,23 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
           {modes.map((mode) => (
             <Card
               key={mode.id}
-              className={`cursor-pointer transition-all hover:border-gold/50 ${
-                selectedMode === mode.id
-                  ? "border-gold bg-gold/10"
-                  : "border-gold/20 bg-black/50"
-              }`}
+              className="cursor-pointer transition-all hover:border-gold/50 hover:bg-gold/10 border-gold/20 bg-black/50 group"
               onClick={() => handleModeSelect(mode.id)}
             >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className={`p-3 rounded-lg ${selectedMode === mode.id ? "bg-gold/20" : "bg-gold/10"}`}>
+                  <div className="p-3 rounded-lg bg-gold/10 group-hover:bg-gold/20 transition-colors">
                     <mode.icon className="w-6 h-6 text-gold" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-medium text-gold mb-1">{mode.title}</h3>
                     <p className="text-sm text-gold/60">{mode.description}</p>
                   </div>
+                  <ArrowRight className="w-5 h-5 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all" />
                 </div>
               </CardContent>
             </Card>
           ))}
-        </div>
-
-        <div className="flex justify-center">
-          <Button
-            onClick={handleContinue}
-            disabled={!selectedMode}
-            className="bg-gold text-black hover:bg-gold/90 px-8"
-          >
-            Continuer
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
         </div>
       </div>
     );
@@ -290,42 +276,45 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">3 questions intelligentes</h2>
-          <p className="text-gold/70">Répondez rapidement, Aurora fait le reste.</p>
+          <h2 className="text-2xl font-serif text-gold mb-4">{t('business3SmartQuestions')}</h2>
+          <p className="text-gold/70">{t('businessAnswerQuicklyAuroraDoesRest')}</p>
         </div>
 
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label className="text-gold">1. En une phrase, comment décririez-vous votre rôle aujourd'hui ?</Label>
+            <Label className="text-gold">{t('businessQuestion1')}</Label>
             <Input
               value={q1}
               onChange={(e) => setQ1(e.target.value)}
-              placeholder="Ex: CEO d'un groupe industriel familial..."
+              placeholder={t('businessQuestion1Placeholder')}
               className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-gold">2. Quelles sont, selon vous, vos 3 réalisations majeures ?</Label>
+            <Label className="text-gold">{t('businessQuestion2')}</Label>
             <Textarea
               value={q2}
               onChange={(e) => setQ2(e.target.value)}
-              placeholder="Ex: Création de 3000 emplois, acquisition de X, introduction en bourse..."
+              placeholder={t('businessQuestion2Placeholder')}
               className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[100px]"
             />
           </div>
 
           <div className="space-y-3">
-            <Label className="text-gold">3. Préférez-vous un ton :</Label>
+            <Label className="text-gold">{t('businessQuestion3')}</Label>
             <RadioGroup value={tone} onValueChange={setTone} className="flex gap-4">
-              {["discret", "institutionnel", "inspirant"].map((t) => (
-                <div key={t} className="flex items-center space-x-2">
-                  <RadioGroupItem value={t} id={t} className="border-gold text-gold" />
-                  <Label htmlFor={t} className="text-gold/80 capitalize cursor-pointer">
-                    {t}
-                  </Label>
-                </div>
-              ))}
+              {[t('businessToneDiscrete'), t('businessToneInstitutional'), t('businessToneInspiring')].map((toneLabel, index) => {
+                const toneValue = ["discret", "institutionnel", "inspirant"][index];
+                return (
+                  <div key={toneValue} className="flex items-center space-x-2">
+                    <RadioGroupItem value={toneValue} id={toneValue} className="border-gold text-gold" />
+                    <Label htmlFor={toneValue} className="text-gold/80 capitalize cursor-pointer">
+                      {toneLabel}
+                    </Label>
+                  </div>
+                );
+              })}
             </RadioGroup>
           </div>
         </div>
@@ -336,7 +325,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             onClick={() => setCurrentStep("choose")}
             className="border-gold/30 text-gold hover:bg-gold/10"
           >
-            Retour
+            {t('back')}
           </Button>
           <Button
             onClick={handleAIGenerate}
@@ -344,7 +333,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             className="bg-gold text-black hover:bg-gold/90"
           >
             <Sparkles className="w-4 h-4 mr-2" />
-            Générer mon profil
+            {t('businessGenerateMyProfile')}
           </Button>
         </div>
       </div>
@@ -356,7 +345,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <Loader2 className="w-12 h-12 text-gold animate-spin mb-6" />
-        <p className="text-gold/70">Nous analysons vos informations et créons votre profil...</p>
+        <p className="text-gold/70">{t('businessAnalyzingAndCreatingProfile')}</p>
       </div>
     );
   }
@@ -366,32 +355,32 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="space-y-8">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">Prévisualisation de votre section Business</h2>
-          <p className="text-gold/70">Vérifiez et validez votre profil généré.</p>
+          <h2 className="text-2xl font-serif text-gold mb-4">{t('businessPreviewYourBusinessSection')}</h2>
+          <p className="text-gold/70">{t('businessReviewAndValidateProfile')}</p>
         </div>
 
         <div className="space-y-6 bg-black/50 border border-gold/20 rounded-lg p-6">
           {generatedData.bio_executive && (
             <div>
-              <h4 className="text-lg font-serif text-gold mb-2">Bio Exécutive</h4>
+              <h4 className="text-lg font-serif text-gold mb-2">{t('businessBioExecutive')}</h4>
               <p className="text-gold/70">{generatedData.bio_executive}</p>
             </div>
           )}
           {generatedData.achievements_text && (
             <div>
-              <h4 className="text-lg font-serif text-gold mb-2">Réalisations</h4>
+              <h4 className="text-lg font-serif text-gold mb-2">{t('businessAchievements')}</h4>
               <p className="text-gold/70 whitespace-pre-line">{generatedData.achievements_text}</p>
             </div>
           )}
           {generatedData.vision_text && (
             <div>
-              <h4 className="text-lg font-serif text-gold mb-2">Vision</h4>
+              <h4 className="text-lg font-serif text-gold mb-2">{t('businessVision')}</h4>
               <p className="text-gold/70">{generatedData.vision_text}</p>
             </div>
           )}
           {generatedData.timeline && generatedData.timeline.length > 0 && (
             <div>
-              <h4 className="text-lg font-serif text-gold mb-2">Parcours</h4>
+              <h4 className="text-lg font-serif text-gold mb-2">{t('businessCareerPath')}</h4>
               <div className="space-y-2">
                 {generatedData.timeline.map((item: any, index: number) => (
                   <div key={index} className="text-gold/70">
@@ -403,7 +392,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
           )}
           {generatedData.press && generatedData.press.length > 0 && (
             <div>
-              <h4 className="text-lg font-serif text-gold mb-2">Presse & Distinctions</h4>
+              <h4 className="text-lg font-serif text-gold mb-2">{t('businessPressDistinctions')}</h4>
               <div className="space-y-2">
                 {generatedData.press.map((item: any, index: number) => (
                   <div key={index} className="text-gold/70">
@@ -418,13 +407,71 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
         <div className="flex justify-between">
           <Button
             variant="outline"
-            onClick={() => setCurrentStep(selectedMode === "import" ? "import" : "ai-questions")}
+            onClick={() => setCurrentStep("edit")}
             className="border-gold/30 text-gold hover:bg-gold/10"
           >
-            Revoir et modifier
+            <Edit3 className="w-4 h-4 mr-2" />
+            {t('edit')}
           </Button>
           <Button onClick={handleValidate} className="bg-gold text-black hover:bg-gold/90">
-            Tout valider
+            {t('businessValidateAll')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Step: Edit generated data
+  if (currentStep === "edit" && generatedData) {
+    return (
+      <div className="space-y-8 max-w-2xl mx-auto">
+        <div className="text-center">
+          <h2 className="text-2xl font-serif text-gold mb-4">{t('businessEditYourInformation')}</h2>
+          <p className="text-gold/70">{t('businessAdjustGeneratedContent')}</p>
+        </div>
+
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label className="text-gold">{t('businessBioExecutive')}</Label>
+            <Textarea
+              value={generatedData.bio_executive || ""}
+              onChange={(e) => setGeneratedData({ ...generatedData, bio_executive: e.target.value })}
+              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[120px]"
+              placeholder={t('businessYourBioExecutive')}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-gold">{t('businessAchievements')}</Label>
+            <Textarea
+              value={generatedData.achievements_text || ""}
+              onChange={(e) => setGeneratedData({ ...generatedData, achievements_text: e.target.value })}
+              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[100px]"
+              placeholder={t('businessYourMajorAchievements')}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-gold">{t('businessVision')}</Label>
+            <Textarea
+              value={generatedData.vision_text || ""}
+              onChange={(e) => setGeneratedData({ ...generatedData, vision_text: e.target.value })}
+              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[100px]"
+              placeholder={t('businessYourVision')}
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-between">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentStep("preview")}
+            className="border-gold/30 text-gold hover:bg-gold/10"
+          >
+            {t('businessBackToPreview')}
+          </Button>
+          <Button onClick={handleValidate} className="bg-gold text-black hover:bg-gold/90">
+            {t('businessValidateModifications')}
           </Button>
         </div>
       </div>
@@ -436,26 +483,26 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">Conciergerie Business</h2>
+          <h2 className="text-2xl font-serif text-gold mb-4">{t('businessConciergeBusiness')}</h2>
           <p className="text-gold/70">
-            Nous pouvons prendre cela en charge pour vous. Envoyez vos documents ou dites-nous où trouver vos infos publiques.
+            {t('businessConciergeDescription')}
           </p>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-gold">Indiquez vos sources : LinkedIn, site, documents…</Label>
+            <Label className="text-gold">{t('businessIndicateYourSources')}</Label>
             <Textarea
               value={conciergeMessage}
               onChange={(e) => setConciergeMessage(e.target.value)}
-              placeholder="Ex: Mon LinkedIn est linkedin.com/in/... Mon site est..."
+              placeholder={t('businessLinkedInExample')}
               className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[120px]"
             />
           </div>
 
           <Button variant="outline" className="border-gold/30 text-gold hover:bg-gold/10">
             <Upload className="w-4 h-4 mr-2" />
-            Ajouter pièces jointes (CV, PDF...)
+            {t('businessAddAttachments')}
           </Button>
         </div>
 
@@ -465,7 +512,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             onClick={() => setCurrentStep("choose")}
             className="border-gold/30 text-gold hover:bg-gold/10"
           >
-            Retour
+            {t('back')}
           </Button>
           <Button
             onClick={handleConciergeSubmit}
@@ -473,7 +520,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             className="bg-gold text-black hover:bg-gold/90"
           >
             <Phone className="w-4 h-4 mr-2" />
-            Confier à ma conciergerie Aurora
+            {t('businessEntrustToConcierge')}
           </Button>
         </div>
       </div>
@@ -485,14 +532,14 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">Import intelligent</h2>
-          <p className="text-gold/70">Uploadez votre CV ou entrez votre URL LinkedIn pour pré-remplir votre section Business.</p>
+          <h2 className="text-2xl font-serif text-gold mb-4">{t('businessSmartImport')}</h2>
+          <p className="text-gold/70">{t('businessUploadCVOrLinkedInDescription')}</p>
         </div>
 
         <div className="space-y-6">
           {/* File Upload Zone */}
           <div className="space-y-2">
-            <Label className="text-gold">Uploader votre CV</Label>
+            <Label className="text-gold">{t('businessUploadYourCV')}</Label>
             <input
               type="file"
               ref={fileInputRef}
@@ -522,25 +569,25 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
                 className="border-2 border-dashed border-gold/30 rounded-lg p-8 text-center cursor-pointer hover:border-gold/50 transition-colors"
               >
                 <Upload className="w-10 h-10 text-gold/50 mx-auto mb-3" />
-                <p className="text-gold/70">Cliquez pour uploader votre CV</p>
-                <p className="text-gold/40 text-sm mt-1">PDF, Word ou texte (max 5MB)</p>
+                <p className="text-gold/70">{t('businessClickToUploadCV')}</p>
+                <p className="text-gold/40 text-sm mt-1">{t('businessPDFWordTextMax5MB')}</p>
               </div>
             )}
           </div>
 
           <div className="flex items-center gap-4">
             <div className="flex-1 h-px bg-gold/20" />
-            <span className="text-gold/50 text-sm">ou</span>
+            <span className="text-gold/50 text-sm">{t('or')}</span>
             <div className="flex-1 h-px bg-gold/20" />
           </div>
 
           {/* LinkedIn URL */}
           <div className="space-y-2">
-            <Label className="text-gold">URL de votre profil LinkedIn</Label>
+            <Label className="text-gold">{t('businessLinkedInProfileURL')}</Label>
             <Input
               value={importSources}
               onChange={(e) => setImportSources(e.target.value)}
-              placeholder="https://linkedin.com/in/..."
+              placeholder={t('businessLinkedInPlaceholder')}
               className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30"
             />
           </div>
@@ -552,7 +599,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             onClick={() => setCurrentStep("choose")}
             className="border-gold/30 text-gold hover:bg-gold/10"
           >
-            Retour
+            {t('back')}
           </Button>
           <Button
             onClick={handleImport}
@@ -564,7 +611,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             ) : (
               <Sparkles className="w-4 h-4 mr-2" />
             )}
-            Analyser et importer
+            {t('businessAnalyzeAndImport')}
           </Button>
         </div>
       </div>

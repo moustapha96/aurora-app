@@ -360,7 +360,7 @@ Deno.serve(async (req) => {
       }
 
       // Add personalized content if exists
-      const content = memberContent[member.email]
+      const content = memberContent[member.email as keyof typeof memberContent]
       if (content) {
         // Delete existing content first
         await supabaseAdmin.from('family_content').delete().eq('user_id', userId)
@@ -435,10 +435,11 @@ Deno.serve(async (req) => {
       }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in create-test-members:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500

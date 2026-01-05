@@ -1,7 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Calendar, Building } from "lucide-react";
-import { CommitmentsEditor } from "./editors";
+import { Heart, Calendar, Building, Trash2, Plus, Sparkles, FileUp, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Commitment {
   id?: string;
@@ -20,6 +28,12 @@ interface FamilyCommitmentsProps {
 }
 
 export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }: FamilyCommitmentsProps) => {
+  const { t } = useLanguage();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState<Partial<Commitment>>({});
+  const [saving, setSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const getCategoryColor = (category?: string) => {
     switch (category?.toLowerCase()) {
       case "philanthropie": return "bg-pink-500/20 text-pink-400 border-pink-500/30";
@@ -29,33 +43,266 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
     }
   };
 
+  const openNewDialog = () => {
+    setFormData({ title: "" });
+    setDialogOpen(true);
+  };
+
+  const updateField = async (commitmentId: string, field: keyof Commitment, value: string) => {
+    try {
+      const { error } = await supabase
+        .from("family_commitments")
+        .update({ [field]: value || null })
+        .eq("id", commitmentId);
+      if (error) throw error;
+      onUpdate?.();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleAddNew = async () => {
+    if (!formData.title) {
+      toast.error(t('titleRequired'));
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error(t('notAuthenticated'));
+
+      const { error } = await supabase.from("family_commitments").insert({
+        user_id: user.id,
+        title: formData.title,
+        category: formData.category || null,
+        description: formData.description || null,
+        organization: formData.organization || null,
+        start_year: formData.start_year || null,
+        image_url: formData.image_url || null,
+      });
+      if (error) throw error;
+      toast.success(t('commitmentAdded'));
+      setDialogOpen(false);
+      setFormData({});
+      onUpdate?.();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(t('deleteThisCommitment'))) return;
+    try {
+      const { error } = await supabase.from("family_commitments").delete().eq("id", id);
+      if (error) throw error;
+      toast.success(t('commitmentDeleted'));
+      onUpdate?.();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleAISuggest = async () => {
+    if (!formData.title) {
+      toast.error(t('pleaseIndicateTitleFirst'));
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('family-ai-suggest', {
+        body: {
+          module: 'commitments',
+          currentInput: {
+            title: formData.title,
+            category: formData.category,
+            organization: formData.organization
+          }
+        }
+      });
+      if (error) throw error;
+      if (data?.suggestion) {
+        setFormData({ ...formData, description: data.suggestion });
+        toast.success(t('suggestionGenerated'));
+      }
+    } catch (error: any) {
+      toast.error(t('generationError'));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {isEditable && onUpdate && <CommitmentsEditor commitments={commitments} onUpdate={onUpdate} />}
+      {isEditable && (
+        <Button onClick={openNewDialog} variant="outline" size="sm" className="border-gold/30 text-gold hover:bg-gold/10">
+          <Plus className="w-4 h-4 mr-2" />
+          {t('add')}
+        </Button>
+      )}
+
       {(!commitments || commitments.length === 0) ? (
-        <p className="text-muted-foreground text-sm italic">Aucun engagement familial renseigné.</p>
+        <p className="text-muted-foreground text-sm italic">{t('noFamilyCommitmentEntered')}</p>
       ) : (
         <div className="space-y-4">
           {commitments.map((commitment, idx) => (
-            <div key={idx} className="flex gap-4 p-4 border border-gold/20 rounded-lg hover:border-gold/30 transition-colors">
+            <div 
+              key={commitment.id || idx} 
+              className="relative flex gap-4 p-4 border border-gold/20 rounded-lg hover:border-gold/30 transition-colors"
+            >
+              {isEditable && commitment.id && (
+                <button
+                  onClick={(e) => handleDelete(commitment.id!, e)}
+                  className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
               <div className="w-20 h-20 rounded-lg flex-shrink-0 border border-gold/20 bg-gold/5 flex items-center justify-center">
                 <Heart className="w-8 h-8 text-gold/40" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h4 className="font-semibold text-foreground">{commitment.title}</h4>
-                  {commitment.category && <Badge variant="outline" className={getCategoryColor(commitment.category)}>{commitment.category}</Badge>}
-                </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                  {commitment.organization && <span className="flex items-center gap-1"><Building className="w-3 h-3" />{commitment.organization}</span>}
-                  {commitment.start_year && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Depuis {commitment.start_year}</span>}
-                </div>
-                {commitment.description && <p className="text-sm text-muted-foreground">{commitment.description}</p>}
+              <div className="flex-1 min-w-0 pr-8">
+                {isEditable && commitment.id ? (
+                  <>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h4 className="font-semibold text-foreground">
+                        <InlineEditableField
+                          value={commitment.title}
+                          onSave={(v) => updateField(commitment.id!, "title", v)}
+                          placeholder={t('title')}
+                        />
+                      </h4>
+                      <Badge variant="outline" className={getCategoryColor(commitment.category)}>
+                        <InlineEditableField
+                          value={commitment.category || ""}
+                          onSave={(v) => updateField(commitment.id!, "category", v)}
+                          placeholder={t('category')}
+                          className="text-xs"
+                        />
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
+                      <span className="flex items-center gap-1">
+                        <Building className="w-3 h-3 flex-shrink-0" />
+                        <InlineEditableField
+                          value={commitment.organization || ""}
+                          onSave={(v) => updateField(commitment.id!, "organization", v)}
+                          placeholder={t('organization')}
+                          className="text-sm"
+                        />
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3 flex-shrink-0" />
+                        {t('since')} <InlineEditableField
+                          value={commitment.start_year || ""}
+                          onSave={(v) => updateField(commitment.id!, "start_year", v)}
+                          placeholder={t('year')}
+                          className="text-sm"
+                        />
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <InlineEditableField
+                        value={commitment.description || ""}
+                        onSave={(v) => updateField(commitment.id!, "description", v)}
+                        placeholder={t('description')}
+                        className="text-sm"
+                        multiline
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h4 className="font-semibold text-foreground">{commitment.title}</h4>
+                      {commitment.category && <Badge variant="outline" className={getCategoryColor(commitment.category)}>{commitment.category}</Badge>}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
+                      {commitment.organization && <span className="flex items-center gap-1"><Building className="w-3 h-3" />{commitment.organization}</span>}
+                      {commitment.start_year && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{t('since')} {commitment.start_year}</span>}
+                    </div>
+                    {commitment.description && <p className="text-sm text-muted-foreground">{commitment.description}</p>}
+                  </>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('addCommitment')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>{t('title')} *</Label>
+              <Input value={formData.title || ""} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+            </div>
+            <div>
+              <Label>{t('category')}</Label>
+              <Input value={formData.category || ""} onChange={(e) => setFormData({ ...formData, category: e.target.value })} placeholder={t('philanthropyEducationEnvironment')} />
+            </div>
+            <div>
+              <Label>{t('organization')}</Label>
+              <Input value={formData.organization || ""} onChange={(e) => setFormData({ ...formData, organization: e.target.value })} />
+            </div>
+            <div>
+              <Label>{t('startYear')}</Label>
+              <Input value={formData.start_year || ""} onChange={(e) => setFormData({ ...formData, start_year: e.target.value })} />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label>{t('description')}</Label>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => document.getElementById('import-doc-commitments-main')?.click()}
+                    className="text-muted-foreground hover:text-foreground h-6 px-2"
+                  >
+                    <FileUp className="w-3 h-3 mr-1" />
+                    {t('import')}
+                  </Button>
+                  <input
+                    id="import-doc-commitments-main"
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt"
+                    className="hidden"
+                    onChange={() => toast.success(t('documentImportedAnalysisInProgress'))}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleAISuggest}
+                    disabled={isGenerating || !formData.title}
+                    className="text-gold hover:text-gold/80 h-6 px-2"
+                  >
+                    {isGenerating ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                    {t('ai')}
+                  </Button>
+                </div>
+              </div>
+              <Textarea value={formData.description || ""} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+            </div>
+            <div>
+              <Label>{t('imageUrl')}</Label>
+              <Input value={formData.image_url || ""} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('cancel')}</Button>
+              <Button onClick={handleAddNew} disabled={saving} className="bg-gold hover:bg-gold/90 text-primary-foreground">
+                {saving ? "..." : t('add')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

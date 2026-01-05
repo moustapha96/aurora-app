@@ -1,163 +1,147 @@
-import { Header } from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+"use client"
+
+import { Header } from "@/components/Header"
+import { useNavigate } from "react-router-dom"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageNavigation } from "@/components/BackButton"
+import { useLanguage } from "@/contexts/LanguageContext"
 
 const Terms = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
+  const { t } = useLanguage()
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
-      <main className="container mx-auto px-6 pt-24 pb-16 max-w-4xl">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate(-1)}
-          className="mb-6 hover:bg-primary/10"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Retour
-        </Button>
+      <PageNavigation />
 
+      <main className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-12 sm:pb-16 max-w-4xl">
         <Card className="border-primary/20">
-          <CardHeader>
-            <CardTitle className="text-3xl font-serif text-primary">
-              Conditions Générales d'Utilisation
-            </CardTitle>
-            <p className="text-sm text-muted-foreground mt-2">
-              Dernière mise à jour : {new Date().toLocaleDateString('fr-FR')}
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-2xl sm:text-3xl font-serif text-primary">{t("termsTitle")}</CardTitle>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-2">
+              {t("lastUpdated")}: {new Date().toLocaleDateString(t("locale") || "fr-FR")}
             </p>
           </CardHeader>
-          
-          <CardContent className="prose prose-sm max-w-none space-y-8">
+
+          <CardContent className="prose prose-sm max-w-none space-y-6 sm:space-y-8 p-4 sm:p-6">
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">1. Acceptation des Conditions</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                En accédant et en utilisant Aurora, vous acceptez d'être lié par les présentes Conditions Générales d'Utilisation. 
-                Si vous n'acceptez pas ces conditions, veuillez ne pas utiliser nos services.
-              </p>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                1. {t("termsSection1Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{t("termsSection1Content")}</p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">2. Description du Service</h2>
-              <p className="text-muted-foreground leading-relaxed mb-2">
-                Aurora est un réseau professionnel exclusif qui permet à ses membres de :
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                2. {t("termsSection2Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-2">
+                {t("termsSection2Intro")}
               </p>
-              <ul className="list-disc pl-6 text-muted-foreground space-y-1">
-                <li>Créer et maintenir un profil professionnel</li>
-                <li>Se connecter avec d'autres membres du réseau</li>
-                <li>Accéder à des services de conciergerie haut de gamme</li>
-                <li>Participer à une marketplace de produits d'exception</li>
-                <li>Échanger via messagerie sécurisée</li>
+              <ul className="list-disc pl-4 sm:pl-6 text-sm sm:text-base text-muted-foreground space-y-1">
+                <li>{t("termsSection2Item1")}</li>
+                <li>{t("termsSection2Item2")}</li>
+                <li>{t("termsSection2Item3")}</li>
+                <li>{t("termsSection2Item4")}</li>
+                <li>{t("termsSection2Item5")}</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">3. Éligibilité et Compte</h2>
-              <p className="text-muted-foreground leading-relaxed mb-2">
-                Pour utiliser Aurora, vous devez :
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                3. {t("termsSection3Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-2">
+                {t("termsSection3Intro")}
               </p>
-              <ul className="list-disc pl-6 text-muted-foreground space-y-1">
-                <li>Avoir au moins 18 ans</li>
-                <li>Fournir des informations exactes et complètes lors de votre inscription</li>
-                <li>Maintenir la sécurité de votre compte et de votre mot de passe</li>
-                <li>Nous informer immédiatement de toute utilisation non autorisée de votre compte</li>
+              <ul className="list-disc pl-4 sm:pl-6 text-sm sm:text-base text-muted-foreground space-y-1">
+                <li>{t("termsSection3Item1")}</li>
+                <li>{t("termsSection3Item2")}</li>
+                <li>{t("termsSection3Item3")}</li>
+                <li>{t("termsSection3Item4")}</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">4. Utilisation Acceptable</h2>
-              <p className="text-muted-foreground leading-relaxed mb-2">
-                Vous vous engagez à :
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                4. {t("termsSection4Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-2">
+                {t("termsSection4Intro")}
               </p>
-              <ul className="list-disc pl-6 text-muted-foreground space-y-1">
-                <li>Ne pas publier de contenu illégal, diffamatoire ou offensant</li>
-                <li>Respecter les droits de propriété intellectuelle d'autrui</li>
-                <li>Ne pas utiliser le service à des fins de spam ou de harcèlement</li>
-                <li>Ne pas tenter d'accéder de manière non autorisée à nos systèmes</li>
-                <li>Maintenir un comportement professionnel et respectueux</li>
+              <ul className="list-disc pl-4 sm:pl-6 text-sm sm:text-base text-muted-foreground space-y-1">
+                <li>{t("termsSection4Item1")}</li>
+                <li>{t("termsSection4Item2")}</li>
+                <li>{t("termsSection4Item3")}</li>
+                <li>{t("termsSection4Item4")}</li>
+                <li>{t("termsSection4Item5")}</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">5. Propriété Intellectuelle</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                Tout le contenu présent sur Aurora, incluant mais ne se limitant pas aux textes, graphiques, logos, 
-                icônes, images, clips audio et vidéo, reste la propriété d'Aurora ou de ses concédants de licence. 
-                Vous conservez la propriété du contenu que vous publiez, mais vous nous accordez une licence mondiale, 
-                non exclusive, pour utiliser, reproduire et distribuer ce contenu dans le cadre de nos services.
-              </p>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                5. {t("termsSection5Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{t("termsSection5Content")}</p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">6. Confidentialité</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                Votre utilisation d'Aurora est également régie par notre Politique de Confidentialité. 
-                Nous nous engageons à protéger vos données personnelles conformément aux réglementations en vigueur, 
-                notamment le RGPD pour les utilisateurs européens.
-              </p>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                6. {t("termsSection6Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{t("termsSection6Content")}</p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">7. Services Payants</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                Certains services d'Aurora peuvent être soumis à des frais. Les modalités de paiement, 
-                les tarifs et les conditions d'annulation seront clairement indiqués avant toute transaction. 
-                Tous les paiements sont sécurisés et traités conformément aux normes de l'industrie.
-              </p>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                7. {t("termsSection7Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{t("termsSection7Content")}</p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">8. Résiliation</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                Vous pouvez résilier votre compte à tout moment. Aurora se réserve le droit de suspendre ou 
-                résilier votre compte en cas de violation de ces conditions, sans préavis et sans responsabilité.
-              </p>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                8. {t("termsSection8Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{t("termsSection8Content")}</p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">9. Limitation de Responsabilité</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                Aurora est fourni "tel quel" sans garantie d'aucune sorte. Nous ne serons pas responsables 
-                des dommages directs, indirects, accessoires ou consécutifs résultant de votre utilisation 
-                ou de votre incapacité à utiliser nos services.
-              </p>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                9. {t("termsSection9Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{t("termsSection9Content")}</p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">10. Modifications des Conditions</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                Nous nous réservons le droit de modifier ces conditions à tout moment. Les modifications 
-                seront effectives dès leur publication sur cette page. Votre utilisation continue du service 
-                après de telles modifications constitue votre acceptation des nouvelles conditions.
-              </p>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                10. {t("termsSection10Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{t("termsSection10Content")}</p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">11. Droit Applicable</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                Ces conditions sont régies par le droit français. Tout litige relatif à ces conditions 
-                sera soumis à la compétence exclusive des tribunaux français.
-              </p>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                11. {t("termsSection11Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{t("termsSection11Content")}</p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold text-foreground mb-3">12. Contact</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                Pour toute question concernant ces Conditions Générales d'Utilisation, veuillez nous contacter à :
-              </p>
-              <div className="mt-3 text-muted-foreground">
-                <p>Email : legal@aurora-network.com</p>
-                <p>Adresse : [Adresse de l'entreprise]</p>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
+                12. {t("termsSection12Title")}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{t("termsSection12Content")}</p>
+              <div className="mt-3 text-sm sm:text-base text-muted-foreground">
+                <p>{t("email")}: contact@aurorasociety.ch</p>
               </div>
             </section>
           </CardContent>
         </Card>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default Terms;
+export default Terms

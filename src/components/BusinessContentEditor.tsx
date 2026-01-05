@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Upload, X, Loader2 } from "lucide-react";
 
 interface BusinessContent {
@@ -33,6 +34,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
     defaultValues: content
   });
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
@@ -92,8 +94,8 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
     if (files.length > 0) {
       addPhotoFiles(files);
       toast({
-        title: "Photos sélectionnées",
-        description: `${files.length} photo(s) ajoutée(s)`
+        title: t("photosSelected"),
+        description: `${files.length} ${t("photosAdded")}`
       });
     } else {
       console.log('No files selected');
@@ -145,14 +147,14 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
       e.preventDefault();
       addPhotoFiles(imageFiles);
       toast({
-        title: "Photos ajoutées",
-        description: `${imageFiles.length} photo(s) collée(s) avec succès`
+        title: t("photosAdded"),
+        description: `${imageFiles.length} ${t("photosPastedSuccessfully")}`
       });
     } else {
       console.log('No image files in clipboard');
       toast({
-        title: "Aucune image détectée",
-        description: "Copiez d'abord une image, puis collez-la ici",
+        title: t("noImageDetected"),
+        description: t("copyImageFirstThenPaste"),
         variant: "destructive"
       });
     }
@@ -242,8 +244,8 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !sessionData.session) {
         toast({
-          title: "Session expirée",
-          description: "Veuillez vous reconnecter pour sauvegarder",
+          title: t("sessionExpired"),
+          description: t("pleaseReconnectToSave"),
           variant: "destructive"
         });
         setIsLoading(false);
@@ -253,8 +255,8 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({
-          title: "Session expirée",
-          description: "Veuillez vous reconnecter pour sauvegarder",
+          title: t("sessionExpired"),
+          description: t("pleaseReconnectToSave"),
           variant: "destructive"
         });
         setIsLoading(false);
@@ -313,8 +315,8 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
       setIsFirstOpen(true);
 
       toast({
-        title: "Contenu sauvegardé",
-        description: "Vos modifications ont été enregistrées avec succès"
+        title: t("contentSaved"),
+        description: t("modificationsSavedSuccessfully")
       });
 
       onSave();
@@ -322,8 +324,8 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
     } catch (error) {
       console.error('Error saving content:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder les modifications",
+        title: t("error"),
+        description: t("cannotSaveModifications"),
         variant: "destructive"
       });
     } finally {
@@ -335,19 +337,19 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Modifier mon contenu business</DialogTitle>
+          <DialogTitle>{t("editMyBusinessContent")}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Tabs defaultValue="textes" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="textes">Textes</TabsTrigger>
-              <TabsTrigger value="photos">Photos</TabsTrigger>
+              <TabsTrigger value="textes">{t("texts")}</TabsTrigger>
+              <TabsTrigger value="photos">{t("photos")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="textes" className="space-y-4">
               <div>
-                <Label htmlFor="company_name">Nom de l'entreprise</Label>
+                <Label htmlFor="company_name">{t("companyName")}</Label>
                 <Input 
                   id="company_name" 
                   {...register("company_name")}
@@ -356,7 +358,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
               </div>
 
               <div>
-                <Label htmlFor="company_description">Description de l'entreprise</Label>
+                <Label htmlFor="company_description">{t("companyDescription")}</Label>
                 <Textarea 
                   id="company_description" 
                   {...register("company_description")} 
@@ -366,7 +368,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
               </div>
 
               <div>
-                <Label htmlFor="position_title">Titre du poste</Label>
+                <Label htmlFor="position_title">{t("positionTitle")}</Label>
                 <Input 
                   id="position_title" 
                   {...register("position_title")}
@@ -375,7 +377,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
               </div>
 
               <div>
-                <Label htmlFor="achievements_text">Réalisations</Label>
+                <Label htmlFor="achievements_text">{t("achievements")}</Label>
                 <Textarea 
                   id="achievements_text" 
                   {...register("achievements_text")} 
@@ -385,7 +387,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
               </div>
 
               <div>
-                <Label htmlFor="portfolio_text">Portfolio</Label>
+                <Label htmlFor="portfolio_text">{t("portfolio")}</Label>
                 <Textarea 
                   id="portfolio_text" 
                   {...register("portfolio_text")} 
@@ -395,7 +397,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
               </div>
 
               <div>
-                <Label htmlFor="vision_text">Vision</Label>
+                <Label htmlFor="vision_text">{t("vision")}</Label>
                 <Textarea 
                   id="vision_text" 
                   {...register("vision_text")} 
@@ -407,7 +409,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
 
             <TabsContent value="photos" className="space-y-4" onPaste={handlePaste}>
               <div>
-                <Label>Logo de l'entreprise</Label>
+                <Label>{t("companyLogo")}</Label>
                 <div className="mt-2 space-y-2">
                   {logoPreview && (
                     <img src={logoPreview} alt="Logo" className="w-32 h-32 object-cover rounded-lg" />
@@ -417,7 +419,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
               </div>
 
               <div>
-                <Label>Photos de l'entreprise</Label>
+                <Label>{t("companyPhotos")}</Label>
                 <div className="mt-2 space-y-4">
                   <div className="grid grid-cols-4 gap-4">
                     {/* Photos existantes (URLs) */}
@@ -466,10 +468,10 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
                     />
                     <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
-                      Cliquez ici et collez vos photos (⌘+V)
+                      {t("clickHereAndPastePhotos")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      ou utilisez le bouton ci-dessous
+                      {t("orUseButtonBelow")}
                     </p>
                   </div>
                   
@@ -490,16 +492,16 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Sauvegarde...
+                  {t("saving")}
                 </>
               ) : (
-                "Sauvegarder"
+                t("save")
               )}
             </Button>
           </div>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil, Loader2, Crown } from "lucide-react";
+import { Pencil, Loader2, Crown, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,6 +26,8 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingField, setGeneratingField] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<HeritageData>({
     motto: heritage?.motto || "",
@@ -42,6 +44,33 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
       heritage_description: heritage?.heritage_description || ""
     });
     setIsOpen(true);
+  };
+
+  const handleAISuggest = async (field: 'values_text' | 'legacy_vision' | 'heritage_description') => {
+    setIsGenerating(true);
+    setGeneratingField(field);
+    try {
+      const { data, error } = await supabase.functions.invoke('family-ai-suggest', {
+        body: {
+          module: 'heritage',
+          currentInput: {
+            motto: formData.motto,
+            field
+          }
+        }
+      });
+      if (error) throw error;
+      if (data?.suggestion) {
+        setFormData({ ...formData, [field]: data.suggestion });
+        toast({ title: "Suggestion générée" });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Erreur lors de la génération", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+      setGeneratingField(null);
+    }
   };
 
   const handleSave = async () => {
@@ -101,7 +130,24 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
             </div>
             
             <div>
-              <Label>Valeurs transmises</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Valeurs transmises</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleAISuggest('values_text')}
+                  disabled={isGenerating}
+                  className="text-gold hover:text-gold/80 h-6 px-2"
+                >
+                  {generatingField === 'values_text' ? (
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3 h-3 mr-1" />
+                  )}
+                  IA
+                </Button>
+              </div>
               <Textarea 
                 value={formData.values_text} 
                 onChange={(e) => setFormData({...formData, values_text: e.target.value})}
@@ -111,7 +157,24 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
             </div>
             
             <div>
-              <Label>Vision de transmission</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Vision de transmission</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleAISuggest('legacy_vision')}
+                  disabled={isGenerating}
+                  className="text-gold hover:text-gold/80 h-6 px-2"
+                >
+                  {generatingField === 'legacy_vision' ? (
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3 h-3 mr-1" />
+                  )}
+                  IA
+                </Button>
+              </div>
               <Textarea 
                 value={formData.legacy_vision} 
                 onChange={(e) => setFormData({...formData, legacy_vision: e.target.value})}
@@ -121,7 +184,24 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
             </div>
             
             <div>
-              <Label>Description de l'héritage</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Description de l'héritage</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleAISuggest('heritage_description')}
+                  disabled={isGenerating}
+                  className="text-gold hover:text-gold/80 h-6 px-2"
+                >
+                  {generatingField === 'heritage_description' ? (
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3 h-3 mr-1" />
+                  )}
+                  IA
+                </Button>
+              </div>
               <Textarea 
                 value={formData.heritage_description} 
                 onChange={(e) => setFormData({...formData, heritage_description: e.target.value})}

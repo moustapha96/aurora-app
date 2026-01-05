@@ -70,9 +70,10 @@ Deno.serve(async (req) => {
 
         console.log(`Successfully migrated avatar for user ${profile.id}`);
         results.push({ id: profile.id, success: true, newUrl: publicUrl });
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(`Error processing profile ${profile.id}:`, error);
-        results.push({ id: profile.id, success: false, error: error.message });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        results.push({ id: profile.id, success: false, error: errorMessage });
       }
     }
 
@@ -92,10 +93,11 @@ Deno.serve(async (req) => {
         status: 200
       }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Migration error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500

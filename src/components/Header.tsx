@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AuroraLogo } from "./AuroraLogo";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Menu, Settings, User, MessageSquare, FileText, Trash2, LogOut, Layout, Smartphone, Monitor, Apple, Globe, Briefcase, Heart, Users, Compass, ShoppingBag, Headphones, X, Home, Shield, Fingerprint } from "lucide-react";
+import { Menu, Settings, User, MessageSquare, FileText, Trash2, LogOut, Layout, Smartphone, Monitor, Apple, Globe, Briefcase, Heart, Users, Compass, ShoppingBag, Headphones, Home, Shield, Fingerprint, Gift } from "lucide-react";
 import { usePlatformContext } from "@/contexts/PlatformContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage, languages } from "@/contexts/LanguageContext";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { UserNotifications } from "./UserNotifications";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,19 +41,45 @@ export const Header = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accountNumber, setAccountNumber] = useState<string | null>(null);
   const { platform, isNative, isIOS, isAndroid, isWeb } = usePlatformContext();
   const { language, setLanguage, t } = useLanguage();
   const { isAdmin } = useAdminCheck();
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    loadAccountNumber();
+  }, []);
+
+  const loadAccountNumber = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('account_number')
+        .eq('id', user.id)
+        .single();
+
+      if (data?.account_number) {
+        setAccountNumber(data.account_number);
+      }
+    } catch (error) {
+      console.error('Error loading account number:', error);
+    }
+  };
 
   const navigationItems = [
-    { label: "Accueil", icon: Home, path: "/member-card" },
-    { label: "Business", icon: Briefcase, path: "/business" },
-    { label: "Famille", icon: Heart, path: "/family" },
-    { label: "Personnel", icon: User, path: "/personal" },
-    { label: "Réseau", icon: Users, path: "/network" },
-    { label: "Membres", icon: Compass, path: "/members" },
-    { label: "Marketplace", icon: ShoppingBag, path: "/marketplace" },
-    { label: "Conciergerie", icon: Headphones, path: "/concierge" },
+    { label: t('home'), icon: Home, path: "/member-card" },
+    { label: t('business'), icon: Briefcase, path: "/business" },
+    { label: t('family'), icon: Heart, path: "/family" },
+    { label: t('personal'), icon: User, path: "/personal" },
+    { label: t('network'), icon: Users, path: "/network" },
+    { label: t('members'), icon: Compass, path: "/members" },
+    { label: t('referrals'), icon: Gift, path: "/referrals" },
+    { label: t('marketplace'), icon: ShoppingBag, path: "/marketplace" },
+    { label: t('concierge'), icon: Headphones, path: "/concierge" },
   ];
 
   const getPlatformIcon = () => {
@@ -76,7 +104,7 @@ export const Header = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Utilisateur non connecté");
+        toast.error(t('userNotConnected'));
         return;
       }
 
@@ -102,11 +130,11 @@ export const Header = () => {
       // Sign out
       await supabase.auth.signOut();
       
-      toast.success("Compte supprimé avec succès");
+      toast.success(t('accountDeletedSuccess'));
       navigate("/login");
     } catch (error) {
       console.error("Error deleting account:", error);
-      toast.error("Erreur lors de la suppression du compte");
+      toast.error(t('accountDeletionError'));
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
@@ -120,78 +148,120 @@ export const Header = () => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto px-6 py-4">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-primary/10">
+        <div className="container mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            {/* Left: Navigation Menu - Visible on all screens */}
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <Menu className="w-4 h-4" />
-                  <span className="hidden sm:inline">Navigation</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72">
-                <SheetHeader>
-                  <SheetTitle className="flex items-center gap-2">
-                    <AuroraLogo size="sm" />
-                    <span className="font-serif text-primary">AURORA</span>
-                  </SheetTitle>
-                </SheetHeader>
-                <nav className="mt-8 flex flex-col space-y-2">
-                  {navigationItems.map((item) => (
-                    <Button
-                      key={item.path}
-                      variant="ghost"
-                      className="justify-start gap-3 h-12"
-                      onClick={() => handleNavigate(item.path)}
-                    >
-                      <item.icon className="w-5 h-5" />
-                      {item.label}
-                    </Button>
-                  ))}
-                  <div className="border-t border-border my-4" />
-                  <Button
-                    variant="ghost"
-                    className="justify-start gap-3 h-12"
-                    onClick={() => handleNavigate("/messages")}
-                  >
-                    <MessageSquare className="w-5 h-5" />
-                    Messages
+            {/* Left: Navigation Menu */}
+            {isMobile ? (
+              /* Mobile: Full Sheet Drawer */
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Menu className="w-5 h-5" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="justify-start gap-3 h-12"
-                    onClick={() => handleNavigate("/edit-profile")}
-                  >
-                    <User className="w-5 h-5" />
-                    Mon Profil
-                  </Button>
-                  {isAdmin && (
-                    <>
-                      <div className="border-t border-border my-4" />
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 flex flex-col overflow-hidden">
+                  <SheetHeader className="flex-shrink-0">
+                    <SheetTitle className="flex items-center gap-2">
+                      <AuroraLogo size="sm" />
+                      <span className="font-serif text-primary">AURORA</span>
+                    </SheetTitle>
+                  </SheetHeader>
+                  <nav className="mt-8 flex flex-col space-y-2 overflow-y-auto flex-1 pb-4">
+                    {navigationItems.map((item) => (
                       <Button
+                        key={item.path}
                         variant="ghost"
                         className="justify-start gap-3 h-12"
-                        onClick={() => handleNavigate("/admin/dashboard")}
+                        onClick={() => handleNavigate(item.path)}
                       >
-                        <Shield className="w-5 h-5" />
-                        {t('administration')}
+                        <item.icon className="w-5 h-5" />
+                        {item.label}
                       </Button>
+                    ))}
+                    <div className="border-t border-border my-4" />
+                    <Button
+                      variant="ghost"
+                      className="justify-start gap-3 h-12"
+                      onClick={() => handleNavigate("/messages")}
+                    >
+                      <MessageSquare className="w-5 h-5" />
+                      {t('messages')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="justify-start gap-3 h-12"
+                      onClick={() => handleNavigate("/edit-profile")}
+                    >
+                      <User className="w-5 h-5" />
+                      {t('myProfile')}
+                    </Button>
+                    {isAdmin && (
+                      <>
+                        <div className="border-t border-border my-4" />
+                        <Button
+                          variant="ghost"
+                          className="justify-start gap-3 h-12"
+                          onClick={() => handleNavigate("/admin/dashboard")}
+                        >
+                          <Shield className="w-5 h-5" />
+                          {t('administration')}
+                        </Button>
+                      </>
+                    )}
+                    <div className="border-t border-border my-4" />
+                    <Button
+                      variant="ghost"
+                      className="justify-start gap-3 h-12 text-destructive"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="w-5 h-5" />
+                      {t('logout')}
+                    </Button>
+                  </nav>
+                </SheetContent>
+              </Sheet>
+            ) : (
+              /* Desktop: Compact Dropdown Menu */
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <Menu className="w-4 h-4" />
+                    <span>{t('navigation')}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  {navigationItems.map((item) => (
+                    <DropdownMenuItem
+                      key={item.path}
+                      onClick={() => navigate(item.path)}
+                      className="gap-3"
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {item.label}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/messages")} className="gap-3">
+                    <MessageSquare className="w-4 h-4" />
+                    {t('messages')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/edit-profile")} className="gap-3">
+                    <User className="w-4 h-4" />
+                    {t('myProfile')}
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/admin/dashboard")} className="gap-3">
+                        <Shield className="w-4 h-4" />
+                        {t('administration')}
+                      </DropdownMenuItem>
                     </>
                   )}
-                  <div className="border-t border-border my-4" />
-                  <Button
-                    variant="ghost"
-                    className="justify-start gap-3 h-12 text-destructive"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="w-5 h-5" />
-                    Déconnexion
-                  </Button>
-                </nav>
-              </SheetContent>
-            </Sheet>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             
             {/* Center: Logo */}
             <div 
@@ -199,98 +269,200 @@ export const Header = () => {
               onClick={() => navigate("/member-card")}
             >
               <AuroraLogo size="sm" />
-              <div>
-                <h1 className="text-xl font-serif text-primary">AURORA</h1>
-                <p className="text-xs text-muted-foreground tracking-widest">SOCIETY</p>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-serif text-primary tracking-wider">AURORA</h1>
+                <p className="text-[10px] text-muted-foreground tracking-[0.25em]">SOCIETY</p>
               </div>
             </div>
             
-            {/* Right: User Actions */}
-            <div className="flex items-center space-x-2">
-              {/* Platform Indicator (for testing) */}
-              <Badge variant="outline" className="hidden sm:flex items-center gap-1 text-xs">
-                {getPlatformIcon()}
-                {getPlatformLabel()}
-                {isNative && <span className="text-primary">•</span>}
-              </Badge>
+            {/* Right: User Actions - Hidden on mobile */}
+            {!isMobile && (
+              <div className="flex items-center space-x-2">
+                {/* Platform Indicator (for testing) */}
+                <Badge variant="outline" className="hidden sm:flex items-center gap-1 text-xs">
+                  {getPlatformIcon()}
+                  {getPlatformLabel()}
+                  {isNative && <span className="text-primary">•</span>}
+                </Badge>
 
-              {/* Language Switcher */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Globe className="w-5 h-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  {languages.map((lang) => (
-                    <DropdownMenuItem
-                      key={lang.code}
-                      onClick={() => setLanguage(lang.code)}
-                      className={language === lang.code ? "bg-accent" : ""}
-                    >
-                      <span className="mr-2">{lang.flag}</span>
-                      {lang.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                {/* Account Number */}
+                {accountNumber && (
+                  <div className="text-xs sm:text-sm font-mono text-muted-foreground px-2 sm:px-3 py-1 border border-border rounded-md">
+                    {accountNumber}
+                  </div>
+                )}
 
-              <Button variant="ghost" size="icon" className="hidden md:flex" onClick={() => navigate("/terms")}>
-                <FileText className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
-                <MessageSquare className="w-5 h-5" />
-              </Button>
-              
-              {/* Settings Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Settings className="w-5 h-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => navigate("/settings")}>
-                    <Settings className="w-4 h-4 mr-2" />
-                    {t('settings')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/security-settings")}>
-                    <Fingerprint className="w-4 h-4 mr-2" />
-                    {t('securitySettings')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/landing-preview")}>
-                    <Layout className="w-4 h-4 mr-2" />
-                    {t('landingPages')}
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
-                        <Shield className="w-4 h-4 mr-2" />
-                        {t('administration')}
+                {/* User Notifications */}
+                <UserNotifications />
+
+                {/* Language Switcher */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Globe className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {languages.map((lang) => (
+                      <DropdownMenuItem
+                        key={lang.code}
+                        onClick={() => setLanguage(lang.code)}
+                        className={language === lang.code ? "bg-accent" : ""}
+                      >
+                        <span className="mr-2">{lang.flag}</span>
+                        {lang.name}
                       </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    {t('logout')}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    {t('deleteAccount')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              <Button variant="ghost" size="icon" onClick={() => navigate("/edit-profile")}>
-                <User className="w-5 h-5" />
-              </Button>
-            </div>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button variant="ghost" size="icon" className="hidden md:flex" onClick={() => navigate("/terms")}>
+                  <FileText className="w-5 h-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
+                  <MessageSquare className="w-5 h-5" />
+                </Button>
+                
+                {/* Settings Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Settings className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => navigate("/settings")}>
+                      <Settings className="w-4 h-4 mr-2" />
+                      {t('settings')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/security-settings")}>
+                      <Fingerprint className="w-4 h-4 mr-2" />
+                      {t('securitySettings')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/landing-preview")}>
+                      <Layout className="w-4 h-4 mr-2" />
+                      {t('landingPages')}
+                    </DropdownMenuItem>
+                    {isAdmin && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
+                          <Shield className="w-4 h-4 mr-2" />
+                          {t('administration')}
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      {t('logout')}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {t('deleteAccount')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                <Button variant="ghost" size="icon" onClick={() => navigate("/edit-profile")}>
+                  <User className="w-5 h-5" />
+                </Button>
+              </div>
+            )}
+            
+            {/* Mobile: Quick Actions */}
+            {isMobile && (
+              <div className="flex items-center space-x-1">
+                {/* Account Number */}
+                {accountNumber && (
+                  <div className="text-xs font-mono text-muted-foreground px-2 py-1 border border-border rounded-md">
+                    {accountNumber}
+                  </div>
+                )}
+
+                {/* User Notifications */}
+                <UserNotifications />
+                
+                {/* Language Switcher - Globe Icon */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Globe className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {languages.map((lang) => (
+                      <DropdownMenuItem
+                        key={lang.code}
+                        onClick={() => setLanguage(lang.code)}
+                        className={language === lang.code ? "bg-accent" : ""}
+                      >
+                        <span className="mr-2">{lang.flag}</span>
+                        {lang.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                {/* Settings Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Settings className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => navigate("/settings")}>
+                      <Settings className="w-4 h-4 mr-2" />
+                      {t('settings')}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate("/settings")}>
+                      <Settings className="w-4 h-4 mr-2" />
+                      {t('settings')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/security-settings")}>
+                      <Fingerprint className="w-4 h-4 mr-2" />
+                      {t('securitySettings')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/landing-preview")}>
+                      <Layout className="w-4 h-4 mr-2" />
+                      {t('landingPages')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/terms")}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      CGU
+                    </DropdownMenuItem>
+                    {isAdmin && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
+                          <Shield className="w-4 h-4 mr-2" />
+                          {t('administration')}
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      {t('logout')}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {t('deleteAccount')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -299,19 +471,19 @@ export const Header = () => {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le compte</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteAccountTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible et toutes vos données seront définitivement supprimées.
+              {t('deleteAccountDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAccount}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Suppression..." : "Supprimer définitivement"}
+              {isDeleting ? t('deleting') : t('deletePermanently')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

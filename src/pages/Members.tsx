@@ -9,12 +9,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ConnectionRequests } from "@/components/ConnectionRequests";
 import { WealthBadge } from "@/components/WealthBadge";
+import { IdentityVerifiedBadge } from "@/components/VerificationBadge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Header } from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { INDUSTRIES } from "@/lib/industries";
 import { COUNTRIES } from "@/lib/countries";
+import { LinkedAccountGuard } from "@/components/LinkedAccountGuard";
+
 
 import {
   Dialog,
@@ -44,6 +47,7 @@ type Member = {
   badge: string;
   is_founder: boolean;
   is_patron: boolean;
+  identity_verified: boolean;
   wealth_billions: string | null;
   wealth_amount: string | null;
   wealth_unit: string | null;
@@ -54,7 +58,7 @@ type Member = {
 };
 
 // Composant LinkedIn-style pour les cartes membres
-const MemberCard = ({ member, onClick, status, isSelected }: { member: Member; onClick: () => void; status?: string; isSelected?: boolean }) => {
+const MemberCard = ({ member, onClick, status, isSelected, t }: { member: Member; onClick: () => void; status?: string; isSelected?: boolean; t: (key: string) => string }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   
@@ -79,7 +83,7 @@ const MemberCard = ({ member, onClick, status, isSelected }: { member: Member; o
           {member.is_founder && (
             <Badge className="absolute top-2 left-2 bg-gold text-black px-2 py-0.5 flex items-center gap-1 shadow-lg">
               <Crown className="w-3 h-3" />
-              <span className="text-xs font-semibold">FONDATEUR</span>
+              <span className="text-xs font-semibold">{t('founderBadge')}</span>
             </Badge>
           )}
         </div>
@@ -108,15 +112,19 @@ const MemberCard = ({ member, onClick, status, isSelected }: { member: Member; o
                   {member.avatar}
                 </AvatarFallback>
               </Avatar>
-              {member.wealth_numeric > 0 && (
-                <WealthBadge 
-                  wealthBillions={member.wealth_billions}
-                  wealthAmount={member.wealth_amount}
-                  wealthUnit={member.wealth_unit}
-                  wealthCurrency={member.wealth_currency}
-                  className="scale-75 absolute -bottom-2 -right-2"
-                />
-              )}
+              
+              {/* Badge de vérification d'identité */}
+              <IdentityVerifiedBadge isVerified={member.identity_verified} />
+              
+              {/* Wealth Badge - Top right (2 o'clock/14h) */}
+              <WealthBadge 
+                wealthBillions={member.wealth_billions}
+                wealthAmount={member.wealth_amount}
+                wealthUnit={member.wealth_unit}
+                wealthCurrency={member.wealth_currency}
+                className="absolute top-0 -right-1 z-20"
+              />
+              
               {/* Badge nombre de relations - toujours visible */}
               <div className="absolute -top-2 -right-2 bg-gold text-black rounded-full w-10 h-10 flex items-center justify-center border-2 border-[hsl(var(--navy-blue-light))] shadow-xl z-10">
                 <div className="flex flex-col items-center justify-center gap-0">
@@ -144,7 +152,7 @@ const MemberCard = ({ member, onClick, status, isSelected }: { member: Member; o
             {/* Status badge */}
             {status && (
               <Badge variant="outline" className="mt-2 border-gold/30 text-gold/70">
-                {status === "connected" ? "Connecté" : status === "pending" ? "En attente" : "Se connecter"}
+                {status === "connected" ? t('connected') : status === "pending" ? t('pendingRequest') : t('connect')}
               </Badge>
             )}
           </div>
@@ -174,6 +182,7 @@ const Members = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [connectionStatus, setConnectionStatus] = useState<{ [key: string]: "pending" | "connected" }>({});
@@ -230,135 +239,99 @@ const Members = () => {
   const [currentUserProfile, setCurrentUserProfile] = React.useState<any>(null);
 
   
+  // State for cached data that doesn't change with pagination
+  const [userId, setUserId] = React.useState<string | null>(null);
+  const [userFriendIdsCache, setUserFriendIdsCache] = React.useState<string[]>([]);
+  const [isUserDataLoaded, setIsUserDataLoaded] = React.useState(false);
+
+  // Load user data ONCE on mount (not on every filter/page change)
   React.useEffect(() => {
-    const loadMembersAndCurrentUser = async () => {
+    const loadUserData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        console.log('No user found, loading all members');
-        // If no user, load all members without filtering
-        const offset = (currentPage - 1) * membersPerPage;
-        
-        let query = supabase
-          .from('profiles')
-          .select('id, first_name, last_name, honorific_title, job_function, activity_domain, country, is_founder, is_patron, avatar_url', { count: 'exact' })
-          .range(offset, offset + membersPerPage - 1);
-        
-        if (industryFilter !== "all") {
-          query = query.eq('activity_domain', industryFilter);
-        }
-        
-        if (locationFilter && locationFilter !== "all") {
-          query = query.eq('country', locationFilter);
-        }
-        
-        if (searchTerm) {
-          query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,job_function.ilike.%${searchTerm}%`);
-        }
-        
-        const { data: profiles, error, count } = await query;
-        
-        if (error) {
-          console.error('Error loading profiles:', error);
-          setIsInitialLoad(false);
-          return;
-        }
-        
-        console.log('Loaded profiles:', profiles?.length, 'Total count:', count);
-        
-        const transformedMembers = (profiles || []).map(profile => ({
-          id: profile.id,
-          name: `${profile.first_name} ${profile.last_name}`,
-          honorific_title: profile.honorific_title,
-          title: profile.job_function || 'Member',
-          industry: profile.activity_domain || 'N/A',
-          location: profile.country || 'N/A',
-          avatar: profile.first_name?.charAt(0) || 'M',
-          avatar_url: profile.avatar_url,
-          badge: 'none',
-          is_founder: profile.is_founder || false,
-          is_patron: profile.is_patron || false,
-          wealth_billions: null,
-          wealth_amount: null,
-          wealth_unit: null,
-          wealth_currency: null,
-          wealth_numeric: 0,
-          friends: [],
-          connections_count: 0
-        }));
-        
-        setMembers(transformedMembers);
-        setTotalPages(Math.ceil((count || 0) / membersPerPage));
-        setIsInitialLoad(false);
+        navigate('/login');
         return;
       }
       
+      setUserId(user.id);
       setCurrentUserProfile({ id: user.id });
       
-      // Load current user's private data to determine their badge/circle
-      const { data: userPrivate, error: privateError } = await supabase
-        .from('profiles_private')
-        .select('wealth_billions')
-        .eq('user_id', user.id)
-        .single();
+      // Parallel loading of user private data and friendships
+      const [privateResult, friendshipsResult] = await Promise.all([
+        supabase
+          .from('profiles_private')
+          .select('wealth_billions')
+          .eq('user_id', user.id)
+          .single(),
+        supabase
+          .from('friendships')
+          .select('user_id, friend_id')
+          .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
+      ]);
       
-      if (!privateError && userPrivate?.wealth_billions) {
-        setCurrentUserBadge(calculateBadgeFromWealth(userPrivate.wealth_billions));
+      // Process user badge
+      if (!privateResult.error && privateResult.data?.wealth_billions) {
+        setCurrentUserBadge(calculateBadgeFromWealth(privateResult.data.wealth_billions));
       } else {
         setCurrentUserBadge("none");
       }
       
-      // Load friendships to get user's friend IDs for filtering
-      const { data: allFriendships } = await supabase
-        .from('friendships')
-        .select('user_id, friend_id');
-      
-      const userFriendIds: string[] = [];
-      if (allFriendships) {
-        allFriendships.forEach(friendship => {
-          if (friendship.user_id === user.id) {
-            userFriendIds.push(friendship.friend_id);
-          } else if (friendship.friend_id === user.id) {
-            userFriendIds.push(friendship.user_id);
-          }
+      // Process friendships - only current user's friends
+      const friendIds: string[] = [];
+      if (friendshipsResult.data) {
+        friendshipsResult.data.forEach(f => {
+          if (f.user_id === user.id) friendIds.push(f.friend_id);
+          else if (f.friend_id === user.id) friendIds.push(f.user_id);
         });
       }
       
-      setUserFriendships(userFriendIds);
+      setUserFriendIdsCache(friendIds);
+      setUserFriendships(friendIds);
+      setIsUserDataLoaded(true);
+    };
+    
+    loadUserData();
+  }, [navigate]);
+
+  // Load members when user data is ready or filters change
+  React.useEffect(() => {
+    if (!isUserDataLoaded || !userId) return;
+    
+    const loadMembers = async () => {
+      setIsInitialLoad(true);
       
-      // OPTIMISATION: Load only necessary data with pagination
-      // Calculate offset based on current page and filters
-      const offset = (currentPage - 1) * membersPerPage;
-      
-      // Build query with filters applied server-side (without wealth data for security)
+      // Load ALL members matching server-side filters (no pagination yet)
+      // We'll paginate after client-side filtering
       let query = supabase
         .from('profiles')
-        .select('id, first_name, last_name, honorific_title, job_function, activity_domain, country, is_founder, is_patron, avatar_url', { count: 'exact' })
-        .neq('id', user.id);
+        .select('id, first_name, last_name, honorific_title, job_function, activity_domain, country, is_founder, is_patron, avatar_url, identity_verified', { count: 'exact' })
+        .neq('id', userId);
       
-      // Apply "show only connections" filter server-side
-      if (showOnlyConnections && userFriendIds.length > 0) {
-        query = query.in('id', userFriendIds);
+      // Apply server-side filters only
+      if (showOnlyConnections && userFriendIdsCache.length > 0) {
+        query = query.in('id', userFriendIdsCache);
+      } else if (showOnlyConnections && userFriendIdsCache.length === 0) {
+        // No connections, return empty
+        setMembers([]);
+        setTotalPages(0);
+        setIsInitialLoad(false);
+        return;
       }
       
-      query = query.range(offset, offset + membersPerPage - 1);
-      
-      // Apply server-side filters
       if (industryFilter !== "all") {
-        console.log('Applying industry filter:', industryFilter);
         query = query.eq('activity_domain', industryFilter);
       }
       
-      // Apply location filter server-side only if a country is selected
       if (locationFilter && locationFilter !== "all") {
         query = query.eq('country', locationFilter);
       }
       
-      // Apply search filter server-side using full-text search
       if (searchTerm) {
-        query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,job_function.ilike.%${searchTerm}%`);
+        query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,job_function.ilike.%${searchTerm}%,account_number.ilike.%${searchTerm}%`);
       }
       
+      // Load all matching profiles (we'll paginate after client-side filtering)
       const { data: profiles, error, count } = await query;
       
       if (error) {
@@ -367,72 +340,123 @@ const Members = () => {
         return;
       }
       
-      console.log('Loaded profiles:', profiles?.length, 'Total count:', count);
-      console.log('Applied filters - Industry:', industryFilter, 'Location:', locationFilter, 'Search:', searchTerm);
+      // Load wealth data for all profiles in batch
+      const profileIds = (profiles || []).map(p => p.id);
+      let wealthDataMap: Record<string, any> = {};
       
-      // Calculate connections count (reuse allFriendships loaded earlier)
-      const connectionsCount: { [key: string]: Set<string> } = {};
-      
-      if (allFriendships) {
-        allFriendships.forEach(friendship => {
-          // Initialize sets if needed
-          if (!connectionsCount[friendship.user_id]) {
-            connectionsCount[friendship.user_id] = new Set();
-          }
-          if (!connectionsCount[friendship.friend_id]) {
-            connectionsCount[friendship.friend_id] = new Set();
-          }
-          
-          // Add only one direction to avoid double counting (since table has bidirectional entries)
-          // We always add the friend_id to user_id's set
-          connectionsCount[friendship.user_id].add(friendship.friend_id);
-        });
+      if (profileIds.length > 0) {
+        // Use RPC function to get wealth data for badge display (bypasses RLS)
+        const { data: wealthData, error: wealthError } = await supabase
+          .rpc('get_members_wealth_for_badges', { member_ids: profileIds });
+        
+        if (wealthError) {
+          console.error('Error loading wealth data:', wealthError);
+        }
+        
+        if (wealthData) {
+          wealthData.forEach((w: any) => {
+            wealthDataMap[w.user_id] = w;
+          });
+          console.log(`[Members] Loaded wealth data for ${wealthData.length} members`);
+        } else {
+          console.log('[Members] No wealth data found');
+        }
       }
       
-      // Transform ONLY the paginated results (without wealth data for security)
-      const transformedMembers = (profiles || []).map(profile => ({
-        id: profile.id,
-        name: `${profile.first_name} ${profile.last_name}`,
-        honorific_title: profile.honorific_title,
-        title: profile.job_function || 'Member',
-        industry: profile.activity_domain || 'N/A',
-        location: profile.country || 'N/A',
-        avatar: profile.first_name?.charAt(0) || 'M',
-        avatar_url: profile.avatar_url,
-        badge: 'none', // Badge hidden for privacy
-        is_founder: profile.is_founder || false,
-        is_patron: profile.is_patron || false,
-        wealth_billions: null,
-        wealth_amount: null,
-        wealth_unit: null,
-        wealth_currency: null,
-        wealth_numeric: 0,
-        friends: [],
-        connections_count: connectionsCount[profile.id]?.size || 0
-      }));
+      // Transform results with wealth data
+      const transformedMembers = (profiles || []).map(profile => {
+        const wealth = wealthDataMap[profile.id];
+        const wealthBillions = wealth?.wealth_billions || null;
+        const wealthNumeric = wealthBillions ? parseFloat(wealthBillions) : 0;
+        const badge = calculateBadgeFromWealth(wealthBillions);
+        
+        // Debug: log members with wealth data
+        if (wealthBillions) {
+          console.log(`[Members] Member ${profile.first_name} ${profile.last_name} has wealth: ${wealthBillions} Md, badge: ${badge}`);
+        }
+        
+        return {
+          id: profile.id,
+          name: `${profile.first_name} ${profile.last_name}`,
+          honorific_title: profile.honorific_title,
+          title: profile.job_function || t('member'),
+          industry: profile.activity_domain || 'N/A',
+          location: profile.country || 'N/A',
+          avatar: profile.first_name?.charAt(0) || 'M',
+          avatar_url: profile.avatar_url,
+          badge: badge,
+          is_founder: profile.is_founder || false,
+          is_patron: profile.is_patron || false,
+          identity_verified: profile.identity_verified || false,
+          wealth_billions: wealthBillions,
+          wealth_amount: wealth?.wealth_amount || null,
+          wealth_unit: wealth?.wealth_unit || null,
+          wealth_currency: wealth?.wealth_currency || null,
+          wealth_numeric: wealthNumeric,
+          friends: [],
+          connections_count: userFriendIdsCache.includes(profile.id) ? 1 : 0
+        };
+      });
       
       setMembers(transformedMembers);
-      setTotalPages(Math.ceil((count || 0) / membersPerPage));
       setIsInitialLoad(false);
     };
     
-    loadMembersAndCurrentUser();
-  }, [currentPage, industryFilter, locationFilter, searchTerm, wealthSort, circleFilter, showOnlyConnections]);
+    loadMembers();
+  }, [isUserDataLoaded, userId, industryFilter, locationFilter, searchTerm, showOnlyConnections, userFriendIdsCache, t]);
 
-  // OPTIMISATION: Filtering is now mostly done server-side
-  // Only client-side filters remaining are for complex friend filters (if needed in future)
-  const filteredMembers = members.filter(member => {
-    // showOnlyConnections is now handled server-side, no need to filter again here
-    
-    // Friend filters (client-side) - currently not used but kept for future
-    const friendNameMatch = !friendNameFilter || friendNameFilter === "all" || member.friends?.includes(friendNameFilter);
-    const friendWealthMatch = !friendWealthFilter || friendWealthFilter === "all" || member.friends?.includes(friendWealthFilter);
-    
-    return friendNameMatch && friendWealthMatch;
-  });
+  // Filtering: server-side filters + client-side filters for circle and wealth sort
+  const filteredMembers = React.useMemo(() => {
+    return members.filter(member => {
+      // Circle filter (client-side because it depends on calculated badge)
+      if (circleFilter !== "all") {
+        if (member.badge !== circleFilter) {
+          return false;
+        }
+      }
+      
+      // Friend filters (client-side) - currently not used but kept for future
+      const friendNameMatch = !friendNameFilter || friendNameFilter === "all" || member.friends?.includes(friendNameFilter);
+      const friendWealthMatch = !friendWealthFilter || friendWealthFilter === "all" || member.friends?.includes(friendWealthFilter);
+      
+      return friendNameMatch && friendWealthMatch;
+    });
+  }, [members, circleFilter, friendNameFilter, friendWealthFilter]);
   
-  // Pagination is now handled server-side
-  const paginatedMembers = filteredMembers;
+  // Apply wealth sort if selected
+  const sortedMembers = React.useMemo(() => {
+    if (wealthSort === "none") return filteredMembers;
+    
+    const sorted = [...filteredMembers].sort((a, b) => {
+      if (wealthSort === "asc") {
+        return a.wealth_numeric - b.wealth_numeric;
+      } else {
+        return b.wealth_numeric - a.wealth_numeric;
+      }
+    });
+    return sorted;
+  }, [filteredMembers, wealthSort]);
+  
+  // Calculate total pages based on filtered and sorted members
+  const totalFilteredPages = React.useMemo(() => {
+    return Math.ceil(sortedMembers.length / membersPerPage);
+  }, [sortedMembers.length, membersPerPage]);
+  
+  // Apply pagination to sorted members
+  const paginatedMembers = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * membersPerPage;
+    const endIndex = startIndex + membersPerPage;
+    return sortedMembers.slice(startIndex, endIndex);
+  }, [sortedMembers, currentPage, membersPerPage]);
+  
+  // Update totalPages when filtered members change
+  React.useEffect(() => {
+    setTotalPages(totalFilteredPages);
+    // Reset to page 1 if current page is out of bounds
+    if (currentPage > totalFilteredPages && totalFilteredPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalFilteredPages, currentPage]);
   
   // Reset to page 1 when filters change - use a ref to prevent loops
   const prevFiltersRef = React.useRef<string>("");
@@ -491,34 +515,38 @@ const Members = () => {
     }
   };
   
-  const handleConnectionRequest = async (memberName: string) => {
+  const handleConnectionRequest = async (member: Member) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Vous devez être connecté");
+        toast.error(t('userNotConnected'));
         return;
       }
 
-      // Get recipient profile by name
-      const nameParts = memberName.split(" ");
-      const firstName = nameParts[0];
-      const lastName = nameParts.slice(1).join(" ");
+      // Use the member ID directly instead of searching by name
+      const recipientId = member.id;
 
-      const { data: recipientProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('first_name', firstName)
-        .eq('last_name', lastName)
-        .single();
-
-      if (profileError || !recipientProfile) {
-        toast.error("Membre introuvable");
+      if (!recipientId) {
+        toast.error(t('memberNotFound'));
         return;
       }
 
       // Prevent self-connection
-      if (recipientProfile.id === user.id) {
-        toast.error("Vous ne pouvez pas vous envoyer de demande à vous-même");
+      if (recipientId === user.id) {
+        toast.error(t('cannotSendToYourself'));
+        return;
+      }
+
+      // Check if a pending request already exists
+      const { data: existingRequest } = await supabase
+        .from('connection_requests')
+        .select('id, status')
+        .or(`and(requester_id.eq.${user.id},recipient_id.eq.${recipientId}),and(requester_id.eq.${recipientId},recipient_id.eq.${user.id})`)
+        .eq('status', 'pending')
+        .maybeSingle();
+
+      if (existingRequest) {
+        toast.error(t('requestAlreadyPending'));
         return;
       }
 
@@ -527,25 +555,46 @@ const Members = () => {
         .from('connection_requests')
         .insert({
           requester_id: user.id,
-          recipient_id: recipientProfile.id,
+          recipient_id: recipientId,
           status: 'pending'
         });
 
       if (error) {
         if (error.code === '23505') { // Unique constraint violation
-          toast.error("Demande déjà envoyée");
+          toast.error(t('requestAlreadySent'));
         } else {
           throw error;
         }
         return;
       }
 
-      setConnectionStatus(prev => ({ ...prev, [memberName]: "pending" }));
+      // Get current user's profile for notification
+      const { data: currentUserProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single();
+
+      const requesterName = currentUserProfile 
+        ? `${currentUserProfile.first_name} ${currentUserProfile.last_name}`
+        : t('aMember');
+
+      // Create notification for recipient
+      await supabase
+        .from('user_notifications')
+        .insert({
+          user_id: recipientId,
+          type: 'connection_request',
+          title: t('newConnectionRequest'),
+          message: `${requesterName} ${t('wantsToConnect')}`
+        });
+
+      setConnectionStatus(prev => ({ ...prev, [member.name]: "pending" }));
       setSelectedMember(null);
-      toast.success("Demande de connexion envoyée");
+      toast.success(t('requestSent'));
     } catch (error) {
       console.error('Error sending connection request:', error);
-      toast.error("Erreur lors de l'envoi");
+      toast.error(t('sendingError'));
     }
   };
   
@@ -576,7 +625,7 @@ const Members = () => {
                 <ArrowLeft className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">{t('back')}</span>
               </Button>
-              <h1 className="text-2xl sm:text-4xl font-serif text-gold tracking-wide">MEMBERS</h1>
+              <h1 className="text-2xl sm:text-4xl font-serif text-gold tracking-wide">{t('membersTitle')}</h1>
             </div>
           </div>
 
@@ -587,7 +636,7 @@ const Members = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gold/40" />
                 <Input
                   type="text"
-                  placeholder="Rechercher..."
+                  placeholder={t('search')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 bg-black/50 border-gold/20 text-gold placeholder:text-gold/40 focus:border-gold/50"
@@ -600,7 +649,7 @@ const Members = () => {
                 className="border-gold/30 text-gold/70 hover:bg-gold/10 w-full sm:w-auto"
               >
                 <SlidersHorizontal className="w-4 h-4 mr-2" />
-                Filtres
+                {t('filters')}
               </Button>
             </div>
 
@@ -617,7 +666,7 @@ const Members = () => {
                       className="w-4 h-4 rounded border-gold/30 bg-black/50 text-gold focus:ring-gold/50"
                     />
                     <span className="text-gold/90 font-medium text-sm sm:text-base">
-                      Afficher uniquement mes relations ({new Set(userFriendships).size})
+                      {t('showOnlyRelations')} ({new Set(userFriendships).size})
                     </span>
                   </label>
                 </div>
@@ -625,13 +674,13 @@ const Members = () => {
                 {/* Other filters */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-4 bg-black/30 border border-gold/20 rounded-lg">
                   <div>
-                    <label className="text-gold/70 text-sm mb-2 block">Secteur d'activité</label>
+                    <label className="text-gold/70 text-sm mb-2 block">{t('activitySector')}</label>
                     <Select value={industryFilter} onValueChange={setIndustryFilter}>
                       <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
-                        <SelectValue placeholder="Tous les secteurs" />
+                        <SelectValue placeholder={t('allIndustries')} />
                       </SelectTrigger>
                       <SelectContent className="bg-black border-gold/20 max-h-[300px]">
-                        <SelectItem value="all">Tous les secteurs</SelectItem>
+                        <SelectItem value="all">{t('allIndustries')}</SelectItem>
                         {INDUSTRIES.map(industry => (
                           <SelectItem key={industry} value={industry} className="text-gold hover:bg-gold/10 focus:bg-gold/10">
                             {industry}
@@ -642,13 +691,13 @@ const Members = () => {
                   </div>
 
                   <div>
-                    <label className="text-gold/70 text-sm mb-2 block">Pays/État</label>
+                    <label className="text-gold/70 text-sm mb-2 block">{t('countryState')}</label>
                     <Select value={locationFilter} onValueChange={setLocationFilter}>
                       <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
-                        <SelectValue placeholder="Tous les pays" />
+                        <SelectValue placeholder={t('allCountries')} />
                       </SelectTrigger>
                       <SelectContent className="bg-black border-gold/20 max-h-[300px]">
-                        <SelectItem value="all">Tous les pays</SelectItem>
+                        <SelectItem value="all">{t('allCountries')}</SelectItem>
                         {COUNTRIES.map(country => (
                           <SelectItem key={country} value={country}>{country}</SelectItem>
                         ))}
@@ -657,30 +706,30 @@ const Members = () => {
                   </div>
 
                   <div>
-                    <label className="text-gold/70 text-sm mb-2 block">Tri par patrimoine</label>
+                    <label className="text-gold/70 text-sm mb-2 block">{t('sortByWealth')}</label>
                     <Select value={wealthSort} onValueChange={setWealthSort}>
                       <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
-                        <SelectValue placeholder="Aucun tri" />
+                        <SelectValue placeholder={t('noSort')} />
                       </SelectTrigger>
                       <SelectContent className="bg-black border-gold/20">
-                        <SelectItem value="none">Aucun tri</SelectItem>
-                        <SelectItem value="asc">Croissant (⬆️)</SelectItem>
-                        <SelectItem value="desc">Décroissant (⬇️)</SelectItem>
+                        <SelectItem value="none">{t('noSort')}</SelectItem>
+                        <SelectItem value="asc">{t('ascending')} (⬆️)</SelectItem>
+                        <SelectItem value="desc">{t('descending')} (⬇️)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <label className="text-gold/70 text-sm mb-2 block">Cercle</label>
+                    <label className="text-gold/70 text-sm mb-2 block">{t('circle')}</label>
                     <Select value={circleFilter} onValueChange={setCircleFilter}>
                       <SelectTrigger className="bg-black/50 border-gold/20 text-gold">
-                        <SelectValue placeholder="Tous les cercles" />
+                        <SelectValue placeholder={t('allCircles')} />
                       </SelectTrigger>
                       <SelectContent className="bg-black border-gold/20">
-                        <SelectItem value="all">Tous les cercles</SelectItem>
-                        <SelectItem value="gold">Gold (10M€ - 30M€)</SelectItem>
-                        <SelectItem value="platinum">Platinum (30M€ - 100M€)</SelectItem>
-                        <SelectItem value="diamond">Diamond (&gt; 100M€)</SelectItem>
+                        <SelectItem value="all">{t('allCircles')}</SelectItem>
+                        <SelectItem value="gold">{t('goldCircle')}</SelectItem>
+                        <SelectItem value="platinum">{t('platinumCircle')}</SelectItem>
+                        <SelectItem value="diamond">{t('diamondCircle')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -692,50 +741,40 @@ const Members = () => {
           {/* Results count */}
           {!isInitialLoad && (
             <div className="mb-4 text-gold/60 text-sm">
-              {filteredMembers.length} membre{filteredMembers.length > 1 ? 's' : ''} trouvé{filteredMembers.length > 1 ? 's' : ''}
-              {totalPages > 1 && ` • Page ${currentPage} sur ${totalPages}`}
+              {sortedMembers.length} {t('membersFound')}
+              {totalFilteredPages > 1 && ` • ${t('page')} ${currentPage} ${t('of')} ${totalFilteredPages}`}
             </div>
           )}
 
           {/* Members Grid - LinkedIn style */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-            {isInitialLoad ? (
-              // Skeleton cards pendant le chargement initial
-              Array.from({ length: membersPerPage }).map((_, index) => (
-                <Card key={index} className="bg-[hsl(var(--navy-blue-light))] border-gold/20 overflow-hidden">
-                  <CardContent className="p-0">
-                    <Skeleton className="h-16 w-full bg-gold/10" />
-                    <div className="relative px-6 pb-6">
-                      <div className="flex justify-center -mt-12 mb-4">
-                        <Skeleton className="w-24 h-24 rounded-full border-4 border-black" />
-                      </div>
-                      <div className="text-center space-y-2">
-                        <Skeleton className="h-6 w-3/4 mx-auto bg-gold/10" />
-                        <Skeleton className="h-4 w-2/3 mx-auto bg-gold/10" />
-                        <Skeleton className="h-3 w-1/2 mx-auto bg-gold/10" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              paginatedMembers.map((member, index) => (
-                <MemberCard
-                  key={member.id || index}
-                  member={member}
-                  onClick={() => {
-                    setSelectedMemberId(member.id);
-                    handleMemberClick(member);
-                  }}
-                  status={connectionStatus[member.name]}
-                  isSelected={selectedMemberId === member.id}
-                />
-              ))
-            )}
+          {/* Loading Spinner */}
+          {isInitialLoad && (
+            <div className="flex justify-center items-center py-20">
+              <div 
+                className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin"
+              />
+            </div>
+          )}
+
+          {/* Members Grid - LinkedIn style */}
+          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8 ${isInitialLoad ? 'hidden' : ''}`}>
+            {paginatedMembers.map((member, index) => (
+              <MemberCard
+                key={member.id || index}
+                member={member}
+                onClick={() => {
+                  setSelectedMemberId(member.id);
+                  handleMemberClick(member);
+                }}
+                status={connectionStatus[member.name]}
+                isSelected={selectedMemberId === member.id}
+                t={t}
+              />
+            ))}
           </div>
 
           {/* Pagination */}
-          {!isInitialLoad && totalPages > 1 && (
+          {!isInitialLoad && totalFilteredPages > 1 && (
             <div className="flex justify-center items-center gap-2 mb-8">
               <Button
                 variant="outline"
@@ -748,7 +787,7 @@ const Members = () => {
               </Button>
               
               <div className="flex gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                {Array.from({ length: totalFilteredPages }, (_, i) => i + 1).map(page => (
                   <Button
                     key={page}
                     variant={currentPage === page ? "default" : "outline"}
@@ -767,8 +806,8 @@ const Members = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalFilteredPages, prev + 1))}
+                disabled={currentPage === totalFilteredPages}
                 className="border-gold/30 text-gold disabled:opacity-30"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -823,7 +862,7 @@ const Members = () => {
                     <Button
                       variant="premium"
                       className="w-full"
-                      onClick={() => handleConnectionRequest(selectedMember.name)}
+                      onClick={() => handleConnectionRequest(selectedMember)}
                     >
                       {t('connectionRequest')}
                     </Button>
@@ -886,7 +925,7 @@ const Members = () => {
           {/* Results Count */}
           <div className="mt-8 text-center">
             <p className="text-gold/60 text-sm">
-              {filteredMembers.length} {filteredMembers.length > 1 ? t('membersShownPlural') : t('membersShown')} {filteredMembers.length > 1 ? t('displayedPlural') : t('displayed')}
+              {sortedMembers.length} {sortedMembers.length > 1 ? t('membersShownPlural') : t('membersShown')} {sortedMembers.length > 1 ? t('displayedPlural') : t('displayed')}
             </p>
           </div>
         </div>
@@ -895,4 +934,10 @@ const Members = () => {
   );
 };
 
-export default Members;
+const MembersPage = () => (
+  <LinkedAccountGuard section="members">
+    <Members />
+  </LinkedAccountGuard>
+);
+
+export default MembersPage;

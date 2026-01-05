@@ -27,5 +27,17 @@ verify_jwt = true
 [functions.parse-cv-business]
 verify_jwt = true
 
-[functions.jumio-verification]
+[functions.verify-documents-batch]
+verify_jwt = true
+
+[functions.veriff-verification]
+verify_jwt = false
+
+[functions.veriff-webhook]
+verify_jwt = false
+
+[functions.verify-family-documents-ai]
+verify_jwt = true
+
+[functions.auto-verify-documents]
 verify_jwt = false

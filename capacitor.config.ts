@@ -33,6 +33,10 @@ const config: CapacitorConfig = {
     }
   },
   plugins: {
+    // Désactiver Push Notifications si Firebase n'est pas configuré
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"],
+    },
     // Configuration pour l'authentification biométrique
     BiometricAuth: {
       // Configuration iOS

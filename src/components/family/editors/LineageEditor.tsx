@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Loader2, Upload, User } from "lucide-react";
+import { Pencil, Trash2, Loader2, Upload, User, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface LineageEntry {
   id?: string;
@@ -25,21 +26,23 @@ interface LineageEditorProps {
   onUpdate: () => void;
 }
 
-const GENERATIONS = [
-  "Arrière-grands-parents",
-  "Grands-parents",
-  "Parents",
-  "Génération actuelle",
-  "Enfants",
-  "Petits-enfants"
-];
-
 export const LineageEditor = ({ entries, onUpdate }: LineageEditorProps) => {
   const { toast } = useToast();
+  const { t } = useLanguage();
+  
+  const GENERATIONS = [
+    t('greatGrandparents'),
+    t('grandparents'),
+    t('parents'),
+    t('currentGeneration'),
+    t('children'),
+    t('grandchildren')
+  ];
   const [isOpen, setIsOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<LineageEntry | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<LineageEntry>({
@@ -57,14 +60,14 @@ export const LineageEditor = ({ entries, onUpdate }: LineageEditorProps) => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast({ title: "Veuillez sélectionner une image", variant: "destructive" });
+      toast({ title: t('pleaseSelectImage'), variant: "destructive" });
       return;
     }
 
     setIsUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       const fileExt = file.name.split('.').pop();
       const fileName = `lineage-${user.id}-${Date.now()}.${fileExt}`;
@@ -81,10 +84,10 @@ export const LineageEditor = ({ entries, onUpdate }: LineageEditorProps) => {
         .getPublicUrl(filePath);
 
       setFormData({ ...formData, image_url: publicUrl });
-      toast({ title: "Photo importée avec succès" });
+      toast({ title: t('photoImportedSuccess') });
     } catch (error) {
       console.error(error);
-      toast({ title: "Erreur lors de l'import", variant: "destructive" });
+      toast({ title: t('importError'), variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -120,14 +123,14 @@ export const LineageEditor = ({ entries, onUpdate }: LineageEditorProps) => {
 
   const handleSave = async () => {
     if (!formData.member_name || !formData.generation) {
-      toast({ title: "Veuillez remplir les champs obligatoires", variant: "destructive" });
+      toast({ title: t('fillAllRequiredFields'), variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       if (editingEntry?.id) {
         await supabase
@@ -158,46 +161,64 @@ export const LineageEditor = ({ entries, onUpdate }: LineageEditorProps) => {
           });
       }
 
-      toast({ title: editingEntry ? "Modifié avec succès" : "Ajouté avec succès" });
+      toast({ title: editingEntry ? t('updatedSuccessfully') : t('addedSuccessfully') });
       setIsOpen(false);
       onUpdate();
     } catch (error) {
       console.error(error);
-      toast({ title: "Erreur", variant: "destructive" });
+      toast({ title: t('error'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Supprimer cette entrée ?")) return;
+    if (!confirm(t('deleteThisEntry'))) return;
     
     try {
       await supabase.from('family_lineage').delete().eq('id', id);
-      toast({ title: "Supprimé" });
+      toast({ title: t('deleted') });
       onUpdate();
     } catch (error) {
-      toast({ title: "Erreur", variant: "destructive" });
+      toast({ title: t('error'), variant: "destructive" });
+    }
+  };
+
+  const handleAISuggest = async () => {
+    if (!formData.member_name) {
+      toast({ title: t('pleaseEnterNameFirst'), variant: "destructive" });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('family-ai-suggest', {
+        body: {
+          module: 'lineage',
+          currentInput: {
+            name: formData.member_name,
+            generation: formData.generation,
+            title: formData.title,
+            origin: formData.origin_location
+          }
+        }
+      });
+      if (error) throw error;
+      if (data?.suggestion) {
+        setFormData({ ...formData, description: data.suggestion });
+        toast({ title: t('suggestionGenerated') });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({ title: t('generationError'), variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   return (
     <div className="space-y-4 relative z-10">
       <div className="flex justify-between items-center">
-        <h4 className="text-sm font-medium text-muted-foreground">Gérer la lignée</h4>
-        <Button 
-          size="sm" 
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            openNewDialog();
-          }} 
-          className="bg-gold text-black hover:bg-gold/90 relative z-20"
-          type="button"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Ajouter
-        </Button>
+        <h4 className="text-sm font-medium text-muted-foreground">{t('manageLineage')}</h4>
       </div>
 
       {entries.length > 0 && (
@@ -222,20 +243,23 @@ export const LineageEditor = ({ entries, onUpdate }: LineageEditorProps) => {
       )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingEntry ? "Modifier" : "Ajouter"} un membre</DialogTitle>
+        <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-gold text-lg font-medium flex items-center gap-2">
+              <User className="w-5 h-5" />
+              {editingEntry ? t('edit') : t('add')} {t('aMember')}
+            </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
             {/* Photo Upload */}
             <div className="flex flex-col items-center gap-3">
               <div 
-                className="w-24 h-24 rounded-full border-2 border-dashed border-gold/30 flex items-center justify-center overflow-hidden cursor-pointer hover:border-gold/50 transition-colors"
+                className="w-20 h-20 rounded-full border border-gold/30 flex items-center justify-center overflow-hidden cursor-pointer hover:border-gold/50 transition-colors bg-[#252525]"
                 onClick={() => fileInputRef.current?.click()}
               >
                 {formData.image_url ? (
-                  <img src={formData.image_url} alt="Photo" className="w-full h-full object-cover" />
+                  <img src={formData.image_url} alt={t('photo')} className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-8 h-8 text-muted-foreground" />
                 )}
@@ -253,86 +277,130 @@ export const LineageEditor = ({ entries, onUpdate }: LineageEditorProps) => {
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="border-gold/30 text-gold hover:bg-gold/10"
+                className="border-gold/30 text-gold hover:bg-gold/10 hover:border-gold/50 bg-transparent"
               >
                 {isUploading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
                 ) : (
-                  <Upload className="w-4 h-4 mr-2" />
+                  <Upload className="w-4 h-4 sm:mr-2" />
                 )}
-                {formData.image_url ? "Changer la photo" : "Ajouter une photo"}
+                <span className="hidden sm:inline">{formData.image_url ? t('change') : t('addPhoto')}</span>
               </Button>
             </div>
 
             <div>
-              <Label>Génération *</Label>
+              <Label className="text-foreground/90 text-sm">{t('generation')} *</Label>
               <Select value={formData.generation} onValueChange={(v) => setFormData({...formData, generation: v})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner..." />
+                <SelectTrigger className="bg-[#252525] border-gold/20 focus:border-gold/50 mt-1">
+                  <SelectValue placeholder={t('select')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-[#252525] border-gold/20">
                   {GENERATIONS.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                    <SelectItem key={g} value={g} className="hover:bg-gold/10 focus:bg-gold/10">{g}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             
             <div>
-              <Label>Nom complet *</Label>
+              <Label className="text-foreground/90 text-sm">{t('fullName')} *</Label>
               <Input 
                 value={formData.member_name} 
                 onChange={(e) => setFormData({...formData, member_name: e.target.value})}
-                placeholder="Prénom Nom"
+                placeholder={t('firstNameLastName')}
+                className="bg-[#252525] border-gold/20 focus:border-gold/50 mt-1"
               />
             </div>
             
             <div>
-              <Label>Titre / Fonction</Label>
+              <Label className="text-foreground/90 text-sm">{t('titleFunction')}</Label>
               <Input 
                 value={formData.title} 
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                placeholder="Ex: Fondateur de..."
+                placeholder={t('exFounderOf')}
+                className="bg-[#252525] border-gold/20 focus:border-gold/50 mt-1"
               />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Origine</Label>
+                <Label className="text-foreground/90 text-sm">{t('origin')}</Label>
                 <Input 
                   value={formData.origin_location} 
                   onChange={(e) => setFormData({...formData, origin_location: e.target.value})}
-                  placeholder="Ville, Pays"
+                  placeholder={t('cityCountry')}
+                  className="bg-[#252525] border-gold/20 focus:border-gold/50 mt-1"
                 />
               </div>
               <div>
-                <Label>Année de naissance</Label>
+                <Label className="text-foreground/90 text-sm">{t('birthYear')}</Label>
                 <Input 
                   value={formData.birth_year} 
                   onChange={(e) => setFormData({...formData, birth_year: e.target.value})}
                   placeholder="1950"
+                  className="bg-[#252525] border-gold/20 focus:border-gold/50 mt-1"
                 />
               </div>
             </div>
             
             <div>
-              <Label>Description</Label>
+              <Label className="text-foreground/90 text-sm">{t('description')}</Label>
               <Textarea 
                 value={formData.description} 
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="Parcours, anecdotes..."
+                placeholder={t('pathAnecdotes')}
                 rows={3}
+                className="bg-[#252525] border-gold/20 focus:border-gold/50 mt-1"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
-            <Button onClick={handleSave} disabled={isLoading || isUploading} className="bg-gold text-black hover:bg-gold/90">
-              {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Valider
-            </Button>
-          </DialogFooter>
+          <div className="flex items-center justify-between pt-4 border-t border-gold/10 mt-4">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAISuggest}
+                disabled={isGenerating || !formData.member_name}
+                className="border-gold/30 text-gold hover:bg-gold/10 hover:border-gold/50 bg-transparent"
+              >
+                {isGenerating ? (
+                  <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                {t('aiAurora')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="border-gold/30 text-gold hover:bg-gold/10 hover:border-gold/50 bg-transparent"
+              >
+                <Upload className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">{t('import')}</span>
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsOpen(false)}
+                className="border-gold/30 text-foreground hover:bg-gold/10 hover:border-gold/50 bg-transparent uppercase tracking-wide text-sm"
+              >
+                {t('cancel')}
+              </Button>
+              <Button 
+                onClick={handleSave} 
+                disabled={isLoading || isUploading} 
+                className="bg-gold text-black hover:bg-gold/90 uppercase tracking-wide text-sm font-medium"
+              >
+                {isLoading && <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />}
+                {editingEntry ? t('edit') : t('create')}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

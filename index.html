@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1" />
     <title>Aurora Society - Société Exclusive Premium</title>
-    <meta name="description" content="Aurora Society - Une plateforme sociale exclusive dédiée à l'élite mondiale. Réseau, conciergerie de luxe, étiquette et voyages d'exception." />
+    <meta name="description" content="Aurora Society - Une plateforme sociale exclusive dédiée à l&#39;élite mondiale. Réseau, conciergerie de luxe, étiquette et voyages d&#39;exception.">
     <meta name="author" content="Aurora Society" />
     
     <!-- Mobile App Meta Tags -->
@@ -15,7 +15,7 @@
     <meta name="format-detection" content="telephone=no" />
     
     <!-- Favicon & Icons -->
-    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="icon" type="image/png" href="https://storage.googleapis.com/gpt-engineer-file-uploads/p0nrFUgdJWWaLqWxf75zL73UmN52/uploads/1767448944571-aurora-icon-64.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
@@ -31,19 +31,75 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="Aurora Society - Société Exclusive Premium" />
-    <meta property="og:description" content="Une plateforme sociale exclusive dédiée à l'élite mondiale. Réseau, conciergerie de luxe, étiquette et voyages d'exception." />
+    
+    
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/icon-512.png" />
+    <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/p0nrFUgdJWWaLqWxf75zL73UmN52/social-images/social-1767448954626-aurora-icon-128.png">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@aurora_society" />
-    <meta name="twitter:image" content="/icon-512.png" />
-  </head>
+    <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/p0nrFUgdJWWaLqWxf75zL73UmN52/social-images/social-1767448954626-aurora-icon-128.png">
+    <meta property="og:title" content="Aurora Society - Société Exclusive Premium">
+  <meta name="twitter:title" content="Aurora Society - Société Exclusive Premium">
+  <meta property="og:description" content="Aurora Society - Une plateforme sociale exclusive dédiée à l&#39;élite mondiale. Réseau, conciergerie de luxe, étiquette et voyages d&#39;exception.">
+  <meta name="twitter:description" content="Aurora Society - Une plateforme sociale exclusive dédiée à l&#39;élite mondiale. Réseau, conciergerie de luxe, étiquette et voyages d&#39;exception.">
+</head>
 
   <body class="safe-area-all native-scroll">
     <div id="root"></div>
+    <!-- Polyfill pour documentPictureInPicture (doit être chargé avant tout autre script) -->
+    <script>
+      // Polyfill pour documentPictureInPicture - doit être exécuté AVANT tout autre code
+      // Ce script s'exécute de manière synchrone avant le chargement de tout module
+      (function() {
+        'use strict';
+        
+        // Créer un polyfill complet pour documentPictureInPicture
+        var polyfill = {
+          requestWindow: function(options) {
+            return Promise.reject(new Error('Document Picture-in-Picture API is not supported'));
+          }
+        };
+        
+        // Définir sur window de manière synchrone
+        if (typeof window !== 'undefined') {
+          try {
+            if (!('documentPictureInPicture' in window)) {
+              Object.defineProperty(window, 'documentPictureInPicture', {
+                value: polyfill,
+                writable: true,
+                configurable: true,
+                enumerable: false
+              });
+            }
+          } catch (e) {
+            // Fallback si Object.defineProperty échoue
+            window.documentPictureInPicture = polyfill;
+          }
+        }
+        
+        // Définir aussi sur document
+        if (typeof document !== 'undefined') {
+          try {
+            if (!('documentPictureInPicture' in document)) {
+              var docPolyfill = window.documentPictureInPicture || polyfill;
+              Object.defineProperty(document, 'documentPictureInPicture', {
+                value: docPolyfill,
+                writable: true,
+                configurable: true,
+                enumerable: false
+              });
+            }
+          } catch (e) {
+            // Fallback si Object.defineProperty échoue
+            document.documentPictureInPicture = window.documentPictureInPicture || polyfill;
+          }
+        }
+        
+        // S'assurer que l'API est disponible globalement même si elle est accédée de manière asynchrone
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

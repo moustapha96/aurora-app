@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { convertToEuros } from "@/lib/currencyConverter";
 import { z } from "zod";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Globe, Eye, EyeOff, ScanFace, Fingerprint, Loader2, Monitor } from "lucide-react";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { BiometricService } from "@/services/biometricService";
@@ -20,6 +20,7 @@ import {
   checkWebAuthnEnabled,
   BiometricType 
 } from "@/services/webAuthnService";
+import { Captcha, useCaptchaConfig } from "@/components/Captcha";
 import {
   Dialog,
   DialogContent,
@@ -29,10 +30,17 @@ import {
 } from "@/components/ui/dialog";
 
 const registrationSchema = z.object({
-  username: z.string().min(3, "L'identifiant doit contenir au moins 3 caractères").max(50),
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
-  email: z.string().email("Email invalide"),
+  username: z.string().min(3, "").max(50), // Validation message handled by UI
+  password: z.string().min(6, ""), // Validation message handled by UI
+  email: z.string().email(""), // Validation message handled by UI
 });
+
+// Types for verification status dialog
+type VerificationDialogState = {
+  open: boolean;
+  status: 'pending' | 'rejected' | null;
+  message: string;
+};
 
 const Login = () => {
   const [searchParams] = useSearchParams();
@@ -46,12 +54,113 @@ const Login = () => {
   const [resetEmail, setResetEmail] = useState("");
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  // State for pending biometric verification after password login
+  const [pendingBiometricAuth, setPendingBiometricAuth] = useState(false);
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  // State for verification status dialog
+  const [verificationDialog, setVerificationDialog] = useState<VerificationDialogState>({
+    open: false,
+    status: null,
+    message: ''
+  });
+  const [refreshingStatus, setRefreshingStatus] = useState(false);
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
+  const { siteKey, isEnabled } = useCaptchaConfig('login');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
+  // Fonction pour revérifier le statut
+  const handleRefreshVerificationStatus = async () => {
+    const pendingEmail = sessionStorage.getItem('pendingVerificationEmail');
+    if (!pendingEmail) {
+      toast.error(t('emailNotFoundReconnect'));
+      setVerificationDialog(prev => ({ ...prev, open: false }));
+      return;
+    }
+
+    setRefreshingStatus(true);
+    try {
+      // Se reconnecter temporairement pour récupérer le statut
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: pendingEmail,
+        password: password,
+      });
+
+      if (authError || !authData.user) {
+        toast.error(t('errorDuringVerification'));
+        setVerificationDialog(prev => ({ ...prev, open: false }));
+        return;
+      }
+
+      const userId = authData.user.id;
+
+      // Vérifier le profil
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('identity_verified')
+        .eq('id', userId)
+        .single();
+
+      if (profile?.identity_verified) {
+        // Vérifié ! Rediriger vers la page membre
+        toast.success(t('accountVerified'));
+        setVerificationDialog(prev => ({ ...prev, open: false }));
+        navigate("/member-card");
+        return;
+      }
+
+      // Vérifier le statut de la demande
+      const { data: verificationData } = await supabase
+        .from('identity_verifications')
+        .select('status')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Déconnexion après vérification
+      await supabase.auth.signOut();
+
+      if (verificationData) {
+        const status = verificationData.status;
+        
+        if (status === 'verified') {
+          toast.success(t('accountVerified'));
+          // Se reconnecter pour accéder
+          const { error: loginError } = await supabase.auth.signInWithPassword({
+            email: pendingEmail,
+            password: password,
+          });
+          if (!loginError) {
+            setVerificationDialog(prev => ({ ...prev, open: false }));
+            navigate("/member-card");
+          }
+          return;
+        } else if (status === 'pending' || status === 'initiated') {
+          toast.info(t('requestStillProcessing'));
+        } else if (status === 'rejected') {
+          setVerificationDialog({
+            open: true,
+            status: 'rejected',
+            message: t('verificationRejectedMessage')
+          });
+        }
+      } else {
+        toast.info(t('noVerificationRequestFound'));
+        setVerificationDialog(prev => ({ ...prev, open: false }));
+        navigate("/register?step=verification");
+      }
+    } catch (error) {
+      console.error('Error refreshing status:', error);
+      toast.error(t('errorCheckingStatus'));
+    } finally {
+      setRefreshingStatus(false);
+    }
+  };
 
   const handlePasswordReset = async () => {
     if (!resetEmail) {
-      toast.error("Veuillez entrer votre email");
+      toast.error(t('enterYourEmail'));
       return;
     }
 
@@ -63,11 +172,11 @@ const Login = () => {
 
       if (error) throw error;
 
-      toast.success("Un email de réinitialisation a été envoyé");
+      toast.success(t('resetEmailSent'));
       setShowResetDialog(false);
       setResetEmail("");
     } catch (error: any) {
-      toast.error(`Erreur: ${error.message}`);
+      toast.error(`${t('error')}: ${error.message}`);
     } finally {
       setResetLoading(false);
     }
@@ -81,7 +190,7 @@ const Login = () => {
       console.log('Starting registration completion...');
       
       if (password !== confirmPassword) {
-        toast.error("Les mots de passe ne correspondent pas");
+        toast.error(t('passwordsDoNotMatch'));
         setLoading(false);
         return;
       }
@@ -93,7 +202,7 @@ const Login = () => {
       console.log('Session data exists:', !!registrationDataStr);
       
       if (!registrationDataStr) {
-        toast.error("Données d'inscription manquantes");
+        toast.error(t('registrationDataMissing'));
         navigate("/register");
         setLoading(false);
         return;
@@ -230,12 +339,12 @@ const Login = () => {
         sessionStorage.removeItem('registrationData');
         sessionStorage.removeItem('registrationAvatar');
         console.log('Registration completed successfully');
-        toast.success("Compte créé avec succès! Vous pouvez maintenant vous connecter.");
+        toast.success(t('accountCreatedSuccess'));
         navigate("/login");
       }
     } catch (error: any) {
       console.error('Registration error:', error);
-      toast.error(`Erreur lors de l'inscription: ${error.message}`);
+      toast.error(`${t('errorDuringRegistration')}: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -279,9 +388,9 @@ const Login = () => {
         if (!mounted) return;
         
         if (result.success) {
-          toast.success("Connexion réussie!");
+          toast.success(t('loginSuccess'));
           navigate("/member-card");
-        } else if (result.error && result.error !== 'Authentification annulée') {
+        } else if (result.error && result.error !== t('authenticationCancelled')) {
           console.log('Biometric auth failed:', result.error);
         }
       } catch (error) {
@@ -305,10 +414,10 @@ const Login = () => {
     const result = await BiometricService.authenticate();
     
     if (result.success) {
-      toast.success("Connexion réussie!");
+      toast.success(t('loginSuccess'));
       navigate("/member-card");
     } else {
-      toast.error(result.error || "Échec de l'authentification biométrique");
+      toast.error(result.error || t('biometricAuthFailed'));
     }
     setBiometricAuthLoading(false);
   };
@@ -316,7 +425,7 @@ const Login = () => {
   // Handle WebAuthn login (web biometric)
   const handleWebAuthnLogin = async () => {
     if (!username) {
-      toast.error("Veuillez entrer votre email d'abord");
+      toast.error(t('enterEmailFirst'));
       return;
     }
 
@@ -336,7 +445,7 @@ const Login = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        toast.error("Veuillez d'abord vous connecter avec votre mot de passe pour activer la biométrie");
+        toast.error(t('loginWithPasswordFirst'));
         setWebAuthnLoading(false);
         return;
       }
@@ -344,7 +453,7 @@ const Login = () => {
       const isEnabled = await checkWebAuthnEnabled(user.id);
       
       if (!isEnabled) {
-        toast.info("La connexion biométrique n'est pas activée pour ce compte. Activez-la dans les paramètres.");
+        toast.info(t('biometricNotEnabledMessage'));
         setWebAuthnLoading(false);
         return;
       }
@@ -352,14 +461,14 @@ const Login = () => {
       const result = await authenticateWebAuthn(user.id);
       
       if (result.success) {
-        toast.success("Connexion réussie!");
+        toast.success(t('loginSuccess'));
         navigate("/member-card");
       } else {
-        toast.error(result.error || "Échec de l'authentification");
+        toast.error(result.error || t('authenticationFailed'));
       }
     } catch (error: any) {
       console.error('WebAuthn login error:', error);
-      toast.error("Erreur lors de l'authentification biométrique");
+      toast.error(t('errorBiometricAuth'));
     } finally {
       setWebAuthnLoading(false);
     }
@@ -376,12 +485,68 @@ const Login = () => {
     }
   };
 
+  // Complete login after biometric verification
+  const completeLogin = async () => {
+    await BiometricService.updateStoredTokens();
+    toast.success(t('loginSuccess'));
+    navigate("/member-card");
+  };
+
+  // Handle biometric verification step
+  const handleBiometricVerification = async () => {
+    if (!pendingUserId) return;
+    
+    setWebAuthnLoading(true);
+    try {
+      const result = await authenticateWebAuthn(pendingUserId);
+      if (result.success) {
+        setPendingBiometricAuth(false);
+        await completeLogin();
+      } else {
+        toast.error(result.error || t('biometricAuthFailed'));
+      }
+    } catch (error) {
+      console.error('Biometric verification error:', error);
+      toast.error(t('errorBiometricVerification'));
+    } finally {
+      setWebAuthnLoading(false);
+    }
+  };
+
+  // Cancel biometric verification and logout
+  const cancelBiometricVerification = async () => {
+    await supabase.auth.signOut();
+    setPendingBiometricAuth(false);
+    setPendingUserId(null);
+    toast.info(t('connectionCancelled'));
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Vérifier CAPTCHA si activé
+      if (isEnabled && siteKey && !captchaToken) {
+        toast.error(t('captchaRequired'));
+        setLoading(false);
+        return;
+      }
+
       console.log('Attempting login with email:', username);
+      
+      // Valider CAPTCHA côté serveur si token présent
+      if (captchaToken) {
+        const { error: captchaError } = await supabase.functions.invoke('verify-captcha', {
+          body: { token: captchaToken }
+        });
+        if (captchaError) {
+          toast.error(t('captchaFailed'));
+          setCaptchaToken(null);
+          setLoading(false);
+          return;
+        }
+      }
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email: username,
@@ -393,15 +558,117 @@ const Login = () => {
         throw error;
       }
 
-      // Update stored tokens for biometric auth
-      await BiometricService.updateStoredTokens();
+      const userId = data.user?.id;
+      if (!userId) {
+        throw new Error(t('userNotFound'));
+      }
 
-      console.log('Login successful for user:', data.user?.id);
-      toast.success("Connexion réussie!");
-      navigate("/member-card");
+      // Vérifier si l'utilisateur est admin
+      const { data: adminRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      const isAdmin = !!adminRole;
+
+      // Vérifier si l'identité est vérifiée OU si le compte est activé manuellement (OBLIGATOIRE sauf pour les admins)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('identity_verified, account_active')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      }
+
+      // Les admins peuvent se connecter même sans vérification d'identité
+      // account_active permet aussi de se connecter sans vérification Veriff
+      const canAccess = profile?.identity_verified || profile?.account_active;
+      if (!canAccess && !isAdmin) {
+        // Vérifier le statut de la demande de vérification existante
+        const { data: verificationData } = await supabase
+          .from('identity_verifications')
+          .select('status, created_at')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // Déconnexion avant d'afficher le dialog
+        await supabase.auth.signOut();
+        sessionStorage.setItem('pendingVerificationEmail', username);
+
+        if (verificationData) {
+          const status = verificationData.status;
+          
+          if (status === 'pending' || status === 'initiated') {
+            // Demande en attente de validation
+            setVerificationDialog({
+              open: true,
+              status: 'pending',
+              message: t('verificationInProgressMessage')
+            });
+            setLoading(false);
+            return;
+          } else if (status === 'rejected') {
+            // Demande rejetée
+            setVerificationDialog({
+              open: true,
+              status: 'rejected',
+              message: t('verificationRejectedMessageFull')
+            });
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Aucune demande initiée - rediriger vers la vérification
+        toast.error(t('identityVerificationRequired'));
+        navigate("/register?step=verification");
+        setLoading(false);
+        return;
+      }
+
+      // Check if user has WebAuthn enabled (web) or native biometric
+      if (isNative && biometricEnabled) {
+        // Native biometric is required
+        setPendingUserId(userId);
+        setPendingBiometricAuth(true);
+        setBiometricAuthLoading(true);
+        
+        const result = await BiometricService.authenticate();
+        setBiometricAuthLoading(false);
+        
+        if (result.success) {
+          setPendingBiometricAuth(false);
+          await completeLogin();
+        } else {
+          toast.error(t('biometricAuthRequired'));
+        }
+      } else if (!isNative && webAuthnAvailable) {
+        // Check if WebAuthn is enabled for this user
+        const webAuthnEnabled = await checkWebAuthnEnabled(userId);
+        
+        if (webAuthnEnabled) {
+          // WebAuthn is required - show biometric verification step
+          setPendingUserId(userId);
+          setPendingBiometricAuth(true);
+          setLoading(false);
+          return;
+        } else {
+          // No biometric required, complete login
+          await completeLogin();
+        }
+      } else {
+        // No biometric method available, complete login
+        await completeLogin();
+      }
     } catch (error: any) {
       console.error('Login failed:', error);
-      toast.error(`Erreur de connexion: ${error.message}`);
+      toast.error(`${t('loginError')}: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -411,24 +678,26 @@ const Login = () => {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
         {/* Language Selector */}
-        <div className="absolute top-6 right-6">
-          <Select value={language} onValueChange={(value) => setLanguage(value as any)}>
-            <SelectTrigger className="w-[180px] border-gold/30 bg-black text-gold hover:border-gold z-50">
-              <Globe className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-black border-gold/30 z-50">
+        <div className="absolute top-6 right-6 z-50">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-gold hover:bg-gold/10 border border-gold/30">
+                <Globe className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-black border-gold/30">
               {languages.map((lang) => (
-                <SelectItem 
-                  key={lang.code} 
-                  value={lang.code}
-                  className="text-gold hover:bg-gold/10 focus:bg-gold/10"
+                <DropdownMenuItem
+                  key={lang.code}
+                  onClick={() => setLanguage(lang.code)}
+                  className={language === lang.code ? "bg-gold/20 text-gold" : "text-gold hover:bg-gold/10"}
                 >
-                  {lang.flag} {lang.name}
-                </SelectItem>
+                  <span className="mr-2">{lang.flag}</span>
+                  {lang.name}
+                </DropdownMenuItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         
         <div className="text-center max-w-md mx-auto w-full">
@@ -440,37 +709,37 @@ const Login = () => {
           <h2 className="text-2xl md:text-3xl font-serif text-gold mb-8 tracking-widest">
             SOCIETY
           </h2>
-          <p className="text-gold/60 text-sm mb-8 tracking-widest">FINALISER L'INSCRIPTION</p>
+          <p className="text-gold/60 text-sm mb-8 tracking-widest">{t('finalizeRegistration')}</p>
           
           <form onSubmit={handleCompleteRegistration} className="space-y-6 bg-black/40 border border-gold/20 rounded-lg p-8">
             <div className="space-y-2">
               <Label htmlFor="username" className="text-gold/80 text-sm font-serif">
-                Identifiant ( Email)
+                {t('identifierEmail')}
               </Label>
               <Input
                 id="username"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-                placeholder="Choisissez votre identifiant"
-                required
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
+                  placeholder={t('chooseIdentifier')}
+                  required
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password" className="text-gold/80 text-sm font-serif">
-                Mot de passe
+                {t('password')}
               </Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10"
-                  placeholder="Choisissez votre mot de passe"
-                  required
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10"
+                    placeholder={t('choosePassword')}
+                    required
                   minLength={6}
                 />
                 <Button
@@ -494,16 +763,16 @@ const Login = () => {
                   </div>
                   <ul className="text-xs space-y-1">
                     <li className={password.length >= 6 ? 'text-green-500' : 'text-gold/40'}>
-                      ✓ Minimum 6 caractères
+                      ✓ {t('min6Chars')}
                     </li>
                     <li className={/[A-Z]/.test(password) ? 'text-green-500' : 'text-gold/40'}>
-                      ✓ Une majuscule
+                      ✓ {t('oneUppercase')}
                     </li>
                     <li className={/[0-9]/.test(password) ? 'text-green-500' : 'text-gold/40'}>
-                      ✓ Un chiffre
+                      ✓ {t('oneDigit')}
                     </li>
                     <li className={/[!@#$%^&*]/.test(password) ? 'text-green-500' : 'text-gold/40'}>
-                      ✓ Un caractère spécial (!@#$%^&*)
+                      ✓ {t('oneSpecialChar')}
                     </li>
                   </ul>
                 </div>
@@ -512,7 +781,7 @@ const Login = () => {
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" className="text-gold/80 text-sm font-serif">
-                Confirmer le mot de passe
+                {t('confirmPasswordLabel')}
               </Label>
               <div className="relative">
                 <Input
@@ -520,10 +789,10 @@ const Login = () => {
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10 ${
-                    confirmPassword && password !== confirmPassword ? 'border-red-500' : ''
-                  }`}
-                  placeholder="Confirmez votre mot de passe"
+                    className={`bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10 ${
+                      confirmPassword && password !== confirmPassword ? 'border-red-500' : ''
+                    }`}
+                    placeholder={t('confirmYourPassword')}
                   required
                   minLength={6}
                 />
@@ -538,10 +807,10 @@ const Login = () => {
                 </Button>
               </div>
               {confirmPassword && password !== confirmPassword && (
-                <p className="text-red-500 text-xs">Les mots de passe ne correspondent pas</p>
+                <p className="text-red-500 text-xs">{t('passwordsDontMatch')}</p>
               )}
               {confirmPassword && password === confirmPassword && (
-                <p className="text-green-500 text-xs">✓ Les mots de passe correspondent</p>
+                <p className="text-green-500 text-xs">✓ {t('passwordsMatch')}</p>
               )}
             </div>
 
@@ -550,9 +819,14 @@ const Login = () => {
               disabled={loading}
               variant="outline"
               size="lg"
-              className="w-full text-gold border-gold hover:bg-gold hover:text-black transition-all duration-300"
+              className="w-full text-gold border-gold hover:bg-gold hover:text-black transition-all duration-300 flex items-center justify-center gap-2"
             >
-              {loading ? "Création..." : "Créer mon compte"}
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+                    {t('creating')}
+                  </>
+                ) : t('createAccount')}
             </Button>
           </form>
         </div>
@@ -563,24 +837,26 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
       {/* Language Selector */}
-      <div className="absolute top-6 right-6">
-        <Select value={language} onValueChange={(value) => setLanguage(value as any)}>
-          <SelectTrigger className="w-[180px] border-gold/30 bg-black text-gold hover:border-gold z-50">
-            <Globe className="w-4 h-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-black border-gold/30 z-50">
+      <div className="absolute top-6 right-6 z-50">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="text-gold hover:bg-gold/10 border border-gold/30">
+              <Globe className="w-5 h-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48 bg-black border-gold/30">
             {languages.map((lang) => (
-              <SelectItem 
-                key={lang.code} 
-                value={lang.code}
-                className="text-gold hover:bg-gold/10 focus:bg-gold/10"
+              <DropdownMenuItem
+                key={lang.code}
+                onClick={() => setLanguage(lang.code)}
+                className={language === lang.code ? "bg-gold/20 text-gold" : "text-gold hover:bg-gold/10"}
               >
-                {lang.flag} {lang.name}
-              </SelectItem>
+                <span className="mr-2">{lang.flag}</span>
+                {lang.name}
+              </DropdownMenuItem>
             ))}
-          </SelectContent>
-        </Select>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       
       <div className="text-center max-w-md mx-auto w-full">
@@ -592,121 +868,169 @@ const Login = () => {
         <h2 className="text-2xl md:text-3xl font-serif text-gold mb-8 tracking-widest">
           SOCIETY
         </h2>
-        <p className="text-gold/60 text-sm mb-8 tracking-widest">CONNEXION</p>
-        
-        <form onSubmit={handleLogin} className="space-y-6 bg-black/40 border border-gold/20 rounded-lg p-8">
-          <div className="space-y-2">
-            <Label htmlFor="loginEmail" className="text-gold/80 text-sm font-serif">
-              Email ( Identifiant )
-            </Label>
-            <Input
-              id="loginEmail"
-              type="email"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-              placeholder="Votre email"
-              required
-            />
-          </div>
+        {pendingBiometricAuth ? (
+          <>
+            <p className="text-gold/60 text-sm mb-8 tracking-widest">{t('biometricVerification')}</p>
+            
+            <div className="space-y-6 bg-black/40 border border-gold/20 rounded-lg p-8">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-gold/10 flex items-center justify-center">
+                  {getWebAuthnIcon()}
+                </div>
+                <p className="text-gold/80 text-center">
+                  {t('accountRequiresBiometric')}
+                  <br />
+                  <span className="text-gold/60 text-sm">
+                    {t('useBiometricToContinue').replace('{biometric}', getBiometricName(webAuthnType))}
+                  </span>
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="loginPassword" className="text-gold/80 text-sm font-serif">
-              Mot de passe
-            </Label>
-            <div className="relative">
-              <Input
-                id="loginPassword"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10"
-                placeholder="Votre mot de passe"
-                required
-              />
+              <Button 
+                onClick={handleBiometricVerification}
+                disabled={webAuthnLoading}
+                variant="outline"
+                size="lg"
+                className="w-full text-gold border-gold hover:bg-gold hover:text-black transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                {webAuthnLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    {t('verifying')}
+                  </>
+                ) : (
+                  <>
+                    {getWebAuthnIcon()}
+                    {t('verifyWith')} {getBiometricName(webAuthnType)}
+                  </>
+                )}
+              </Button>
+
               <Button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full px-3 text-gold/60 hover:text-gold hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
+                variant="link"
+                className="text-gold/60 hover:text-gold p-0 h-auto text-sm w-full"
+                onClick={cancelBiometricVerification}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {t('cancelAndLogout')}
               </Button>
             </div>
-          </div>
+          </>
+        ) : (
+          <>
+            <p className="text-gold/60 text-sm mb-8 tracking-widest">{t('connectionLabel')}</p>
+            
+            <form onSubmit={handleLogin} className="space-y-6 bg-black/40 border border-gold/20 rounded-lg p-8">
+              <div className="space-y-2">
+                <Label htmlFor="loginEmail" className="text-gold/80 text-sm font-serif">
+                  {t('emailIdentifier')}
+                </Label>
+                <Input
+                  id="loginEmail"
+                  type="email"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
+                  placeholder={t('yourEmail')}
+                  required
+                />
+              </div>
 
-          <Button
-            type="button"
-            variant="link"
-            className="text-gold/60 hover:text-gold p-0 h-auto text-sm"
-            onClick={() => setShowResetDialog(true)}
-          >
-            Mot de passe oublié ?
-          </Button>
+              <div className="space-y-2">
+                <Label htmlFor="loginPassword" className="text-gold/80 text-sm font-serif">
+                  {t('passwordLabel')}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="loginPassword"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold pr-10"
+                    placeholder={t('yourPassword')}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 text-gold/60 hover:text-gold hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
 
-          <Button 
-            type="submit" 
-            disabled={loading || biometricAuthLoading}
-            variant="outline"
-            size="lg"
-            className="w-full text-gold border-gold hover:bg-gold hover:text-black transition-all duration-300"
-          >
-            {loading ? "Connexion..." : t('login')}
-          </Button>
+              <Button
+                type="button"
+                variant="link"
+                className="text-gold/60 hover:text-gold p-0 h-auto text-sm"
+                onClick={() => setShowResetDialog(true)}
+              >
+                {t('forgotPassword')}
+              </Button>
 
-          {/* Native Biometric Login Button (iOS/Android) */}
-          {isNative && biometricEnabled && (
-            <Button
-              type="button"
-              onClick={handleBiometricLogin}
-              disabled={biometricAuthLoading}
-              variant="outline"
-              size="lg"
-              className="w-full text-gold border-gold/50 hover:bg-gold/10 transition-all duration-300 flex items-center justify-center gap-2"
-            >
-              {biometricAuthLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Authentification...
-                </>
-              ) : (
-                <>
-                  {biometryType === 'face' ? (
-                    <ScanFace className="h-5 w-5" />
+              {isEnabled && siteKey && (
+                <div className="mt-4">
+                  <Captcha
+                    siteKey={siteKey}
+                    onVerify={(token) => {
+                      setCaptchaToken(token);
+                    }}
+                    onError={(error) => {
+                      toast.error(error || t('captchaError'));
+                    }}
+                    action="login"
+                  />
+                </div>
+              )}
+
+              <Button 
+                type="submit" 
+                disabled={loading || biometricAuthLoading || (isEnabled && siteKey && !captchaToken)}
+                variant="outline"
+                size="lg"
+                className="w-full text-gold border-gold hover:bg-gold hover:text-black transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+                    {t('connecting')}
+                  </>
+                ) : t('login')}
+              </Button>
+
+              {/* Native Biometric Login Button (iOS/Android) */}
+              {isNative && biometricEnabled && (
+                <Button
+                  type="button"
+                  onClick={handleBiometricLogin}
+                  disabled={biometricAuthLoading}
+                  variant="outline"
+                  size="lg"
+                  className="w-full text-gold border-gold/50 hover:bg-gold/10 transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  {biometricAuthLoading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      {t('authenticating')}
+                    </>
                   ) : (
-                    <Fingerprint className="h-5 w-5" />
+                    <>
+                      {biometryType === 'face' ? (
+                        <ScanFace className="h-5 w-5" />
+                      ) : (
+                        <Fingerprint className="h-5 w-5" />
+                      )}
+                      {biometryType === 'face' ? t('loginWithFaceId') : t('loginWithFingerprint')}
+                    </>
                   )}
-                  {biometryType === 'face' ? 'Se connecter avec Face ID' : 'Se connecter avec empreinte'}
-                </>
+                </Button>
               )}
-            </Button>
-          )}
-
-          {/* WebAuthn Login Button (Web - Touch ID, Windows Hello, etc.) */}
-          {!isNative && webAuthnAvailable && (
-            <Button
-              type="button"
-              onClick={handleWebAuthnLogin}
-              disabled={webAuthnLoading || loading}
-              variant="outline"
-              size="lg"
-              className="w-full text-gold border-gold/50 hover:bg-gold/10 transition-all duration-300 flex items-center justify-center gap-2"
-            >
-              {webAuthnLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Vérification...
-                </>
-              ) : (
-                <>
-                  {getWebAuthnIcon()}
-                  Se connecter avec {getBiometricName(webAuthnType)}
-                </>
-              )}
-            </Button>
-          )}
-        </form>
+            </form>
+          </>
+        )}
         
         <div className="mt-8 text-gold/60 text-sm text-center">
           <p>{t('exclusiveCircle')}</p>
@@ -718,7 +1042,7 @@ const Login = () => {
           variant="link"
           className="mt-4 text-gold/60 hover:text-gold"
         >
-          Pas encore membre ? S'inscrire
+          {t('notMemberYet')}
         </Button>
       </div>
 
@@ -726,23 +1050,23 @@ const Login = () => {
       <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
         <DialogContent className="bg-black border-gold/30">
           <DialogHeader>
-            <DialogTitle className="text-gold font-serif">Réinitialiser le mot de passe</DialogTitle>
+            <DialogTitle className="text-gold font-serif">{t('resetPassword')}</DialogTitle>
             <DialogDescription className="text-gold/60">
-              Entrez votre email pour recevoir un lien de réinitialisation.
+              {t('resetPasswordDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="resetEmail" className="text-gold/80 text-sm font-serif">
-                Email
+                {t('email')}
               </Label>
               <Input
                 id="resetEmail"
                 type="email"
                 value={resetEmail}
                 onChange={(e) => setResetEmail(e.target.value)}
-                className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
-                placeholder="Votre email"
+                  className="bg-black border-gold/30 text-gold placeholder:text-gold/30 focus:border-gold"
+                  placeholder={t('yourEmail')}
               />
             </div>
             <Button
@@ -751,8 +1075,76 @@ const Login = () => {
               className="w-full text-gold border-gold hover:bg-gold hover:text-black"
               variant="outline"
             >
-              {resetLoading ? "Envoi..." : "Envoyer le lien"}
+              {resetLoading ? t('sending') : t('sendLink')}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Verification Status Dialog */}
+      <Dialog open={verificationDialog.open} onOpenChange={(open) => setVerificationDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="bg-black border-gold/30">
+          <DialogHeader>
+            <DialogTitle className="text-gold font-serif">
+              {verificationDialog.status === 'pending' 
+                ? t('verificationInProgress') 
+                : t('verificationRejected')}
+            </DialogTitle>
+            <DialogDescription className="text-gold/60">
+              {verificationDialog.message}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {verificationDialog.status === 'pending' ? (
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 text-gold animate-spin" />
+                </div>
+                <p className="text-gold/80 text-sm text-center">
+                  {t('verificationPendingMessage')}
+                </p>
+                <Button
+                  onClick={handleRefreshVerificationStatus}
+                  disabled={refreshingStatus}
+                  className="w-full bg-gold text-black hover:bg-gold/90"
+                >
+                  {refreshingStatus ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      {t('verifying')}
+                    </>
+                  ) : (
+                    t('recheckStatus')
+                  )}
+                </Button>
+                <Button
+                  onClick={() => setVerificationDialog(prev => ({ ...prev, open: false }))}
+                  className="w-full text-gold border-gold hover:bg-gold hover:text-black"
+                  variant="outline"
+                >
+                  {t('close')}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <span className="text-red-500 text-2xl">✕</span>
+                </div>
+                <p className="text-gold/80 text-sm text-center">
+                  {t('canRestartVerification')}
+                </p>
+                <Button
+                  onClick={() => {
+                    setVerificationDialog(prev => ({ ...prev, open: false }));
+                    navigate("/register?step=verification");
+                  }}
+                  className="w-full text-gold border-gold hover:bg-gold hover:text-black"
+                  variant="outline"
+                >
+                  {t('restartVerification')}
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

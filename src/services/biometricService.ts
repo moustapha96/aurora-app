@@ -2,6 +2,9 @@ import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { supabase } from '@/integrations/supabase/client';
 
+// Flag to track if Android biometric is supported
+let androidBiometricSupported: boolean | null = null;
+
 export interface BiometricAuthResult {
   success: boolean;
   error?: string;
@@ -11,17 +14,69 @@ export type BiometryType = 'face' | 'fingerprint' | 'none';
 
 // Dynamic import for biometric auth (only available on native platforms)
 let BiometricAuth: any = null;
+let pluginLoadAttempted = false;
 
 const loadBiometricPlugin = async () => {
-  if (Capacitor.isNativePlatform() && !BiometricAuth) {
-    try {
-      const module = await import('@aparajita/capacitor-biometric-auth');
-      BiometricAuth = module.BiometricAuth;
-    } catch (error) {
-      console.log('Biometric plugin not available:', error);
-    }
+  if (!Capacitor.isNativePlatform()) {
+    return null;
   }
-  return BiometricAuth;
+
+  // Check if we're on Android and if biometric is known to be unsupported
+  const platform = Capacitor.getPlatform();
+  if (platform === 'android' && androidBiometricSupported === false) {
+    return null;
+  }
+
+  // Only attempt to load once
+  if (pluginLoadAttempted) {
+    return BiometricAuth;
+  }
+
+  pluginLoadAttempted = true;
+
+  try {
+    const module = await import('@aparajita/capacitor-biometric-auth');
+    BiometricAuth = module.BiometricAuth;
+    
+    // Verify the plugin is properly initialized
+    if (!BiometricAuth || typeof BiometricAuth.checkBiometry !== 'function') {
+      console.warn('Biometric plugin loaded but methods are not available');
+      if (platform === 'android') {
+        androidBiometricSupported = false;
+      }
+      BiometricAuth = null;
+      return null;
+    }
+    
+    // Test if the plugin works on Android by trying a safe check
+    if (platform === 'android') {
+      try {
+        // Try to check if the plugin is actually callable
+        const testResult = await BiometricAuth.checkBiometry({});
+        androidBiometricSupported = true;
+      } catch (testError: any) {
+        // If it fails with "then()" error, mark as unsupported
+        if (testError?.message?.includes('then()') || 
+            testError?.message?.includes('not implemented')) {
+          console.warn('Android biometric plugin not properly implemented');
+          androidBiometricSupported = false;
+          BiometricAuth = null;
+          return null;
+        }
+        // Other errors might be OK (like no biometric available)
+        androidBiometricSupported = true;
+      }
+    }
+    
+    return BiometricAuth;
+  } catch (error: any) {
+    console.log('Biometric plugin not available:', error?.message || error);
+    if (platform === 'android') {
+      androidBiometricSupported = false;
+    }
+    BiometricAuth = null;
+    return null;
+  }
 };
 
 export class BiometricService {
@@ -40,20 +95,52 @@ export class BiometricService {
       return false;
     }
 
+    const platform = Capacitor.getPlatform();
+    
+    // Early return for Android if we know it's not supported
+    if (platform === 'android' && androidBiometricSupported === false) {
+      return false;
+    }
+
     try {
       const plugin = await loadBiometricPlugin();
-      if (!plugin) return false;
+      if (!plugin) {
+        return false;
+      }
 
-      const result = await plugin.checkBiometry();
-      return result.isAvailable;
-    } catch (error) {
-      console.error('Error checking biometry:', error);
+      // Verify the method exists before calling
+      if (typeof plugin.checkBiometry !== 'function') {
+        if (platform === 'android') {
+          androidBiometricSupported = false;
+        }
+        return false;
+      }
+
+      // Ensure we're calling the method correctly for Android
+      const result = await plugin.checkBiometry({});
+      return result?.isAvailable === true;
+    } catch (error: any) {
+      // Silently handle Android implementation errors
+      if (error?.message?.includes('not implemented') || 
+          error?.message?.includes('then()') ||
+          error?.code === 'NOT_IMPLEMENTED') {
+        if (platform === 'android') {
+          androidBiometricSupported = false;
+        }
+        // Don't log this as an error, it's expected on some Android devices
+        return false;
+      }
+      // Only log unexpected errors
+      if (!error?.message?.includes('then()')) {
+        console.error('Error checking biometry:', error);
+      }
       return false;
     }
   }
 
   /**
    * Get the type of biometry available
+   * Returns 'face' for Face ID, 'fingerprint' for Touch ID/fingerprint, 'none' if unavailable
    */
   static async getBiometryType(): Promise<BiometryType> {
     if (!this.isNativePlatform()) {
@@ -64,24 +151,70 @@ export class BiometricService {
       const plugin = await loadBiometricPlugin();
       if (!plugin) return 'none';
 
-      const result = await plugin.checkBiometry();
-      
-      if (!result.isAvailable) {
+      // Verify the method exists before calling
+      if (typeof plugin.checkBiometry !== 'function') {
+        console.warn('checkBiometry method not available on plugin');
         return 'none';
       }
 
-      // Check biometry types
-      const types = result.biometryTypes || [];
+      const result = await plugin.checkBiometry({});
+      console.log('Biometry check result:', JSON.stringify(result));
       
-      if (types.includes('faceId') || types.includes('face')) {
+      if (!result?.isAvailable) {
+        return 'none';
+      }
+
+      // Check biometry types array (plugin returns an array of available types)
+      const types = result.biometryTypes || [];
+      console.log('Available biometry types:', types);
+      
+      // iOS Face ID detection
+      if (types.some((t: string) => 
+        t.toLowerCase().includes('faceid') || 
+        t.toLowerCase().includes('face') ||
+        t === 'faceId'
+      )) {
         return 'face';
-      } else if (types.includes('touchId') || types.includes('fingerprint')) {
-        return 'fingerprint';
       }
       
-      return 'fingerprint'; // Default to fingerprint if available but type unknown
-    } catch (error) {
-      console.error('Error getting biometry type:', error);
+      // iOS Touch ID or Android fingerprint detection
+      if (types.some((t: string) => 
+        t.toLowerCase().includes('touchid') || 
+        t.toLowerCase().includes('touch') ||
+        t.toLowerCase().includes('fingerprint') ||
+        t === 'touchId'
+      )) {
+        return 'fingerprint';
+      }
+
+      // Also check the biometryType property (some plugin versions use this)
+      if (result.biometryType) {
+        const biometryType = result.biometryType.toString().toLowerCase();
+        if (biometryType.includes('face')) {
+          return 'face';
+        }
+        if (biometryType.includes('touch') || biometryType.includes('fingerprint')) {
+          return 'fingerprint';
+        }
+      }
+      
+      // Default to fingerprint if biometry is available but type is unknown
+      return 'fingerprint';
+    } catch (error: any) {
+      // Silently handle Android implementation errors
+      if (error?.message?.includes('not implemented') || 
+          error?.message?.includes('then()') ||
+          error?.code === 'NOT_IMPLEMENTED') {
+        const platform = Capacitor.getPlatform();
+        if (platform === 'android') {
+          androidBiometricSupported = false;
+        }
+        return 'none';
+      }
+      // Only log unexpected errors
+      if (!error?.message?.includes('then()')) {
+        console.error('Error getting biometry type:', error);
+      }
       return 'none';
     }
   }
@@ -114,12 +247,33 @@ export class BiometricService {
       };
     }
 
+    const platform = Capacitor.getPlatform();
+    
+    // Early return for Android if we know it's not supported
+    if (platform === 'android' && androidBiometricSupported === false) {
+      return {
+        success: false,
+        error: 'Authentification biométrique non disponible sur cet appareil Android',
+      };
+    }
+
     try {
       const plugin = await loadBiometricPlugin();
       if (!plugin) {
         return {
           success: false,
           error: 'Plugin biométrique non disponible',
+        };
+      }
+
+      // Verify the authenticate method exists
+      if (typeof plugin.authenticate !== 'function') {
+        if (platform === 'android') {
+          androidBiometricSupported = false;
+        }
+        return {
+          success: false,
+          error: 'Méthode d\'authentification non disponible',
         };
       }
 
@@ -138,7 +292,8 @@ export class BiometricService {
         : 'Activez l\'empreinte digitale pour vous connecter rapidement';
 
       // Request biometric authentication
-      await plugin.authenticate({
+      // On Android, ensure we handle the promise correctly
+      const authResult = await plugin.authenticate({
         reason: reasonText,
         cancelTitle: 'Annuler',
         allowDeviceCredential: false,
@@ -147,6 +302,11 @@ export class BiometricService {
         androidSubtitle: 'Aurora Society',
         androidConfirmationRequired: true,
       });
+      
+      // Check if authentication was successful
+      if (authResult && authResult.succeeded === false) {
+        throw new Error('Authentification biométrique échouée');
+      }
 
       // Store activation flag
       await Preferences.set({
@@ -171,7 +331,19 @@ export class BiometricService {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error enabling biometric:', error);
+      // Handle Android implementation errors silently
+      if (error?.message?.includes('not implemented') || 
+          error?.message?.includes('then()') ||
+          error?.code === 'NOT_IMPLEMENTED') {
+        const platform = Capacitor.getPlatform();
+        if (platform === 'android') {
+          androidBiometricSupported = false;
+        }
+        return {
+          success: false,
+          error: 'Authentification biométrique non disponible sur cet appareil',
+        };
+      }
       
       // Handle user cancellation
       if (error.message?.includes('cancel') || error.code === 'userCancel') {
@@ -179,6 +351,11 @@ export class BiometricService {
           success: false,
           error: 'Authentification annulée',
         };
+      }
+      
+      // Only log unexpected errors
+      if (!error?.message?.includes('then()')) {
+        console.error('Error enabling biometric:', error);
       }
       
       return {
@@ -219,12 +396,33 @@ export class BiometricService {
       };
     }
 
+    const platform = Capacitor.getPlatform();
+    
+    // Early return for Android if we know it's not supported
+    if (platform === 'android' && androidBiometricSupported === false) {
+      return {
+        success: false,
+        error: 'Authentification biométrique non disponible sur cet appareil Android',
+      };
+    }
+
     try {
       const plugin = await loadBiometricPlugin();
       if (!plugin) {
         return {
           success: false,
           error: 'Plugin biométrique non disponible',
+        };
+      }
+
+      // Verify the authenticate method exists
+      if (typeof plugin.authenticate !== 'function') {
+        if (platform === 'android') {
+          androidBiometricSupported = false;
+        }
+        return {
+          success: false,
+          error: 'Méthode d\'authentification non disponible',
         };
       }
 
@@ -243,7 +441,8 @@ export class BiometricService {
         : 'Utilisez votre empreinte digitale pour vous connecter';
 
       // Request biometric authentication
-      await plugin.authenticate({
+      // On Android, ensure we handle the promise correctly
+      const authResult = await plugin.authenticate({
         reason: reasonText,
         cancelTitle: 'Annuler',
         allowDeviceCredential: false,
@@ -252,6 +451,11 @@ export class BiometricService {
         androidSubtitle: 'Aurora Society',
         androidConfirmationRequired: true,
       });
+      
+      // Check if authentication was successful
+      if (authResult && authResult.succeeded === false) {
+        throw new Error('Authentification biométrique échouée');
+      }
 
       // Get stored tokens
       const tokens = await this.getAuthTokens();
@@ -279,7 +483,19 @@ export class BiometricService {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Error authenticating with biometric:', error);
+      // Handle Android implementation errors silently
+      if (error?.message?.includes('not implemented') || 
+          error?.message?.includes('then()') ||
+          error?.code === 'NOT_IMPLEMENTED') {
+        const platform = Capacitor.getPlatform();
+        if (platform === 'android') {
+          androidBiometricSupported = false;
+        }
+        return {
+          success: false,
+          error: 'Authentification biométrique non disponible sur cet appareil',
+        };
+      }
       
       // Handle user cancellation
       if (error.message?.includes('cancel') || error.code === 'userCancel') {
@@ -287,6 +503,11 @@ export class BiometricService {
           success: false,
           error: 'Authentification annulée',
         };
+      }
+      
+      // Only log unexpected errors
+      if (!error?.message?.includes('then()')) {
+        console.error('Error authenticating with biometric:', error);
       }
       
       return {

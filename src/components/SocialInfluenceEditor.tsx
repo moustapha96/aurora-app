@@ -188,7 +188,7 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
   if (open !== undefined && onOpenChange) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
           <DialogHeader>
             <DialogTitle>
               {influence ? "Modifier l'influence" : "Ajouter une influence"}
@@ -202,7 +202,7 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
 
   return (
     <Dialog>
-      <DialogContent>
+      <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
         <DialogHeader>
           <DialogTitle>Ajouter une influence</DialogTitle>
         </DialogHeader>

@@ -1,22 +1,12 @@
-import React, { useState } from "react";
-import { Dumbbell, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from "react";
+import { Dumbbell, ChevronDown, ChevronUp, GripVertical, Check } from "lucide-react";
 import { PersonalModule } from "./PersonalModule";
-import { SportsEditor } from "./editors/SportsEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { PoloProfileModule } from "@/components/polo";
+import { GolfProfileModule } from "@/components/golf";
+import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface SportEntry {
   id: string;
@@ -75,16 +65,19 @@ type CategoryType =
   | 'rallye'
   | 'karting';
 
-const SPORT_OPTIONS: { type: CategoryType; label: string; description?: string }[] = [
+interface SportOption {
+  type: CategoryType;
+  label: string;
+  description?: string;
+}
+
+const SPORT_OPTIONS: SportOption[] = [
   { type: 'custom', label: 'Mes sports particuliers', description: 'Ajoutez vos activités personnalisées' },
-  // Sports équestres & traditionnels
   { type: 'polo', label: 'Polo', description: 'Le sport des rois, alliant stratégie et maîtrise équestre' },
   { type: 'equitation', label: 'Équitation', description: 'Dressage, saut d\'obstacles, concours complet' },
   { type: 'chasse', label: 'Chasse', description: 'Chasse à courre, battue, safari' },
   { type: 'fauconnerie', label: 'Fauconnerie', description: 'Art ancestral de la chasse au vol' },
-  // Golf
   { type: 'golf', label: 'Golf', description: 'Parcours prestigieux et compétitions internationales' },
-  // Sports nautiques
   { type: 'yachting', label: 'Yachting', description: 'Navigation de plaisance et régates' },
   { type: 'voile', label: 'Voile de compétition', description: 'America\'s Cup, courses transatlantiques' },
   { type: 'plongee', label: 'Plongée sous-marine', description: 'Exploration des fonds marins' },
@@ -93,98 +86,292 @@ const SPORT_OPTIONS: { type: CategoryType; label: string; description?: string }
   { type: 'wakeboard', label: 'Wakeboard & Ski nautique', description: 'Sports tractés' },
   { type: 'jetski', label: 'Jet-ski', description: 'Vitesse sur l\'eau' },
   { type: 'peche', label: 'Pêche sportive', description: 'Pêche au gros, mouche, destinations exclusives' },
-  // Sports de montagne
   { type: 'ski', label: 'Ski alpin', description: 'Stations prestigieuses et hors-piste' },
   { type: 'heliskiing', label: 'Héliski', description: 'Ski hors-piste accessible par hélicoptère' },
   { type: 'alpinisme', label: 'Alpinisme', description: 'Ascensions et expéditions en haute montagne' },
   { type: 'randonnee', label: 'Trekking & Randonnée', description: 'Expéditions et sentiers d\'exception' },
-  // Sports de raquette
   { type: 'tennis', label: 'Tennis', description: 'Courts privés et tournois' },
   { type: 'padel', label: 'Padel', description: 'Sport en pleine expansion' },
   { type: 'squash', label: 'Squash', description: 'Intensité et réactivité' },
-  // Sports automobiles & aviation
   { type: 'automobile', label: 'Conduite sportive', description: 'Supercars et circuits privés' },
   { type: 'course_automobile', label: 'Course automobile', description: 'GT, Endurance, Formule' },
   { type: 'rallye', label: 'Rallye', description: 'Compétition sur routes et terrains variés' },
   { type: 'karting', label: 'Karting', description: 'Base de la course automobile' },
   { type: 'collection_voitures', label: 'Collection automobile', description: 'Voitures de collection et concours d\'élégance' },
   { type: 'aviation', label: 'Aviation privée', description: 'Pilotage avion, hélicoptère, ULM' },
-  // Sports de combat & précision
   { type: 'escrime', label: 'Escrime', description: 'Art du duel et discipline olympique' },
   { type: 'tir', label: 'Tir sportif', description: 'Précision et concentration' },
   { type: 'art_martial', label: 'Arts martiaux', description: 'Disciplines traditionnelles et modernes' },
-  // Sports britanniques
   { type: 'cricket', label: 'Cricket', description: 'Sport gentleman par excellence' },
   { type: 'croquet', label: 'Croquet', description: 'Élégance sur pelouse' },
-  // Sports d'endurance
   { type: 'cyclisme', label: 'Cyclisme sur route', description: 'Parcours mythiques et sorties club' },
   { type: 'vtt', label: 'VTT', description: 'Trails et descente' },
   { type: 'triathlon', label: 'Triathlon', description: 'Natation, cyclisme, course à pied' },
   { type: 'marathon', label: 'Course à pied', description: 'Marathons et ultra-trails prestigieux' },
-  // Bien-être
   { type: 'fitness', label: 'Fitness & Musculation', description: 'Entraînement personnel et coaching' },
   { type: 'yoga', label: 'Yoga', description: 'Pratique physique et spirituelle' },
   { type: 'meditation', label: 'Méditation', description: 'Pleine conscience et relaxation' },
 ];
 
 export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSportsProps) => {
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingSport, setEditingSport] = useState<SportEntry | null>(null);
-  const [addCategory, setAddCategory] = useState<CategoryType | null>(null);
-  const [viewingSport, setViewingSport] = useState<SportEntry | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [expandedSport, setExpandedSport] = useState<CategoryType | null>(null);
+  const [customizedSports, setCustomizedSports] = useState<Set<CategoryType>>(new Set());
+  const [sportOrder, setSportOrder] = useState<CategoryType[]>([]);
+  const [draggedItem, setDraggedItem] = useState<CategoryType | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<CategoryType | null>(null);
+  const [otherActivitiesOpen, setOtherActivitiesOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleSelectSport = (category: CategoryType) => {
-    setAddCategory(category);
-    setEditingSport(null);
-    setEditorOpen(true);
-  };
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        await loadCustomizedSports(user.id);
+      }
+    };
+    fetchUser();
+  }, []);
 
-  const handleEdit = (sport: SportEntry) => {
-    setEditingSport(sport);
-    setAddCategory(null);
-    setEditorOpen(true);
-  };
-
-  const handleEditorClose = (open: boolean) => {
-    setEditorOpen(open);
-    if (!open) {
-      setEditingSport(null);
-      setAddCategory(null);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
+  const loadCustomizedSports = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from("sports_hobbies")
-        .delete()
-        .eq("id", id);
+      // Vérifier que les profils ont des données réelles (pas juste créés vides)
+      const [poloProfile, poloHorses, poloAchievements, golfProfile, golfCourses, golfAchievements, sportsResult] = await Promise.all([
+        supabase.from('polo_profiles').select('level, handicap, club_name').eq('user_id', userId).maybeSingle(),
+        supabase.from('polo_horses').select('id').eq('user_id', userId).limit(1),
+        supabase.from('polo_achievements').select('id').eq('user_id', userId).limit(1),
+        supabase.from('golf_profiles').select('level, handicap, club_name').eq('user_id', userId).maybeSingle(),
+        supabase.from('golf_courses').select('id').eq('user_id', userId).limit(1),
+        supabase.from('golf_achievements').select('id').eq('user_id', userId).limit(1),
+        supabase.from('sports_hobbies').select('sport_type').eq('user_id', userId),
+      ]);
 
-      if (error) throw error;
-      toast({ title: "Sport supprimé" });
-      onDataChange();
+      const customized = new Set<CategoryType>();
+      
+      // Polo est customisé seulement si des données réelles existent
+      const hasPoloData = poloProfile.data && (
+        poloProfile.data.level || 
+        poloProfile.data.handicap || 
+        poloProfile.data.club_name ||
+        (poloHorses.data && poloHorses.data.length > 0) ||
+        (poloAchievements.data && poloAchievements.data.length > 0)
+      );
+      if (hasPoloData) {
+        customized.add('polo');
+      }
+      
+      // Golf est customisé seulement si des données réelles existent
+      const hasGolfData = golfProfile.data && (
+        golfProfile.data.level || 
+        golfProfile.data.handicap || 
+        golfProfile.data.club_name ||
+        (golfCourses.data && golfCourses.data.length > 0) ||
+        (golfAchievements.data && golfAchievements.data.length > 0)
+      );
+      if (hasGolfData) {
+        customized.add('golf');
+      }
+
+      if (sportsResult.data) {
+        sportsResult.data.forEach(s => {
+          if (s.sport_type) {
+            customized.add(s.sport_type as CategoryType);
+          }
+        });
+      }
+
+      setCustomizedSports(customized);
+
+      const customizedList = Array.from(customized);
+      const nonCustomized = SPORT_OPTIONS.filter(s => !customized.has(s.type)).map(s => s.type);
+      setSportOrder([...customizedList, ...nonCustomized]);
     } catch (error) {
-      console.error("Delete error:", error);
-      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+      console.error('Error loading customized sports:', error);
     }
   };
 
-  const getItemsByCategory = (category: CategoryType) => {
-    if (category === 'custom') {
-      return sports.filter(item => !item.sport_type || item.sport_type === 'autre' || item.sport_type === 'custom');
+  const handleToggleSport = (sportType: CategoryType) => {
+    setExpandedSport(prev => prev === sportType ? null : sportType);
+  };
+
+  const handleDragStart = (e: React.DragEvent, sportType: CategoryType) => {
+    setDraggedItem(sportType);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', sportType);
+  };
+
+  const handleDragOver = (e: React.DragEvent, sportType: CategoryType) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedItem && sportType !== draggedItem) {
+      setDragOverItem(sportType);
     }
-    return sports.filter(item => item.sport_type === category);
   };
 
-  const getCategoryLabel = (type: CategoryType) => {
-    return SPORT_OPTIONS.find(item => item.type === type)?.label || type;
+  const handleDragLeave = () => {
+    setDragOverItem(null);
   };
 
-  // Get all sports grouped by category, only show categories with items
-  const categoriesWithItems = SPORT_OPTIONS
-    .map(item => ({ ...item, items: getItemsByCategory(item.type) }))
-    .filter(cat => cat.items.length > 0);
+  const handleDrop = (e: React.DragEvent, targetType: CategoryType) => {
+    e.preventDefault();
+    
+    if (!draggedItem || draggedItem === targetType) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      return;
+    }
+
+    // Obtenir la liste des sports customisés dans l'ordre actuel
+    const customizedList = sportOrder.filter(s => customizedSports.has(s));
+    
+    const dragIndex = customizedList.indexOf(draggedItem);
+    const dropIndex = customizedList.indexOf(targetType);
+
+    if (dragIndex === -1 || dropIndex === -1) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      return;
+    }
+
+    // Réorganiser
+    const newOrder = [...customizedList];
+    newOrder.splice(dragIndex, 1);
+    newOrder.splice(dropIndex, 0, draggedItem);
+
+    const nonCustomized = sportOrder.filter(s => !customizedSports.has(s));
+    setSportOrder([...newOrder, ...nonCustomized]);
+
+    toast({
+      title: "Ordre mis à jour",
+      description: "Vos passions ont été réorganisées",
+    });
+
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const getSportLabel = (type: CategoryType) => {
+    return SPORT_OPTIONS.find(s => s.type === type)?.label || type;
+  };
+
+  const getSportDescription = (type: CategoryType) => {
+    return SPORT_OPTIONS.find(s => s.type === type)?.description || '';
+  };
+
+  const renderSportModule = (sportType: CategoryType) => {
+    if (!currentUserId) return null;
+
+    switch (sportType) {
+      case 'polo':
+        return <PoloProfileModule userId={currentUserId} isEditable={isEditable} />;
+      case 'golf':
+        return <GolfProfileModule userId={currentUserId} isEditable={isEditable} />;
+      default:
+        return (
+          <div className="text-center py-12 text-muted-foreground">
+            <Dumbbell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Module {getSportLabel(sportType)} en cours de développement</p>
+            <p className="text-sm mt-2">Revenez bientôt pour découvrir ce module !</p>
+          </div>
+        );
+    }
+  };
+
+  const renderSportItem = (sport: SportOption, isDraggable: boolean) => {
+    const isCustomized = customizedSports.has(sport.type);
+    const isExpanded = expandedSport === sport.type;
+    const isDragging = draggedItem === sport.type;
+    const isDragOver = dragOverItem === sport.type;
+
+    return (
+      <div
+        key={sport.type}
+        draggable={isDraggable}
+        onDragStart={(e) => handleDragStart(e, sport.type)}
+        onDragOver={(e) => handleDragOver(e, sport.type)}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDrop(e, sport.type)}
+        onDragEnd={handleDragEnd}
+        className={cn(
+          "rounded-xl transition-all overflow-hidden",
+          isCustomized && "border-4 border-primary",
+          !isCustomized && "border border-border",
+          isDragging && "opacity-50 scale-95",
+          isDragOver && "ring-2 ring-primary ring-offset-2",
+          isDraggable && "cursor-grab active:cursor-grabbing"
+        )}
+      >
+        <button
+          onClick={() => handleToggleSport(sport.type)}
+          className={cn(
+            "w-full flex items-center justify-between p-4 text-left transition-colors",
+            isCustomized ? "bg-primary/10 hover:bg-primary/15" : "bg-card hover:bg-card/80"
+          )}
+        >
+          <div className="flex items-center gap-3">
+            {isDraggable && (
+              <GripVertical className="h-5 w-5 text-muted-foreground" />
+            )}
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "font-medium",
+                  isCustomized ? "text-primary" : "text-foreground"
+                )}>
+                  {sport.label}
+                </span>
+                {isCustomized && (
+                  <Check className="h-4 w-4 text-primary" />
+                )}
+              </div>
+              {sport.description && !isExpanded && (
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {sport.description}
+                </p>
+              )}
+            </div>
+          </div>
+          {isExpanded ? (
+            <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          )}
+        </button>
+
+        {isExpanded && (
+          <div className={cn(
+            "p-4 border-t",
+            isCustomized ? "border-primary/30 bg-background" : "border-border bg-background"
+          )}>
+            {renderSportModule(sport.type)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (!currentUserId) {
+    return (
+      <PersonalModule
+        title="Sports & Activités"
+        icon={Dumbbell}
+        moduleType="sports"
+      >
+        <div className="flex items-center justify-center py-8">
+          <span className="text-muted-foreground">Chargement...</span>
+        </div>
+      </PersonalModule>
+    );
+  }
+
+  const customizedSportsList = sportOrder.filter(s => customizedSports.has(s));
+  const nonCustomizedSports = sportOrder.filter(s => !customizedSports.has(s));
 
   return (
     <PersonalModule
@@ -193,130 +380,35 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
       moduleType="sports"
     >
       <div className="space-y-4">
-        {/* Dropdown menu */}
-        {isEditable && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-between gap-2 border-gold/30 hover:border-gold hover:bg-gold/10">
-                <span className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Ajouter un sport
-                </span>
-                <ChevronDown className="w-4 h-4 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-72 max-h-[300px] overflow-y-auto bg-background border border-border z-50" align="start">
-              {SPORT_OPTIONS.map((option) => {
-                const count = getItemsByCategory(option.type).length;
-                return (
-                  <DropdownMenuItem
-                    key={option.type}
-                    onClick={() => handleSelectSport(option.type)}
-                    className="cursor-pointer flex-col items-start"
-                  >
-                    <div className="flex w-full justify-between items-center">
-                      <span className="font-medium">{option.label}</span>
-                      {count > 0 && (
-                        <span className="text-xs text-muted-foreground ml-2">({count})</span>
-                      )}
-                    </div>
-                    {option.description && (
-                      <span className="text-xs text-muted-foreground">{option.description}</span>
-                    )}
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {customizedSportsList.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-muted-foreground text-sm mb-2">
+              Mes passions {isEditable && customizedSportsList.length > 1 && "(glissez pour réordonner)"}
+            </p>
+            {customizedSportsList.map((type) => {
+              const sport = SPORT_OPTIONS.find(s => s.type === type)!;
+              return renderSportItem(sport, isEditable && customizedSportsList.length > 1);
+            })}
+          </div>
         )}
 
-        {/* Sports list grouped by category */}
-        <div className="space-y-4">
-          {categoriesWithItems.map(({ type, label, items }) => (
-            <div key={type} className="space-y-2">
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {label}
-              </h4>
-              <div className="space-y-2">
-                {items.map((item) => (
-                  <div 
-                    key={item.id} 
-                    className="p-3 bg-muted/30 rounded-lg group cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => setViewingSport(item)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-sm text-foreground">{item.title}</h4>
-                        {item.subtitle && <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>}
-                        {item.badge_text && (
-                          <span className="text-xs px-2 py-0.5 bg-gold/20 text-gold rounded inline-block mt-1">
-                            {item.badge_text}
-                          </span>
-                        )}
-                      </div>
-                      {isEditable && (
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleEdit(item); }}>
-                            <Pencil className="w-3 h-3" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}>
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          
-          {categoriesWithItems.length === 0 && (
-            <p className="text-sm text-muted-foreground italic text-center py-4">
-              {isEditable ? "Sélectionnez un sport dans le menu pour commencer" : "Aucun sport renseigné"}
-            </p>
-          )}
-        </div>
+        <Collapsible open={otherActivitiesOpen} onOpenChange={setOtherActivitiesOpen}>
+          <CollapsibleTrigger className="w-full flex items-center justify-between p-4 bg-muted/50 hover:bg-muted rounded-xl transition-colors border border-border">
+            <span className="font-medium text-foreground">Autres activités</span>
+            {otherActivitiesOpen ? (
+              <ChevronUp className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+            )}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2 space-y-2">
+            {nonCustomizedSports.map((type) => {
+              const sport = SPORT_OPTIONS.find(s => s.type === type)!;
+              return renderSportItem(sport, false);
+            })}
+          </CollapsibleContent>
+        </Collapsible>
       </div>
-
-      <SportsEditor
-        open={editorOpen}
-        onOpenChange={handleEditorClose}
-        sport={editingSport}
-        onSave={onDataChange}
-        defaultCategory={addCategory}
-      />
-
-      {/* View dialog */}
-      <Dialog open={!!viewingSport} onOpenChange={(open) => !open && setViewingSport(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {viewingSport?.title}
-              {viewingSport?.badge_text && (
-                <span className="text-xs px-2 py-0.5 bg-gold/20 text-gold rounded">
-                  {viewingSport.badge_text}
-                </span>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {viewingSport?.image_url && (
-              <img 
-                src={viewingSport.image_url} 
-                alt={viewingSport.title} 
-                className="w-full h-48 object-cover rounded-lg"
-              />
-            )}
-            {viewingSport?.subtitle && (
-              <p className="text-sm text-muted-foreground">{viewingSport.subtitle}</p>
-            )}
-            {viewingSport?.description && (
-              <p className="text-sm text-foreground whitespace-pre-wrap">{viewingSport.description}</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </PersonalModule>
   );
 };

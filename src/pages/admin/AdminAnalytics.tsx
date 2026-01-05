@@ -3,6 +3,7 @@ import { AdminLayout } from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { Users, Link2, Briefcase, Globe, TrendingUp, Calendar } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AnalyticsData {
   membersByMonth: { month: string; count: number }[];
@@ -12,6 +13,7 @@ interface AnalyticsData {
 }
 
 const AdminAnalytics = () => {
+  const { t } = useLanguage();
   const [data, setData] = useState<AnalyticsData>({
     membersByMonth: [],
     membersByCountry: [],
@@ -52,7 +54,7 @@ const AdminAnalytics = () => {
         // Members by country
         const countryCounts: Record<string, number> = {};
         profiles.forEach(p => {
-          const country = p.country || 'Non spécifié';
+          const country = p.country || t('adminNotSpecified');
           countryCounts[country] = (countryCounts[country] || 0) + 1;
         });
         const membersByCountry = Object.entries(countryCounts)
@@ -63,7 +65,7 @@ const AdminAnalytics = () => {
         // Members by industry
         const industryCounts: Record<string, number> = {};
         profiles.forEach(p => {
-          const industry = p.activity_domain || 'Non spécifié';
+          const industry = p.activity_domain || t('adminNotSpecified');
           industryCounts[industry] = (industryCounts[industry] || 0) + 1;
         });
         const membersByIndustry = Object.entries(industryCounts)
@@ -96,8 +98,8 @@ const AdminAnalytics = () => {
     <AdminLayout>
       <div className="p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
-          <p className="text-muted-foreground">Statistiques et métriques de la plateforme</p>
+          <h1 className="text-3xl font-bold text-foreground">{t('adminAnalytics')}</h1>
+          <p className="text-muted-foreground">{t('adminAnalyticsDescription')}</p>
         </div>
 
         {/* Overview Stats */}
@@ -110,7 +112,7 @@ const AdminAnalytics = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{data.connectionStats.total}</p>
-                  <p className="text-xs text-muted-foreground">Total connexions</p>
+                  <p className="text-xs text-muted-foreground">{t('adminTotalConnections')}</p>
                 </div>
               </div>
             </CardContent>
@@ -124,7 +126,7 @@ const AdminAnalytics = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{data.connectionStats.avgPerMember}</p>
-                  <p className="text-xs text-muted-foreground">Connexions / membre</p>
+                  <p className="text-xs text-muted-foreground">{t('adminConnectionsPerMember')}</p>
                 </div>
               </div>
             </CardContent>
@@ -138,7 +140,7 @@ const AdminAnalytics = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{data.membersByCountry.length}</p>
-                  <p className="text-xs text-muted-foreground">Pays représentés</p>
+                  <p className="text-xs text-muted-foreground">{t('adminCountriesRepresented')}</p>
                 </div>
               </div>
             </CardContent>
@@ -152,7 +154,7 @@ const AdminAnalytics = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{data.membersByIndustry.length}</p>
-                  <p className="text-xs text-muted-foreground">Secteurs d'activité</p>
+                  <p className="text-xs text-muted-foreground">{t('adminActivitySectors')}</p>
                 </div>
               </div>
             </CardContent>
@@ -165,13 +167,13 @@ const AdminAnalytics = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Inscriptions par mois
+                {t('adminRegistrationsByMonth')}
               </CardTitle>
-              <CardDescription>Évolution des nouvelles inscriptions</CardDescription>
+              <CardDescription>{t('adminRegistrationsEvolution')}</CardDescription>
             </CardHeader>
             <CardContent>
               {data.membersByMonth.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">Aucune donnée</p>
+                <p className="text-muted-foreground text-center py-8">{t('adminNoData')}</p>
               ) : (
                 <div className="space-y-3">
                   {data.membersByMonth.map((item) => (
@@ -198,13 +200,13 @@ const AdminAnalytics = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="h-5 w-5" />
-                Membres par pays
+                {t('adminMembersByCountry')}
               </CardTitle>
-              <CardDescription>Top 5 des pays</CardDescription>
+              <CardDescription>{t('adminTop5Countries')}</CardDescription>
             </CardHeader>
             <CardContent>
               {data.membersByCountry.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">Aucune donnée</p>
+                <p className="text-muted-foreground text-center py-8">{t('adminNoData')}</p>
               ) : (
                 <div className="space-y-3">
                   {data.membersByCountry.map((item, index) => (
@@ -226,13 +228,13 @@ const AdminAnalytics = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
-                Membres par secteur d'activité
+                {t('adminMembersByIndustry')}
               </CardTitle>
-              <CardDescription>Top 5 des secteurs</CardDescription>
+              <CardDescription>{t('adminTop5Sectors')}</CardDescription>
             </CardHeader>
             <CardContent>
               {data.membersByIndustry.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">Aucune donnée</p>
+                <p className="text-muted-foreground text-center py-8">{t('adminNoData')}</p>
               ) : (
                 <div className="grid md:grid-cols-5 gap-4">
                   {data.membersByIndustry.map((item) => (

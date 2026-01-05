@@ -6,10 +6,14 @@
 import { useState, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { haptics, camera, secureStorage } from '@/lib/capacitor';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export function useNativeFeatures() {
   const isNative = Capacitor.isNativePlatform();
   const platform = Capacitor.getPlatform();
+
+  // Notifications
+  const notifications = useNotifications();
 
   // Camera functionality
   const [cameraLoading, setCameraLoading] = useState(false);
@@ -94,5 +98,7 @@ export function useNativeFeatures() {
     removeSecure,
     // Share
     share,
+    // Notifications
+    notifications,
   };
 }

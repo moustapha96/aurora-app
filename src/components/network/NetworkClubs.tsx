@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NetworkModule } from "./NetworkModule";
-import { Users, Plus, Pencil, Trash2, Loader2, Sparkles } from "lucide-react";
+import { Users, Plus, Trash2, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { InlineEditableField } from "@/components/ui/inline-editable-field";
 
 interface ClubItem {
   id: string;
@@ -63,18 +64,6 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
       window.removeEventListener('open-add-association', handleAddAssociation);
     };
   }, []);
-
-  const handleOpenEdit = (item: ClubItem) => {
-    setEditingItem(item);
-    setFormData({
-      title: item.title,
-      club_type: item.club_type || "",
-      role: item.role || "",
-      since_year: item.since_year || "",
-      description: item.description || ""
-    });
-    setIsDialogOpen(true);
-  };
 
   const handleAISuggest = async () => {
     setIsGenerating(true);
@@ -156,6 +145,20 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
     }
   };
 
+  const handleInlineUpdate = async (id: string, field: string, value: string) => {
+    try {
+      const { error } = await supabase
+        .from("network_clubs")
+        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      onUpdate();
+    } catch (error) {
+      console.error("Update error:", error);
+      toast.error("Erreur lors de la sauvegarde");
+    }
+  };
+
   return (
     <NetworkModule title="Clubs & Associations" icon={Users} moduleType="clubs" isEditable={isEditable}>
       <div className="space-y-3">
@@ -163,21 +166,32 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
           <div key={item.id} className="p-3 bg-muted/30 rounded-lg group">
             <div className="flex justify-between items-start">
               <div className="flex-1">
-                <h4 className="font-medium text-foreground">{item.title}</h4>
+                <InlineEditableField
+                  value={item.title}
+                  onSave={(value) => handleInlineUpdate(item.id, "title", value)}
+                  placeholder="Nom du club"
+                  disabled={!isEditable}
+                  className="font-medium text-foreground"
+                />
                 <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                   {item.club_type && <span className="text-primary">{item.club_type}</span>}
                   {item.role && <span>• {item.role}</span>}
                   {item.since_year && <span>• Depuis {item.since_year}</span>}
                 </div>
-                {item.description && (
+                {isEditable ? (
+                  <InlineEditableField
+                    value={item.description || ""}
+                    onSave={(value) => handleInlineUpdate(item.id, "description", value)}
+                    placeholder="Description"
+                    multiline
+                    className="text-sm text-muted-foreground mt-1"
+                  />
+                ) : item.description && (
                   <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                 )}
               </div>
               {isEditable && (
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEdit(item)}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>

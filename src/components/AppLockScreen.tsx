@@ -6,6 +6,7 @@ import { useWebAuthn } from "@/hooks/useWebAuthn";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import auroraLogo from "@/assets/aurora-logo.png";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface AppLockScreenProps {
   onUnlock: () => void;
@@ -17,6 +18,7 @@ export const AppLockScreen = ({ onUnlock }: AppLockScreenProps) => {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attemptCount, setAttemptCount] = useState(0);
+  const { t } = useLanguage();
 
   // Auto-prompt for authentication when component mounts
   useEffect(() => {
@@ -34,7 +36,7 @@ export const AppLockScreen = ({ onUnlock }: AppLockScreenProps) => {
     if (result.success) {
       onUnlock();
     } else {
-      setError(result.error || "Échec de l'authentification");
+      setError(result.error || t('authFailed'));
       setAttemptCount(prev => prev + 1);
     }
     
@@ -64,9 +66,9 @@ export const AppLockScreen = ({ onUnlock }: AppLockScreenProps) => {
 
         <Card className="border-primary/20">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-serif">Application verrouillée</CardTitle>
+            <CardTitle className="text-2xl font-serif">{t('appLocked')}</CardTitle>
             <CardDescription>
-              Utilisez votre authentification biométrique pour déverrouiller l'application
+              {t('useBiometricToUnlock')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -95,7 +97,7 @@ export const AppLockScreen = ({ onUnlock }: AppLockScreenProps) => {
                 <p className="text-sm text-destructive">{error}</p>
                 {attemptCount >= 3 && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Trop de tentatives ? Déconnectez-vous et reconnectez-vous avec votre mot de passe.
+                    {t('tooManyAttempts')}
                   </p>
                 )}
               </div>
@@ -111,12 +113,12 @@ export const AppLockScreen = ({ onUnlock }: AppLockScreenProps) => {
               {isAuthenticating ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Authentification...
+                  {t('authenticating')}
                 </>
               ) : (
                 <>
                   <Fingerprint className="w-5 h-5" />
-                  Déverrouiller
+                  {t('unlock')}
                 </>
               )}
             </Button>
@@ -129,7 +131,7 @@ export const AppLockScreen = ({ onUnlock }: AppLockScreenProps) => {
                 className="w-full gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
-                Réessayer
+                {t('retry')}
               </Button>
             )}
 
@@ -141,7 +143,7 @@ export const AppLockScreen = ({ onUnlock }: AppLockScreenProps) => {
                 className="w-full gap-2 text-muted-foreground hover:text-foreground"
               >
                 <LogOut className="w-4 h-4" />
-                Se déconnecter
+                {t('logout')}
               </Button>
             </div>
           </CardContent>

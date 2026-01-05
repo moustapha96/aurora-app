@@ -50,6 +50,15 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## Documentation
+
+La documentation complète du projet est disponible dans le dossier [`docs/`](./docs/).
+
+### Système de Parrainage
+
+- **[Documentation Utilisateur](./docs/PARRAINAGE.md)** - Guide complet d'utilisation et de configuration
+- **[Documentation Technique](./docs/PARRAINAGE_TECHNIQUE.md)** - Architecture, API et guide de développement
+
 ## What technologies are used for this project?
 
 This project is built with:
@@ -59,6 +68,7 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Supabase (Base de données et authentification)
 
 ## How can I deploy this project?
 

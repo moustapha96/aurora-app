@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Globe, Upload, Users } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Globe, Upload, Users, Loader2, CheckCircle, AlertTriangle, XCircle, User, Shield, ImageIcon, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage, languages } from "@/contexts/LanguageContext";
@@ -15,14 +16,22 @@ import { COUNTRIES } from "@/lib/countries";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Header } from "@/components/Header";
+import { PageNavigation } from "@/components/BackButton";
+import { useProfileImageVerification } from "@/hooks/useProfileImageVerification";
+import { IdentityVerifiedBadge } from "@/components/VerificationBadge";
 
 const EditProfile = () => {
   const navigate = useNavigate();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [identityVerified, setIdentityVerified] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [accountNumber, setAccountNumber] = useState<string>("");
+  const { verificationStatus, verificationResult, verifyImage, resetVerification, isVerifying, canProceed } = useProfileImageVerification();
   const [showAssociatedAccountsDialog, setShowAssociatedAccountsDialog] = useState(false);
   const [showAssociatedAccountForm, setShowAssociatedAccountForm] = useState(false);
   const [associatedAccountData, setAssociatedAccountData] = useState({
@@ -69,6 +78,9 @@ const EditProfile = () => {
         return;
       }
 
+      // Store user email (read-only)
+      setUserEmail(user.email || "");
+
       // Load public profile data
       const { data, error } = await supabase
         .from('profiles')
@@ -102,10 +114,12 @@ const EditProfile = () => {
         setFormData(profileData);
         setInitialData(profileData);
         setAvatarUrl(data.avatar_url || "");
+        setIdentityVerified(data.identity_verified || false);
+        setAccountNumber(data.account_number || "");
       }
     } catch (error) {
       console.error('Error loading profile:', error);
-      toast.error("Erreur lors du chargement du profil");
+      toast.error(t('errorLoadingProfile'));
     } finally {
       setLoading(false);
     }
@@ -115,15 +129,77 @@ const EditProfile = () => {
     return formData[fieldName] !== initialData[fieldName];
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setAvatarFile(file);
+      resetVerification();
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarUrl(reader.result as string);
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        setAvatarUrl(base64);
+        // Trigger verification
+        const result = await verifyImage(base64);
+        
+        // If verification passed, immediately upload and update profile
+        if (result?.isValid || (result?.hasFace && result?.isAppropriate)) {
+          await uploadAndUpdateAvatar(file);
+        }
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadAndUpdateAvatar = async (file: File) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        console.error('Error uploading avatar:', uploadError);
+        toast.error(t('avatarUploadError'));
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+      
+      // Add cache-buster to force refresh everywhere
+      const newAvatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      // Update profile in database immediately
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: newAvatarUrl })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Error updating avatar:', updateError);
+        toast.error(t('profileUpdateError'));
+        return;
+      }
+
+      setAvatarUrl(newAvatarUrl);
+      setAvatarFile(null); // Clear the file since it's already uploaded
+      
+      // Dispatch custom event to notify other components of avatar change
+      window.dispatchEvent(new CustomEvent('avatar-updated', { 
+        detail: { avatarUrl: newAvatarUrl, userId: user.id } 
+      }));
+      
+      toast.success(t('profilePhotoUpdated'));
+    } catch (error) {
+      console.error('Error in uploadAndUpdateAvatar:', error);
+      toast.error(t('photoUpdateError'));
     }
   };
 
@@ -150,12 +226,13 @@ const EditProfile = () => {
 
         if (uploadError) {
           console.error('Error uploading avatar:', uploadError);
-          toast.error("Erreur lors de l'upload de l'avatar");
+          toast.error(t('avatarUploadError'));
         } else {
           const { data: urlData } = supabase.storage
             .from('avatars')
             .getPublicUrl(filePath);
-          uploadedAvatarUrl = urlData.publicUrl;
+          // Add cache-buster to force refresh everywhere
+          uploadedAvatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
         }
       }
 
@@ -201,11 +278,18 @@ const EditProfile = () => {
 
       if (privateError) throw privateError;
 
-      toast.success("Profil mis à jour avec succès");
+      // Dispatch avatar update event if avatar was changed
+      if (avatarFile && uploadedAvatarUrl) {
+        window.dispatchEvent(new CustomEvent('avatar-updated', { 
+          detail: { avatarUrl: uploadedAvatarUrl, userId: user.id } 
+        }));
+      }
+
+      toast.success(t('profileUpdated'));
       navigate("/member-card");
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error("Erreur lors de la mise à jour du profil");
+      toast.error(t('profileUpdateError'));
     } finally {
       setSaving(false);
     }
@@ -213,80 +297,163 @@ const EditProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-gold p-6 flex items-center justify-center">
-        <p>Chargement...</p>
-      </div>
+      <>
+        <Header />
+        <div className="min-h-screen bg-black text-gold p-6 pt-32 sm:pt-36 flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-6 pb-8 safe-area-all">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-          <div className="flex items-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/member-card")}
-              className="text-gold/60 hover:text-gold mr-2 sm:mr-4"
-            >
-              <ArrowLeft className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Retour</span>
-            </Button>
-            <h1 className="text-xl sm:text-2xl md:text-4xl font-serif text-gold tracking-wide">MODIFIER LE PROFIL</h1>
-          </div>
+    <>
+      <Header />
+      <PageNavigation to="/member-card" />
+      <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-32 sm:pt-36 pb-8 safe-area-all">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+            <h1 className="text-xl sm:text-2xl md:text-4xl font-serif text-gold tracking-wide">{t('editProfileTitle')}</h1>
           
           {/* Language Selector */}
-          <Select value={language} onValueChange={setLanguage}>
-            <SelectTrigger className="w-full sm:w-[140px] bg-black/50 border-gold/20 text-gold">
-              <Globe className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-black border-gold/20">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-gold hover:bg-gold/10 border border-gold/20">
+                <Globe className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-black border-gold/20">
               {languages.map((lang) => (
-                <SelectItem 
-                  key={lang.code} 
-                  value={lang.code}
-                  className="text-gold hover:bg-gold/10 focus:bg-gold/10"
+                <DropdownMenuItem
+                  key={lang.code}
+                  onClick={() => setLanguage(lang.code)}
+                  className={language === lang.code ? "bg-gold/20 text-gold" : "text-gold hover:bg-gold/10"}
                 >
-                  {lang.flag} {lang.name}
-                </SelectItem>
+                  <span className="mr-2">{lang.flag}</span>
+                  {lang.name}
+                </DropdownMenuItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Form */}
         <div className="space-y-6 bg-black/50 border border-gold/20 rounded-lg p-8">
           {/* Avatar Upload */}
-          <div className="space-y-2">
-            <Label className="text-gold/80">Photo de Profil</Label>
+          <div className="space-y-3">
+            <Label className="text-gold/80">{t('profilePhoto')}</Label>
             <div className="flex items-center gap-4">
-              <Avatar className="h-24 w-24">
-                {avatarUrl ? (
-                  <AvatarImage src={avatarUrl} alt="Avatar" />
-                ) : (
-                  <AvatarFallback className="bg-gold/10 text-gold">
-                    <Upload className="w-8 h-8" />
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              <div className="flex-1">
+              <div className="relative inline-block">
+                <Avatar className="h-24 w-24 border-2 border-gold/30">
+                  {avatarUrl ? (
+                    <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
+                  ) : (
+                    <AvatarFallback className="bg-gold/10 text-gold">
+                      <Upload className="w-8 h-8" />
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <IdentityVerifiedBadge 
+                  isVerified={identityVerified} 
+                  className="absolute -bottom-1 -right-1"
+                />
+              </div>
+              <div className="flex-1 space-y-2">
                 <Input
                   type="file"
                   accept="image/*"
                   onChange={handleAvatarChange}
+                  disabled={isVerifying}
                   className="bg-black/50 border-gold/20 text-gold file:text-gold file:border-0 file:bg-gold/10 file:mr-4 file:py-2 file:px-4"
                 />
-                <p className="text-xs text-gold/60 mt-1">Format JPG, PNG ou GIF recommandé</p>
+                <p className="text-xs text-gold/60">{t('photoFormatsHint')}</p>
+                
+                {/* Verification Status */}
+                {verificationStatus !== 'idle' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      {verificationStatus === 'verifying' && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                      {verificationStatus === 'valid' && <CheckCircle className="w-4 h-4 text-green-500" />}
+                      {verificationStatus === 'warning' && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
+                      {verificationStatus === 'invalid' && <XCircle className="w-4 h-4 text-red-500" />}
+                      <span className="text-xs text-gold/80">
+                        {verificationStatus === 'verifying' && t('analysisInProgress')}
+                        {verificationStatus === 'valid' && t('photoValidated')}
+                        {verificationStatus === 'warning' && t('partialValidation')}
+                        {verificationStatus === 'invalid' && t('photoInvalid')}
+                      </span>
+                    </div>
+
+                    {verificationResult && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-gold/60">{verificationResult.reason}</p>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant={verificationResult.hasFace ? "default" : "destructive"} className="text-xs">
+                            <User className="w-3 h-3 mr-1" />
+                            {verificationResult.hasFace ? t('faceDetected') : t('noFaceDetected')}
+                          </Badge>
+                          <Badge variant={verificationResult.isAppropriate ? "default" : "destructive"} className="text-xs">
+                            <Shield className="w-3 h-3 mr-1" />
+                            {verificationResult.isAppropriate ? t('appropriatePhoto') : t('inappropriatePhoto')}
+                          </Badge>
+                          <Badge variant={verificationResult.qualityOk ? "default" : "secondary"} className="text-xs">
+                            <ImageIcon className="w-3 h-3 mr-1" />
+                            {verificationResult.qualityOk ? t('qualityOk') : t('lowQuality')}
+                          </Badge>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
+          {/* Email - Read Only */}
+          <div>
+            <Label htmlFor="email" className="text-gold/80">{t('emailReadOnly')}</Label>
+            <Input
+              id="email"
+              value={userEmail}
+              disabled
+              readOnly
+              className="bg-black/30 border-gold/10 text-gold/60 cursor-not-allowed"
+            />
+            <p className="text-xs text-gold/40 mt-1">{t('emailCannotBeChanged')}</p>
+          </div>
+
+          {/* Account Number - Read Only with Copy */}
+          {accountNumber && (
+            <div>
+              <Label htmlFor="accountNumber" className="text-gold/80">{t('accountNumber')}</Label>
+              <div className="relative">
+                <Input
+                  id="accountNumber"
+                  value={accountNumber}
+                  disabled
+                  readOnly
+                  className="bg-black/30 border-gold/10 text-gold/60 cursor-not-allowed font-mono tracking-wider pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(accountNumber);
+                    toast.success(t('accountNumberCopied'));
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-gold/10 transition-colors"
+                  title={t('clickToCopy')}
+                >
+                  <Copy className="w-4 h-4 text-gold/60 hover:text-gold" />
+                </button>
+              </div>
+              <p className="text-xs text-gold/40 mt-1">{t('accountNumberCannotBeChanged')}</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="firstName" className="text-gold/80">Prénom</Label>
+              <Label htmlFor="firstName" className="text-gold/80">{t('firstName')}</Label>
               <Input
                 id="firstName"
                 value={formData.firstName}
@@ -299,7 +466,7 @@ const EditProfile = () => {
               />
             </div>
             <div>
-              <Label htmlFor="lastName" className="text-gold/80">Nom</Label>
+              <Label htmlFor="lastName" className="text-gold/80">{t('lastName')}</Label>
               <Input
                 id="lastName"
                 value={formData.lastName}
@@ -314,7 +481,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="honorificTitle" className="text-gold/80">Titre Honorifique (optionnel)</Label>
+            <Label htmlFor="honorificTitle" className="text-gold/80">{t('honorificTitleOptional')}</Label>
             <Input
               id="honorificTitle"
               value={formData.honorificTitle}
@@ -328,7 +495,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="mobilePhone" className="text-gold/80">Téléphone Mobile</Label>
+            <Label htmlFor="mobilePhone" className="text-gold/80">{t('mobileNumber')}</Label>
             <Input
               id="mobilePhone"
               value={formData.mobilePhone}
@@ -342,7 +509,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="jobFunction" className="text-gold/80">Fonction (optionnel)</Label>
+            <Label htmlFor="jobFunction" className="text-gold/80">{t('jobFunctionOptional')}</Label>
             <Input
               id="jobFunction"
               value={formData.jobFunction}
@@ -356,7 +523,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="activityDomain" className="text-gold/80">Secteur d'activité (optionnel)</Label>
+            <Label htmlFor="activityDomain" className="text-gold/80">{t('activityDomainOptional')}</Label>
             <Select
               value={formData.activityDomain}
               onValueChange={(value) => setFormData({ ...formData, activityDomain: value })}
@@ -366,7 +533,7 @@ const EditProfile = () => {
                   ? 'bg-[hsl(var(--navy-blue))]/30 border-[hsl(var(--navy-blue-light))] text-gold' 
                   : 'text-gold'
               }`}>
-                <SelectValue placeholder="Sélectionnez un secteur" />
+                <SelectValue placeholder={t('selectSector')} />
               </SelectTrigger>
               <SelectContent className="bg-black border-gold/20">
                 {INDUSTRIES.map((industry) => (
@@ -383,7 +550,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="country" className="text-gold/80">Pays (optionnel)</Label>
+            <Label htmlFor="country" className="text-gold/80">{t('countryOptional')}</Label>
             <Select
               value={formData.country}
               onValueChange={(value) => setFormData({ ...formData, country: value })}
@@ -393,7 +560,7 @@ const EditProfile = () => {
                   ? 'bg-[hsl(var(--navy-blue))]/30 border-[hsl(var(--navy-blue-light))] text-gold' 
                   : 'text-gold'
               }`}>
-                <SelectValue placeholder="Sélectionnez un pays" />
+                <SelectValue placeholder={t('selectCountry')} />
               </SelectTrigger>
               <SelectContent className="bg-black border-gold/20 max-h-[300px]">
                 {COUNTRIES.map((country) => (
@@ -410,11 +577,11 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label className="text-gold/80 mb-2 block">Niveau de Patrimoine</Label>
+            <Label className="text-gold/80 mb-2 block">{t('wealthLevel')}</Label>
             <div className="flex gap-2">
               <Input
                 type="number"
-                placeholder="Montant"
+                placeholder={t('amount')}
                 value={formData.wealthAmount}
                 onChange={(e) => setFormData({ ...formData, wealthAmount: e.target.value })}
                 className={`flex-1 bg-black/50 border-gold/20 ${
@@ -457,7 +624,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="personalQuote" className="text-gold/80">Citation Personnelle (optionnel)</Label>
+            <Label htmlFor="personalQuote" className="text-gold/80">{t('personalQuoteOptional')}</Label>
             <Textarea
               id="personalQuote"
               value={formData.personalQuote}
@@ -471,33 +638,21 @@ const EditProfile = () => {
             />
           </div>
 
-          {/* Associated Accounts */}
-          <div 
-            className="flex items-center space-x-3 p-4 border border-gold/30 rounded-lg bg-black/40 cursor-pointer hover:bg-black/60 transition-colors"
-            onClick={() => setShowAssociatedAccountsDialog(true)}
-          >
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-gold" />
-              <Label className="text-gold/80 text-sm font-serif cursor-pointer">
-                Comptes Associés
-              </Label>
-            </div>
-          </div>
 
           <div className="flex gap-4 pt-4">
             <Button
               variant="outline"
               onClick={() => navigate("/member-card")}
-              className="flex-1 border-gold/40 text-gold hover:bg-gold/10"
-            >
-              Annuler
+              className="flex-1 border-gold/40 text-gold hover:bg-gold/10">
+              {t('cancel')}
+              
             </Button>
             <Button
               onClick={handleSave}
               disabled={saving}
               className="flex-1 bg-gold text-black hover:bg-gold/90"
             >
-              {saving ? "Enregistrement..." : "Enregistrer"}
+              {saving ? t('saving') : t('save')}
             </Button>
           </div>
         </div>
@@ -506,9 +661,9 @@ const EditProfile = () => {
         <Dialog open={showAssociatedAccountsDialog} onOpenChange={setShowAssociatedAccountsDialog}>
           <DialogContent className="bg-black border-gold/30 text-gold max-w-2xl">
             <DialogHeader>
-              <DialogTitle className="text-gold font-serif text-xl">Comptes Associés</DialogTitle>
+              <DialogTitle className="text-gold font-serif text-xl">{t('associatedAccounts')}</DialogTitle>
               <DialogDescription className="text-gold/70 text-sm leading-relaxed pt-4">
-                Les personnes associées auront accès à votre section Family et à votre section Conciergerie/marketplace/metavers.
+                {t('associatedAccountsDesc')}
               </DialogDescription>
             </DialogHeader>
             
@@ -516,16 +671,16 @@ const EditProfile = () => {
               <Badge
                 variant="outline"
                 onClick={() => setShowAssociatedAccountForm(!showAssociatedAccountForm)}
-                className="border-gold/50 bg-gold/10 text-gold hover:bg-gold/20 cursor-pointer px-4 py-2 text-sm"
-              >
-                Création
+                className="border-gold/50 bg-gold/10 text-gold hover:bg-gold/20 cursor-pointer px-4 py-2 text-sm">
+                {t('creation')}
+                
               </Badge>
 
               {showAssociatedAccountForm && (
                 <div className="space-y-4 p-4 border border-gold/30 rounded-lg bg-black/40">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="associated-firstname" className="text-gold/80">Prénom</Label>
+                      <Label htmlFor="associated-firstname" className="text-gold/80">{t('firstName')}</Label>
                       <Input
                         id="associated-firstname"
                         value={associatedAccountData.firstName}
@@ -534,7 +689,7 @@ const EditProfile = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="associated-lastname" className="text-gold/80">Nom</Label>
+                      <Label htmlFor="associated-lastname" className="text-gold/80">{t('lastName')}</Label>
                       <Input
                         id="associated-lastname"
                         value={associatedAccountData.lastName}
@@ -545,17 +700,17 @@ const EditProfile = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="relation-type" className="text-gold/80">Type de relation</Label>
+                    <Label htmlFor="relation-type" className="text-gold/80">{t('relationType')}</Label>
                     <Select
                       value={associatedAccountData.relationType}
                       onValueChange={(value) => setAssociatedAccountData({ ...associatedAccountData, relationType: value })}
                     >
                       <SelectTrigger id="relation-type" className="bg-black/60 border-gold/30 text-gold">
-                        <SelectValue placeholder="Sélectionner..." />
+                        <SelectValue placeholder={t('select')} />
                       </SelectTrigger>
                       <SelectContent className="bg-black border-gold/30">
-                        <SelectItem value="spouse" className="text-gold">Époux/Épouse</SelectItem>
-                        <SelectItem value="child" className="text-gold">Fils/Fille</SelectItem>
+                        <SelectItem value="spouse" className="text-gold">{t('spouse')}</SelectItem>
+                        <SelectItem value="child" className="text-gold">{t('child')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -566,6 +721,7 @@ const EditProfile = () => {
         </Dialog>
       </div>
     </div>
+    </>
   );
 };
 

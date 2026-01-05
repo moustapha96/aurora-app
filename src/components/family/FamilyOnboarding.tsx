@@ -2,38 +2,40 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Sparkles, Phone, PenLine, ArrowRight } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface FamilyOnboardingProps {
   onSelectMode: (mode: string) => void;
 }
 
 export const FamilyOnboarding = ({ onSelectMode }: FamilyOnboardingProps) => {
+  const { t } = useLanguage();
   const modes = [
     {
       id: "import",
-      title: "Importer depuis un document",
-      description: "Téléchargez un arbre généalogique, document familial ou CV pour pré-remplir votre profil",
+      title: t("familyImportDocument"),
+      description: t("familyImportDocumentDesc"),
       icon: FileText,
       color: "text-blue-400"
     },
     {
       id: "ai",
-      title: "Suggestions IA Aurora",
-      description: "Notre IA vous pose quelques questions et génère un profil familial personnalisé",
+      title: t("aiSuggestions"),
+      description: t("familyAISuggestionsDesc"),
       icon: Sparkles,
       color: "text-gold"
     },
     {
       id: "concierge",
-      title: "Conciergerie Privée",
-      description: "Un conseiller Aurora vous contacte pour créer votre profil sur mesure",
+      title: t("privateConcierge"),
+      description: t("familyConciergeDesc"),
       icon: Phone,
       color: "text-emerald-400"
     },
     {
       id: "manual",
-      title: "Saisie Manuelle",
-      description: "Remplissez chaque module à votre rythme avec un contrôle total",
+      title: t("manualEntry"),
+      description: t("familyManualEntryDesc"),
       icon: PenLine,
       color: "text-purple-400"
     }
@@ -43,11 +45,10 @@ export const FamilyOnboarding = ({ onSelectMode }: FamilyOnboardingProps) => {
     <div className="max-w-4xl mx-auto py-12">
       <div className="text-center mb-12">
         <h2 className="text-3xl font-serif text-gold mb-4">
-          Configurez votre section Famille & Réseau
+          {t("configureFamily")}
         </h2>
         <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-          Choisissez comment vous souhaitez construire votre profil familial et réseau. 
-          Vous pourrez modifier chaque module individuellement par la suite.
+          {t("configureFamilyDesc")}
         </p>
       </div>
 
@@ -81,7 +82,7 @@ export const FamilyOnboarding = ({ onSelectMode }: FamilyOnboardingProps) => {
                     onSelectMode(mode.id);
                   }}
                 >
-                  Sélectionner
+                  {t("select")}
                 </Button>
               </CardContent>
             </Card>

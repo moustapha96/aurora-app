@@ -6,11 +6,14 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Settings, Shield, Bell, Database, AlertTriangle, Save, Key, Eye, EyeOff, CheckCircle, Fingerprint } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Settings, Shield, Bell, Database, AlertTriangle, Save, Clock, FlaskConical, Mail, Eye, EyeOff, Send, CheckCircle, XCircle, Loader2, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const AdminSettings = () => {
+  const { t } = useLanguage();
   const [settings, setSettings] = useState({
     maintenanceMode: false,
     allowRegistration: true,
@@ -20,49 +23,306 @@ const AdminSettings = () => {
     enableNotifications: true,
   });
 
-  // Jumio configuration state
-  const [jumioConfig, setJumioConfig] = useState({
-    apiToken: '',
-    apiSecret: '',
-    baseUrl: 'https://api.amer-1.jumio.ai',
+  // Inactivity timeout state
+  const [inactivityTimeout, setInactivityTimeout] = useState(10);
+  const [savingTimeout, setSavingTimeout] = useState(false);
+  
+  // Test mode state
+  const [testModeEnabled, setTestModeEnabled] = useState(false);
+  const [savingTestMode, setSavingTestMode] = useState(false);
+  
+  // Email config state
+  const [emailMode, setEmailMode] = useState<'test' | 'production'>('test');
+  const [emailConfig, setEmailConfig] = useState({
+    smtpHost: '',
+    smtpPort: '587',
+    smtpUser: '',
+    smtpPassword: '',
+    senderEmail: '',
+    senderName: ''
   });
-  const [showJumioToken, setShowJumioToken] = useState(false);
-  const [showJumioSecret, setShowJumioSecret] = useState(false);
-  const [jumioConfigured, setJumioConfigured] = useState(false);
-  const [savingJumio, setSavingJumio] = useState(false);
+  const [savingEmailConfig, setSavingEmailConfig] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testEmailAddress, setTestEmailAddress] = useState('');
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string } | null>(null);
+  
+  // CAPTCHA config state
+  const [captchaConfig, setCaptchaConfig] = useState({
+    siteKey: '',
+    secretKey: '',
+    enabled: false,
+    enabledForLogin: true,
+    enabledForRegister: true,
+    enabledForContact: true,
+  });
+  const [savingCaptcha, setSavingCaptcha] = useState(false);
+  const [showSecretKey, setShowSecretKey] = useState(false);
 
   useEffect(() => {
-    loadJumioConfig();
+    loadInactivityTimeout();
+    loadTestMode();
+    loadEmailConfig();
+    loadCaptchaConfig();
   }, []);
 
-  const loadJumioConfig = async () => {
+  const loadCaptchaConfig = async () => {
     try {
       const { data, error } = await supabase
         .from('admin_settings')
         .select('setting_key, setting_value')
-        .in('setting_key', ['jumio_api_token', 'jumio_api_secret', 'jumio_base_url']);
+        .in('setting_key', [
+          'captcha_site_key',
+          'captcha_secret_key',
+          'captcha_enabled',
+          'captcha_enabled_login',
+          'captcha_enabled_register',
+          'captcha_enabled_contact'
+        ]);
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        const configMap: Record<string, string> = {};
-        data.forEach(item => {
-          configMap[item.setting_key] = item.setting_value || '';
-        });
+      const configMap: Record<string, string> = {};
+      data?.forEach(item => {
+        configMap[item.setting_key] = item.setting_value;
+      });
 
-        setJumioConfig({
-          apiToken: configMap.jumio_api_token || '',
-          apiSecret: configMap.jumio_api_secret || '',
-          baseUrl: configMap.jumio_base_url || 'https://api.amer-1.jumio.ai',
-        });
+      setCaptchaConfig({
+        siteKey: configMap['captcha_site_key'] || '',
+        secretKey: configMap['captcha_secret_key'] || '',
+        enabled: configMap['captcha_enabled'] === 'true',
+        enabledForLogin: configMap['captcha_enabled_login'] !== 'false',
+        enabledForRegister: configMap['captcha_enabled_register'] !== 'false',
+        enabledForContact: configMap['captcha_enabled_contact'] !== 'false',
+      });
 
-        // Check if both token and secret are configured
-        setJumioConfigured(!!configMap.jumio_api_token && !!configMap.jumio_api_secret);
-      }
+      // Store in localStorage for quick access
+      localStorage.setItem('captcha_config', JSON.stringify({
+        siteKey: configMap['captcha_site_key'] || '',
+        enabled: configMap['captcha_enabled'] === 'true',
+        enabledForLogin: configMap['captcha_enabled_login'] !== 'false',
+        enabledForRegister: configMap['captcha_enabled_register'] !== 'false',
+        enabledForContact: configMap['captcha_enabled_contact'] !== 'false',
+      }));
     } catch (error) {
-      console.error('Error loading Jumio config:', error);
+      console.error('Error loading CAPTCHA config:', error);
     }
   };
+
+  const saveCaptchaConfig = async () => {
+    setSavingCaptcha(true);
+    try {
+      const settings = [
+        { setting_key: 'captcha_site_key', setting_value: captchaConfig.siteKey, description: t('adminCaptchaSiteKeyDesc') },
+        { setting_key: 'captcha_secret_key', setting_value: captchaConfig.secretKey, description: t('adminCaptchaSecretKeyDesc') },
+        { setting_key: 'captcha_enabled', setting_value: captchaConfig.enabled.toString(), description: t('adminEnableCaptcha') },
+        { setting_key: 'captcha_enabled_login', setting_value: captchaConfig.enabledForLogin.toString(), description: t('adminEnableCaptchaLogin') },
+        { setting_key: 'captcha_enabled_register', setting_value: captchaConfig.enabledForRegister.toString(), description: t('adminEnableCaptchaRegister') },
+        { setting_key: 'captcha_enabled_contact', setting_value: captchaConfig.enabledForContact.toString(), description: t('adminEnableCaptchaContact') },
+      ];
+
+      for (const setting of settings) {
+        const { error } = await supabase
+          .from('admin_settings')
+          .upsert(setting, { onConflict: 'setting_key' });
+        if (error) throw error;
+      }
+
+      // Update localStorage
+      localStorage.setItem('captcha_config', JSON.stringify({
+        siteKey: captchaConfig.siteKey,
+        enabled: captchaConfig.enabled,
+        enabledForLogin: captchaConfig.enabledForLogin,
+        enabledForRegister: captchaConfig.enabledForRegister,
+        enabledForContact: captchaConfig.enabledForContact,
+      }));
+
+      toast.success(t('adminCaptchaConfigSaved'));
+    } catch (error) {
+      console.error('Error saving CAPTCHA config:', error);
+      toast.error(t('adminErrorSavingCaptcha'));
+    } finally {
+      setSavingCaptcha(false);
+    }
+  };
+
+  const loadInactivityTimeout = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('setting_value')
+        .eq('setting_key', 'inactivity_timeout_minutes')
+        .maybeSingle();
+
+      if (!error && data?.setting_value) {
+        const minutes = parseInt(data.setting_value, 10);
+        if (!isNaN(minutes) && minutes > 0) {
+          setInactivityTimeout(minutes);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading inactivity timeout:', error);
+    }
+  };
+
+  const loadTestMode = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('setting_value')
+        .eq('setting_key', 'test_mode_enabled')
+        .maybeSingle();
+
+      if (!error && data?.setting_value) {
+        setTestModeEnabled(data.setting_value === 'true');
+      }
+    } catch (error) {
+      console.error('Error loading test mode:', error);
+    }
+  };
+
+  const saveTestMode = async (enabled: boolean) => {
+    setSavingTestMode(true);
+    try {
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert({
+          setting_key: 'test_mode_enabled',
+          setting_value: enabled.toString(),
+          description: t('adminTestModeDescription')
+        }, { onConflict: 'setting_key' });
+
+      if (error) throw error;
+      setTestModeEnabled(enabled);
+      toast.success(enabled ? t('adminTestModeEnabled') : t('adminTestModeDisabled'));
+    } catch (error) {
+      console.error('Error saving test mode:', error);
+      toast.error(t('adminErrorSavingTestMode'));
+    } finally {
+      setSavingTestMode(false);
+    }
+  };
+
+  const loadEmailConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', [
+          'email_mode',
+          'smtp_host',
+          'smtp_port',
+          'smtp_user',
+          'smtp_password',
+          'sender_email',
+          'sender_name'
+        ]);
+
+      if (!error && data) {
+        const configMap = data.reduce((acc, item) => {
+          acc[item.setting_key] = item.setting_value;
+          return acc;
+        }, {} as Record<string, string | null>);
+        
+        setEmailMode((configMap['email_mode'] as 'test' | 'production') || 'test');
+        setEmailConfig({
+          smtpHost: configMap['smtp_host'] || '',
+          smtpPort: configMap['smtp_port'] || '587',
+          smtpUser: configMap['smtp_user'] || '',
+          smtpPassword: configMap['smtp_password'] || '',
+          senderEmail: configMap['sender_email'] || '',
+          senderName: configMap['sender_name'] || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error loading email config:', error);
+    }
+  };
+
+  const saveEmailConfig = async () => {
+    setSavingEmailConfig(true);
+    try {
+      const settings = [
+        { setting_key: 'email_mode', setting_value: emailMode, description: t('adminEmailModeDesc') },
+        { setting_key: 'smtp_host', setting_value: emailConfig.smtpHost, description: t('adminSmtpHostDesc') },
+        { setting_key: 'smtp_port', setting_value: emailConfig.smtpPort, description: t('adminSmtpPortDesc') },
+        { setting_key: 'smtp_user', setting_value: emailConfig.smtpUser, description: t('adminSmtpUserDesc') },
+        { setting_key: 'smtp_password', setting_value: emailConfig.smtpPassword, description: t('adminSmtpPasswordDesc') },
+        { setting_key: 'sender_email', setting_value: emailConfig.senderEmail, description: t('adminSenderEmailDesc') },
+        { setting_key: 'sender_name', setting_value: emailConfig.senderName, description: t('adminSenderNameDesc') }
+      ];
+
+      for (const setting of settings) {
+        const { error } = await supabase
+          .from('admin_settings')
+          .upsert(setting, { onConflict: 'setting_key' });
+        if (error) throw error;
+      }
+
+      toast.success(t('adminEmailConfigSaved'));
+    } catch (error) {
+      console.error('Error saving email config:', error);
+      toast.error(t('adminErrorSaving'));
+    } finally {
+      setSavingEmailConfig(false);
+    }
+  };
+
+  const sendTestEmail = async () => {
+    if (!testEmailAddress) {
+      toast.error(t('adminEnterEmailAddress'));
+      return;
+    }
+
+    setTestingEmail(true);
+    setTestEmailResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-email', {
+        body: { recipientEmail: testEmailAddress }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.success) {
+        setTestEmailResult({ success: true, message: data.message || t('adminEmailSentSuccess') });
+        toast.success(t('adminTestEmailSent'));
+      } else {
+        throw new Error(data?.error || t('adminUnknownError'));
+      }
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
+      const errorMessage = error.message || t('adminErrorSending');
+      setTestEmailResult({ success: false, message: errorMessage });
+      toast.error(`${t('adminSendFailed')}: ${errorMessage}`);
+    } finally {
+      setTestingEmail(false);
+    }
+  };
+
+  const saveInactivityTimeout = async () => {
+    setSavingTimeout(true);
+    try {
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert({
+          setting_key: 'inactivity_timeout_minutes',
+          setting_value: inactivityTimeout.toString(),
+          description: t('adminInactivityTimeoutDesc')
+        }, { onConflict: 'setting_key' });
+
+      if (error) throw error;
+      toast.success(t('adminInactivityTimeoutUpdated') + ': ' + inactivityTimeout + ' ' + (t('minutes') || 'minutes'));
+    } catch (error) {
+      console.error('Error saving inactivity timeout:', error);
+      toast.error(t('adminErrorSavingTimeout'));
+    } finally {
+      setSavingTimeout(false);
+    }
+  };
+
 
   const updateSetting = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -70,203 +330,41 @@ const AdminSettings = () => {
 
   const saveSettings = () => {
     localStorage.setItem('admin_settings', JSON.stringify(settings));
-    toast.success('Paramètres enregistrés');
+    toast.success(t('adminSettingsSaved'));
   };
 
-  const saveJumioConfig = async () => {
-    setSavingJumio(true);
-    try {
-      const configItems = [
-        { setting_key: 'jumio_api_token', setting_value: jumioConfig.apiToken, description: 'Jumio API Token' },
-        { setting_key: 'jumio_api_secret', setting_value: jumioConfig.apiSecret, description: 'Jumio API Secret' },
-        { setting_key: 'jumio_base_url', setting_value: jumioConfig.baseUrl, description: 'Jumio API Base URL' },
-      ];
-
-      for (const item of configItems) {
-        const { error } = await supabase
-          .from('admin_settings')
-          .upsert(item, { onConflict: 'setting_key' });
-
-        if (error) throw error;
-      }
-
-      setJumioConfigured(!!jumioConfig.apiToken && !!jumioConfig.apiSecret);
-      toast.success('Configuration Jumio enregistrée');
-    } catch (error) {
-      console.error('Error saving Jumio config:', error);
-      toast.error('Erreur lors de l\'enregistrement de la configuration Jumio');
-    } finally {
-      setSavingJumio(false);
-    }
-  };
-
-  const testJumioConnection = async () => {
-    try {
-      toast.info('Test de connexion Jumio en cours...');
-      
-      // Simple connection test - we can't actually call Jumio from frontend
-      // but we can verify the config is saved
-      if (!jumioConfig.apiToken || !jumioConfig.apiSecret) {
-        toast.error('Veuillez configurer le token et le secret API');
-        return;
-      }
-
-      // Test via edge function
-      const { data, error } = await supabase.functions.invoke('jumio-verification', {
-        body: { action: 'status' }
-      });
-
-      if (error) {
-        if (error.message?.includes('non configuré')) {
-          toast.error('Jumio n\'est pas configuré correctement');
-        } else {
-          toast.warning('Configuration sauvegardée. Le test complet nécessite des secrets serveur.');
-        }
-      } else {
-        toast.success('Connexion Jumio fonctionnelle');
-      }
-    } catch (error) {
-      console.error('Error testing Jumio:', error);
-      toast.error('Erreur lors du test de connexion');
-    }
-  };
 
   return (
     <AdminLayout>
       <div className="p-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Paramètres</h1>
-            <p className="text-muted-foreground">Configuration système de la plateforme</p>
+            <h1 className="text-3xl font-bold text-foreground">{t('adminSettingsTitle')}</h1>
+            <p className="text-muted-foreground">{t('adminSettingsDescription')}</p>
           </div>
-          <Button onClick={saveSettings}>
-            <Save className="h-4 w-4 mr-2" />
-            Enregistrer
+          <Button onClick={saveSettings} className="h-9 sm:h-10 px-2 sm:px-4">
+            <Save className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t('adminSaveSettings')}</span>
           </Button>
         </div>
 
         <div className="grid gap-6">
-          {/* Jumio Identity Verification Settings */}
-          <Card className="border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Fingerprint className="h-5 w-5 text-primary" />
-                Vérification d'Identité Jumio
-                {jumioConfigured && (
-                  <span className="ml-2 inline-flex items-center gap-1 text-sm font-normal text-green-500">
-                    <CheckCircle className="h-4 w-4" />
-                    Configuré
-                  </span>
-                )}
-              </CardTitle>
-              <CardDescription>
-                Configuration de l'API Jumio pour la vérification des documents d'identité et photos
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="jumioBaseUrl">URL de l'API Jumio</Label>
-                <Input
-                  id="jumioBaseUrl"
-                  value={jumioConfig.baseUrl}
-                  onChange={(e) => setJumioConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
-                  placeholder="https://api.amer-1.jumio.ai"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Régions: amer-1 (Americas), emea-1 (Europe), apac-1 (Asia Pacific)
-                </p>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="jumioToken">API Token</Label>
-                <div className="relative">
-                  <Input
-                    id="jumioToken"
-                    type={showJumioToken ? 'text' : 'password'}
-                    value={jumioConfig.apiToken}
-                    onChange={(e) => setJumioConfig(prev => ({ ...prev, apiToken: e.target.value }))}
-                    placeholder="Entrez votre API Token Jumio"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowJumioToken(!showJumioToken)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showJumioToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="jumioSecret">API Secret</Label>
-                <div className="relative">
-                  <Input
-                    id="jumioSecret"
-                    type={showJumioSecret ? 'text' : 'password'}
-                    value={jumioConfig.apiSecret}
-                    onChange={(e) => setJumioConfig(prev => ({ ...prev, apiSecret: e.target.value }))}
-                    placeholder="Entrez votre API Secret Jumio"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowJumioSecret(!showJumioSecret)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showJumioSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button onClick={saveJumioConfig} disabled={savingJumio}>
-                  <Key className="h-4 w-4 mr-2" />
-                  {savingJumio ? 'Enregistrement...' : 'Enregistrer les clés'}
-                </Button>
-                <Button variant="outline" onClick={testJumioConnection}>
-                  Tester la connexion
-                </Button>
-              </div>
-
-              <div className="rounded-lg bg-muted/50 p-4">
-                <h4 className="font-medium mb-2">Guide de configuration</h4>
-                <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-                  <li>Connectez-vous à votre compte Jumio Dashboard</li>
-                  <li>Allez dans Settings → API Credentials</li>
-                  <li>Créez une nouvelle paire API Token/Secret</li>
-                  <li>Copiez les valeurs dans les champs ci-dessus</li>
-                  <li>Sélectionnez la région correspondant à votre compte</li>
-                </ol>
-                <a 
-                  href="https://documentation.jumio.ai/docs/developer-resources/API/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline mt-2 inline-block"
-                >
-                  Documentation Jumio →
-                </a>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* General Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                Paramètres Généraux
+                {t('generalSettings')}
               </CardTitle>
-              <CardDescription>Configuration générale de la plateforme</CardDescription>
+              <CardDescription>{t('adminSettingsDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="registration">Autoriser les inscriptions</Label>
+                  <Label htmlFor="registration">{t('allowRegistrations')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Permettre aux nouveaux utilisateurs de s'inscrire
+                    {t('allowRegistrations')}
                   </p>
                 </div>
                 <Switch
@@ -280,9 +378,9 @@ const AdminSettings = () => {
               
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="emailVerification">Vérification email obligatoire</Label>
+                  <Label htmlFor="emailVerification">{t('adminEmailVerificationRequired')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Exiger la vérification de l'email avant l'accès
+                    {t('adminEmailVerificationRequiredDesc')}
                   </p>
                 </div>
                 <Switch
@@ -296,9 +394,9 @@ const AdminSettings = () => {
               
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="maxReferrals">Parrainages maximum par utilisateur</Label>
+                  <Label htmlFor="maxReferrals">{t('adminMaxReferralsPerUser')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Nombre maximum de parrainages autorisés
+                    {t('adminMaxReferralsPerUserDesc')}
                   </p>
                 </div>
                 <Input
@@ -312,21 +410,297 @@ const AdminSettings = () => {
             </CardContent>
           </Card>
 
+          {/* Session & Security Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                {t('adminSessionManagement')}
+              </CardTitle>
+              <CardDescription>{t('adminAutoLogoutConfig')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="inactivityTimeout">{t('adminInactivityTimeout')}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t('adminInactivityTimeoutDesc')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="inactivityTimeout"
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={inactivityTimeout}
+                    onChange={(e) => setInactivityTimeout(Math.max(1, parseInt(e.target.value) || 10))}
+                    className="w-20"
+                  />
+                  <Button 
+                    size="sm" 
+                    onClick={saveInactivityTimeout}
+                    disabled={savingTimeout}
+                  >
+                    {savingTimeout ? t('saving') : t('apply')}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t('adminInactivityTimeoutWarning').replace('{minutes}', inactivityTimeout.toString())}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Email Configuration */}
+          <Card className={emailMode === 'production' ? 'border-green-500' : 'border-blue-500'}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className={`h-5 w-5 ${emailMode === 'production' ? 'text-green-500' : 'text-blue-500'}`} />
+                {t('adminEmailServerConfig')}
+              </CardTitle>
+              <CardDescription>
+                {t('adminEmailServerConfigDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>{t('adminEmailSendMode')}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {emailMode === 'test' 
+                      ? t('adminEmailModeTestDesc')
+                      : t('adminEmailModeProductionDesc')
+                    }
+                  </p>
+                </div>
+                <Select value={emailMode} onValueChange={(value: 'test' | 'production') => setEmailMode(value)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="test">{t('adminTestMode')}</SelectItem>
+                    <SelectItem value="production">{t('adminProductionMode')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {emailMode === 'test' && (
+                <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4">
+                  <p className="text-sm text-blue-500 font-medium">
+                    📧 {t('adminInfomaniakServerTest')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('adminInfomaniakServerDesc')}
+                  </p>
+                </div>
+              )}
+
+              {emailMode === 'production' && (
+                <>
+                  <Separator />
+                  <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4 mb-4">
+                    <p className="text-sm text-green-500 font-medium">
+                      🚀 {t('adminProductionModeCustomServer')}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t('adminProductionModeCustomServerDesc')}
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="smtpHost">{t('adminSmtpServer')}</Label>
+                      <Input
+                        id="smtpHost"
+                        placeholder={t('adminSmtpServerPlaceholder')}
+                        value={emailConfig.smtpHost}
+                        onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpHost: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtpPort">{t('adminPort')}</Label>
+                      <Input
+                        id="smtpPort"
+                        placeholder="587"
+                        value={emailConfig.smtpPort}
+                        onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpPort: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtpUser">{t('adminSmtpUser')}</Label>
+                      <Input
+                        id="smtpUser"
+                        placeholder={t('adminSmtpUserPlaceholder')}
+                        value={emailConfig.smtpUser}
+                        onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpUser: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtpPassword">{t('adminSmtpPassword')}</Label>
+                      <div className="relative">
+                        <Input
+                          id="smtpPassword"
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          value={emailConfig.smtpPassword}
+                          onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpPassword: e.target.value }))}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="senderEmail">{t('adminSenderEmail')}</Label>
+                      <Input
+                        id="senderEmail"
+                        placeholder={t('adminSenderEmailPlaceholder')}
+                        value={emailConfig.senderEmail}
+                        onChange={(e) => setEmailConfig(prev => ({ ...prev, senderEmail: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="senderName">{t('adminSenderName')}</Label>
+                      <Input
+                        id="senderName"
+                        placeholder={t('adminSenderNamePlaceholder')}
+                        value={emailConfig.senderName}
+                        onChange={(e) => setEmailConfig(prev => ({ ...prev, senderName: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <Separator />
+              
+              <div className="space-y-4">
+                <div className="space-y-0.5">
+                  <Label>{t('adminTestConfiguration')}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t('adminTestConfigurationDesc')}
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Input
+                    type="email"
+                    placeholder={t('adminTestEmailPlaceholder')}
+                    value={testEmailAddress}
+                    onChange={(e) => {
+                      setTestEmailAddress(e.target.value);
+                      setTestEmailResult(null);
+                    }}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={sendTestEmail}
+                    disabled={testingEmail || !testEmailAddress}
+                    variant="outline"
+                  >
+                    {testingEmail ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t('sending')}
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">{t('adminSendTest')}</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {testEmailResult && (
+                  <div className={`rounded-lg p-3 flex items-start gap-2 ${
+                    testEmailResult.success 
+                      ? 'bg-green-500/10 border border-green-500/20' 
+                      : 'bg-red-500/10 border border-red-500/20'
+                  }`}>
+                    {testEmailResult.success ? (
+                      <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                    )}
+                    <p className={`text-sm ${testEmailResult.success ? 'text-green-500' : 'text-red-500'}`}>
+                      {testEmailResult.message}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end">
+                <Button 
+                  onClick={saveEmailConfig}
+                  disabled={savingEmailConfig}
+                >
+                  {savingEmailConfig ? t('saving') : t('adminSaveEmailConfig')}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Test Mode Settings */}
+          <Card className={testModeEnabled ? 'border-purple-500' : ''}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FlaskConical className={`h-5 w-5 ${testModeEnabled ? 'text-purple-500' : ''}`} />
+                {t('adminTestMode')}
+              </CardTitle>
+              <CardDescription>{t('adminTestModeConfigDesc')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="testMode" className={testModeEnabled ? 'text-purple-500 font-medium' : ''}>
+                    {testModeEnabled ? t('adminTestModeEnabled') : t('adminTestModeDisabled')}
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {testModeEnabled 
+                      ? t('adminTestModeEnabledDesc')
+                      : t('adminTestModeDisabledDesc')
+                    }
+                  </p>
+                </div>
+                <Switch
+                  id="testMode"
+                  checked={testModeEnabled}
+                  onCheckedChange={(checked) => saveTestMode(checked)}
+                  disabled={savingTestMode}
+                />
+              </div>
+              {testModeEnabled && (
+                <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-3">
+                  <p className="text-sm text-purple-500 font-medium">
+                    ⚠️ {t('adminTestModeActive')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('adminTestModeActiveDesc')}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Security Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Sécurité
+                {t('security')}
               </CardTitle>
-              <CardDescription>Paramètres de sécurité et modération</CardDescription>
+              <CardDescription>{t('adminSecurityModerationSettings')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="autoApprove">Approbation automatique du contenu</Label>
+                  <Label htmlFor="autoApprove">{t('adminAutoApproveContent')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Publier le contenu sans modération préalable
+                    {t('adminAutoApproveContentDesc')}
                   </p>
                 </div>
                 <Switch
@@ -343,16 +717,16 @@ const AdminSettings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
-                Notifications
+                {t('notifications')}
               </CardTitle>
-              <CardDescription>Configuration des notifications système</CardDescription>
+              <CardDescription>{t('adminSystemNotificationsConfig')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="notifications">Activer les notifications</Label>
+                  <Label htmlFor="notifications">{t('adminEnableNotifications')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Envoyer des notifications aux utilisateurs
+                    {t('adminEnableNotificationsDesc')}
                   </p>
                 </div>
                 <Switch
@@ -369,20 +743,20 @@ const AdminSettings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className={`h-5 w-5 ${settings.maintenanceMode ? 'text-orange-500' : ''}`} />
-                Mode Maintenance
+                {t('adminMaintenanceMode')}
               </CardTitle>
-              <CardDescription>Mettre le site en maintenance</CardDescription>
+              <CardDescription>{t('adminMaintenanceModeDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="maintenance" className={settings.maintenanceMode ? 'text-orange-500 font-medium' : ''}>
-                    {settings.maintenanceMode ? 'Mode maintenance ACTIVÉ' : 'Mode maintenance désactivé'}
+                    {settings.maintenanceMode ? t('adminMaintenanceModeEnabled') : t('adminMaintenanceModeDisabled')}
                   </Label>
                   <p className="text-sm text-muted-foreground">
                     {settings.maintenanceMode 
-                      ? 'Seuls les administrateurs peuvent accéder au site'
-                      : 'Le site est accessible à tous les utilisateurs'
+                      ? t('adminMaintenanceModeEnabledDesc')
+                      : t('adminMaintenanceModeDisabledDesc')
                     }
                   </p>
                 </div>
@@ -395,32 +769,162 @@ const AdminSettings = () => {
             </CardContent>
           </Card>
 
+          {/* CAPTCHA Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                {t('adminCaptchaConfiguration')}
+              </CardTitle>
+              <CardDescription>
+                {t('adminCaptchaConfigurationDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="captcha-enabled">{t('adminEnableCaptcha')}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t('adminEnableCaptchaDesc')}
+                  </p>
+                </div>
+                <Switch
+                  id="captcha-enabled"
+                  checked={captchaConfig.enabled}
+                  onCheckedChange={(checked) => setCaptchaConfig(prev => ({ ...prev, enabled: checked }))}
+                />
+              </div>
+
+              {captchaConfig.enabled && (
+                <>
+                  <Separator />
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="captcha-site-key">{t('adminCaptchaSiteKey')}</Label>
+                      <Input
+                        id="captcha-site-key"
+                        type="text"
+                        placeholder="6Lc..."
+                        value={captchaConfig.siteKey}
+                        onChange={(e) => setCaptchaConfig(prev => ({ ...prev, siteKey: e.target.value }))}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {t('adminGetCaptchaKey')}{' '}
+                        <a href="https://www.google.com/recaptcha/admin" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                          Google reCAPTCHA
+                        </a>
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="captcha-secret-key">{t('adminCaptchaSecretKey')}</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="captcha-secret-key"
+                          type={showSecretKey ? "text" : "password"}
+                          placeholder="6Lc..."
+                          value={captchaConfig.secretKey}
+                          onChange={(e) => setCaptchaConfig(prev => ({ ...prev, secretKey: e.target.value }))}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setShowSecretKey(!showSecretKey)}
+                        >
+                          {showSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {t('adminCaptchaSecretKeyDesc')}
+                      </p>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-4">
+                      <Label>{t('adminEnableCaptchaOn')}</Label>
+                      
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="captcha-login" className="font-normal">{t('adminLoginPage')}</Label>
+                        <Switch
+                          id="captcha-login"
+                          checked={captchaConfig.enabledForLogin}
+                          onCheckedChange={(checked) => setCaptchaConfig(prev => ({ ...prev, enabledForLogin: checked }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="captcha-register" className="font-normal">{t('adminRegisterPage')}</Label>
+                        <Switch
+                          id="captcha-register"
+                          checked={captchaConfig.enabledForRegister}
+                          onCheckedChange={(checked) => setCaptchaConfig(prev => ({ ...prev, enabledForRegister: checked }))}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="captcha-contact" className="font-normal">{t('adminContactPage')}</Label>
+                        <Switch
+                          id="captcha-contact"
+                          checked={captchaConfig.enabledForContact}
+                          onCheckedChange={(checked) => setCaptchaConfig(prev => ({ ...prev, enabledForContact: checked }))}
+                        />
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <Button 
+                      onClick={saveCaptchaConfig} 
+                      disabled={savingCaptcha || !captchaConfig.siteKey || !captchaConfig.secretKey}
+                      className="w-full"
+                    >
+                      {savingCaptcha ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {t('saving')}
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          {t('adminSaveCaptchaConfig')}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Database Info */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="h-5 w-5" />
-                Base de données
+                {t('adminDatabase')}
               </CardTitle>
-              <CardDescription>Informations sur la base de données</CardDescription>
+              <CardDescription>{t('adminDatabaseInfo')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-lg bg-muted/50">
-                  <p className="text-sm text-muted-foreground">Provider</p>
+                  <p className="text-sm text-muted-foreground">{t('adminProvider')}</p>
                   <p className="font-medium text-foreground">Supabase</p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
-                  <p className="text-sm text-muted-foreground">Région</p>
+                  <p className="text-sm text-muted-foreground">{t('adminRegion')}</p>
                   <p className="font-medium text-foreground">EU (Paris)</p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
-                  <p className="text-sm text-muted-foreground">Statut</p>
-                  <p className="font-medium text-green-500">Connecté</p>
+                  <p className="text-sm text-muted-foreground">{t('adminStatus')}</p>
+                  <p className="font-medium text-green-500">{t('adminConnected')}</p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
                   <p className="text-sm text-muted-foreground">RLS</p>
-                  <p className="font-medium text-green-500">Activé</p>
+                  <p className="font-medium text-green-500">{t('adminEnabled')}</p>
                 </div>
               </div>
             </CardContent>

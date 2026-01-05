@@ -1,4 +1,4 @@
-export { PersonalOnboarding } from "./PersonalOnboarding";
+// PersonalOnboarding removed - direct editing mode enabled
 export { PersonalModule } from "./PersonalModule";
 export { PersonalSports } from "./PersonalSports";
 export { PersonalArtCulture } from "./PersonalArtCulture";

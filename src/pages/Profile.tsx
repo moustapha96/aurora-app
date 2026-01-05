@@ -7,6 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ConnectionRequests } from "@/components/ConnectionRequests";
 import { WealthBadge } from "@/components/WealthBadge";
+import { Header } from "@/components/Header";
+import { PageNavigation } from "@/components/BackButton";
+import { IdentityVerifiedBadge } from "@/components/VerificationBadge";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -53,7 +56,7 @@ const Profile = () => {
 
       if (profileError) {
         console.error('[Profile] Error loading profile:', profileError);
-        toast.error("Erreur lors du chargement du profil");
+        toast.error(t('errorLoadingProfile'));
       } else if (profileData) {
         console.log('[Profile] Profile loaded successfully');
         setProfile(profileData);
@@ -129,20 +132,34 @@ const Profile = () => {
         setDestinations(destData);
       }
 
-      toast.success("Profil actualisé");
+      toast.success(t('profileRefreshed'));
       setLoading(false);
     };
 
     loadProfile();
   }, [id, navigate, location.pathname]);
 
+  // Listen for avatar updates from other components
+  useEffect(() => {
+    const handleAvatarUpdate = (event: CustomEvent<{ avatarUrl: string; userId: string }>) => {
+      if (profile && (profile.id === event.detail.userId || (!id && isOwnProfile))) {
+        setProfile((prev: any) => ({ ...prev, avatar_url: event.detail.avatarUrl }));
+      }
+    };
+
+    window.addEventListener('avatar-updated', handleAvatarUpdate as EventListener);
+    return () => {
+      window.removeEventListener('avatar-updated', handleAvatarUpdate as EventListener);
+    };
+  }, [profile, id, isOwnProfile]);
+
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      toast.error("Erreur lors de la déconnexion");
+      toast.error(t('logoutError'));
     } else {
-      toast.success("Déconnexion réussie");
+      toast.success(t('logoutSuccess'));
       navigate("/login");
     }
   };
@@ -153,29 +170,29 @@ const Profile = () => {
       icon: Briefcase,
       route: "/business",
       items: businessContent ? [
-        businessContent.company_name || "Entreprise",
-        businessContent.position_title || "Position",
-        businessContent.achievements_text?.substring(0, 50) || "Réalisations"
-      ] : ["Aucune information renseignée"]
+        businessContent.company_name || t('business'),
+        businessContent.position_title || t('position'),
+        businessContent.achievements_text?.substring(0, 50) || t('noInfoProvided')
+      ] : [t('noInfoProvided')]
     },
     {
       title: t('familySocial'),
       icon: Heart,
       route: "/family",
       items: familyContent ? [
-        familyContent.family_text?.substring(0, 50) || "Famille",
-        familyContent.philanthropy_text?.substring(0, 50) || "Philanthropie",
-        familyContent.network_text?.substring(0, 50) || "Réseau"
-      ] : ["Aucune information renseignée"]
+        familyContent.family_text?.substring(0, 50) || t('family'),
+        familyContent.philanthropy_text?.substring(0, 50) || t('philanthropyEngagement'),
+        familyContent.network_text?.substring(0, 50) || t('exclusiveNetwork')
+      ] : [t('noInfoProvided')]
     },
     {
       title: t('personal'),
       icon: Crown,
       route: "/personal",
       items: [
-        artworks.length > 0 ? `${artworks.length} œuvre(s) d'art` : "Collection d'art",
-        sportsHobbies.length > 0 ? sportsHobbies.map(h => h.title).join(', ').substring(0, 50) : "Passions",
-        destinations.length > 0 ? `${destinations.length} destination(s)` : "Destinations"
+        artworks.length > 0 ? `${artworks.length} ${t('artworkCount')}` : t('artCollection'),
+        sportsHobbies.length > 0 ? sportsHobbies.map(h => h.title).join(', ').substring(0, 50) : t('passions'),
+        destinations.length > 0 ? `${destinations.length} ${t('destinationCount')}` : t('destinations')
       ],
       subsections: true
     },
@@ -183,42 +200,51 @@ const Profile = () => {
       title: t('influenceNetwork'),
       icon: Globe,
       route: "/network",
-      items: ["Réseaux Sociaux", "Médias & Couverture Presse", "Philanthropie & Engagement"]
+      items: [t('socialNetworks'), t('mediaPressCoverage'), t('philanthropyEngagement')]
     },
     {
       title: t('integratedServices'),
       icon: Settings,
       route: "/services",
-      items: ["Concierge", "Immersive Metaverse", "Marketplace"]
+      items: [t('concierge'), t('immersiveMetaverse'), t('marketplace')]
     },
     {
       title: t('members'),
       icon: Users,
       route: "/members",
-      items: ["Répertoire des membres", "Profils détaillés", "Réseau exclusif"]
+      items: [t('memberDirectory'), t('detailedProfiles'), t('exclusiveNetwork')]
     }
   ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-gold p-6 flex items-center justify-center">
-        <p>Chargement...</p>
-      </div>
+      <>
+        <Header />
+        <div className="min-h-screen bg-black text-gold p-6 pt-32 sm:pt-36 flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
+        </div>
+      </>
     );
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-black text-gold p-6 flex items-center justify-center">
-        <p>Profil non trouvé</p>
-      </div>
+      <>
+        <Header />
+        <div className="min-h-screen bg-black text-gold p-6 pt-32 sm:pt-36 flex items-center justify-center">
+          <p>{t('profileNotFound')}</p>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-gold px-4 sm:px-6 py-6 safe-area-all">
-      {/* Header with Profile */}
-      <div className="max-w-4xl mx-auto">
+    <>
+      <Header />
+      <PageNavigation to="/member-card" />
+      <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-32 sm:pt-36 pb-6 safe-area-all">
+        {/* Header with Profile */}
+        <div className="max-w-4xl mx-auto">
         {/* Profile Header */}
         <div className="text-center mb-6 sm:mb-8">
           <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 rounded-full border-2 border-gold overflow-hidden relative">
@@ -229,6 +255,10 @@ const Profile = () => {
                 <span className="text-3xl sm:text-4xl font-serif">{profile.first_name?.[0] || 'U'}</span>
               </div>
             )}
+            
+            {/* Identity Verified Badge */}
+            <IdentityVerifiedBadge isVerified={profile.identity_verified} />
+            
             {isOwnProfile && privateData && (
               <WealthBadge 
                 wealthBillions={privateData.wealth_billions}
@@ -244,6 +274,21 @@ const Profile = () => {
           )}
           <h1 className="text-2xl sm:text-3xl font-serif text-gold mb-1">{profile.first_name?.toUpperCase() || ''}</h1>
           <h2 className="text-2xl sm:text-3xl font-serif text-gold mb-2">{profile.last_name?.toUpperCase() || ''}</h2>
+          {profile.account_number && (
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(profile.account_number);
+                toast.success(t('accountNumberCopied'));
+              }}
+              className="text-gold/70 text-xs sm:text-sm mb-2 font-mono tracking-wider hover:text-gold transition-colors cursor-pointer flex items-center gap-1 mx-auto"
+              title={t('clickToCopy')}
+            >
+              {t('accountNumber')}: {profile.account_number}
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+          )}
           {profile.job_function && <p className="text-gold/80 text-sm sm:text-base mb-1">{profile.job_function}</p>}
           {profile.activity_domain && <p className="text-gold/80 text-sm sm:text-base mb-1">{profile.activity_domain}</p>}
           {profile.country && (
@@ -272,15 +317,15 @@ const Profile = () => {
           {profileSections.map((section, index) => (
             <div
               key={index}
-              className={`bg-black/50 border border-gold/20 rounded-lg p-6 hover:border-gold/40 transition-all duration-300 ${section.title !== "INTEGRATED SERVICES" ? 'cursor-pointer' : ''}`}
-              onClick={() => section.title !== "INTEGRATED SERVICES" && navigate(id ? `${section.route}/${id}` : section.route)}
+              className={`bg-black/50 border border-gold/20 rounded-lg p-6 hover:border-gold/40 transition-all duration-300 $              {section.title !== t('integratedServices') ? 'cursor-pointer' : ''}`}
+              onClick={() => section.title !== t('integratedServices') && navigate(id ? `${section.route}/${id}` : section.route)}
             >
               <div className="flex items-center mb-4">
                 <section.icon className="w-6 h-6 text-gold mr-3" />
                 <h3 className="text-lg font-semibold text-gold">{section.title}</h3>
               </div>
               
-              {section.title === "INTEGRATED SERVICES" ? (
+              {section.title === t('integratedServices') ? (
                 <div className="flex flex-col gap-3">
                   <Button
                     variant="outline"
@@ -324,18 +369,18 @@ const Profile = () => {
                 </ul>
               )}
               
-              {section.title === "BUSINESS" && (
+              {section.title === t('business') && (
                 <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gold/20">
-                  <div className="text-xs text-gold/60">Forbes 30</div>
-                  <div className="text-xs text-gold/60">EY</div>
-                  <div className="text-xs text-gold/60">Harvard MBA</div>
+                  <div className="text-xs text-gold/60">{t('forbes30')}</div>
+                  <div className="text-xs text-gold/60">{t('ey')}</div>
+                  <div className="text-xs text-gold/60">{t('harvardMBA')}</div>
                 </div>
               )}
               
-              {section.title === "MEMBRES" && (
+              {section.title === t('members') && (
                 <div className="flex items-center mt-4 pt-4 border-t border-gold/20">
                   <Users className="w-4 h-4 text-gold mr-2" />
-                  <span className="text-xs text-gold/60">EXCLUSIF</span>
+                  <span className="text-xs text-gold/60">{t('exclusive')}</span>
                 </div>
               )}
             </div>
@@ -348,18 +393,18 @@ const Profile = () => {
             <Button
               variant="outline"
               onClick={() => navigate("/edit-profile")}
-              className="border-gold/40 text-gold hover:bg-gold hover:text-black"
+              className="border-gold/40 text-gold hover:bg-gold hover:text-black h-9 sm:h-10 px-2 sm:px-4"
             >
-              <Edit className="mr-2 h-4 w-4" />
-              Modifier le profil
+              <Edit className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{t('editProfileBtn')}</span>
             </Button>
             <Button
               variant="outline"
               onClick={handleLogout}
-              className="border-gold/40 text-gold hover:bg-gold hover:text-black"
+              className="border-gold/40 text-gold hover:bg-gold hover:text-black h-9 sm:h-10 px-2 sm:px-4"
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              Quitter
+              <LogOut className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{t('quitBtn')}</span>
             </Button>
           </div>
         )}
@@ -373,13 +418,14 @@ const Profile = () => {
               className="border-gold/40 text-gold hover:bg-gold hover:text-black"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Quitter
+              {t('quitBtn')}
             </Button>
           </div>
         )}
 
       </div>
     </div>
+    </>
   );
 };
 

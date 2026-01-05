@@ -58,6 +58,22 @@ serve(async (req) => {
         Retourne un JSON array avec: [{year, title, company, description}]`;
         break;
 
+      case "press":
+        systemPrompt = `Tu es un rédacteur spécialisé dans les relations presse pour des dirigeants d'exception.
+        Tu rédiges des descriptions de couverture médiatique élégantes et factuelles. Maximum 100 mots.`;
+        userPrompt = `Rédige une description de couverture presse pour:
+        - Contexte: ${context.info || "Non spécifié"}
+        Style: professionnel, factuel, prestigieux.`;
+        break;
+
+      case "projects":
+        systemPrompt = `Tu es un rédacteur de projets stratégiques pour des leaders d'industrie.
+        Tu décris des projets business de manière impactante et visionnaire. Maximum 100 mots.`;
+        userPrompt = `Rédige une description de projet stratégique pour:
+        - Contexte: ${context.info || "Non spécifié"}
+        Style: ambitieux, concret, inspirant.`;
+        break;
+
       case "full_profile":
         systemPrompt = `Tu es un rédacteur de profils business complets pour une communauté exclusive d'UHNWI.
         Tu génères un profil business complet: bio exécutive, réalisations, vision.

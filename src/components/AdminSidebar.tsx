@@ -17,7 +17,9 @@ import {
   Settings,
   ArrowLeft,
   LogOut,
-  Menu
+  Menu,
+  Clock,
+  UserPlus
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -25,12 +27,16 @@ import { toast } from 'sonner';
 const menuItems = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/members', label: 'Membres', icon: Users },
+  { path: '/admin/referrals', label: 'Parrainages', icon: UserPlus },
   { path: '/admin/users-security', label: 'Sécurité Utilisateurs', icon: Shield },
   { path: '/admin/roles', label: 'Rôles', icon: Shield },
+  { path: '/admin/document-verification', label: 'Vérification Documents', icon: FileText },
   { path: '/admin/moderation', label: 'Modération', icon: AlertTriangle },
   { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { path: '/admin/connections', label: 'Connexions', icon: Link2 },
   { path: '/admin/content', label: 'Contenu', icon: FileText },
+  { path: '/admin/api-config', label: 'APIs & Webhooks', icon: Link2 },
+  { path: '/admin/cron', label: 'Tâches Cron', icon: Clock },
   { path: '/admin/logs', label: 'Logs', icon: ScrollText },
   { path: '/admin/reports', label: 'Rapports', icon: ClipboardList },
   { path: '/admin/settings', label: 'Paramètres', icon: Settings },

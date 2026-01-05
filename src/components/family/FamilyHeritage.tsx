@@ -1,6 +1,9 @@
 import React from "react";
 import { Crown, Quote, Sparkles } from "lucide-react";
-import { HeritageEditor } from "./editors";
+import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface HeritageData {
   id?: string;
@@ -18,13 +21,103 @@ interface FamilyHeritageProps {
 }
 
 export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: FamilyHeritageProps) => {
+  const { t } = useLanguage();
   const hasContent = heritage && (heritage.motto || heritage.values_text || heritage.legacy_vision || heritage.heritage_description);
 
+  const handleFieldUpdate = async (field: keyof HeritageData, value: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (heritage?.id) {
+        const { error } = await supabase
+          .from("family_heritage")
+          .update({ [field]: value, updated_at: new Date().toISOString() })
+          .eq("id", heritage.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("family_heritage")
+          .insert({ user_id: user.id, [field]: value });
+        if (error) throw error;
+      }
+      
+      toast.success(t('saved'));
+      onUpdate?.();
+    } catch (error) {
+      console.error("Error updating heritage:", error);
+      toast.error(t('saveError'));
+    }
+  };
+
+  // Show structure for editing even if no content yet
+  if (isEditable) {
+    return (
+      <div className="space-y-6">
+        {/* Motto */}
+        <div className="relative overflow-hidden rounded-lg border border-gold/30 bg-gradient-to-r from-gold/10 via-gold/5 to-gold/10 p-6 text-center">
+          <Crown className="w-8 h-8 text-gold mx-auto mb-3" />
+          <p className="text-xl font-serif text-gold italic">
+            « <InlineEditableField
+              value={heritage?.motto || ""}
+              onSave={(value) => handleFieldUpdate("motto", value)}
+              placeholder={t('familyMotto')}
+              className="text-xl font-serif text-gold"
+            /> »
+          </p>
+        </div>
+
+        {/* Values */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-gold flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />{t('transmittedValues')}
+          </h4>
+          <div className="pl-6">
+            <InlineEditableField
+              value={heritage?.values_text || ""}
+              onSave={(value) => handleFieldUpdate("values_text", value)}
+              placeholder={t('describeTransmittedValues')}
+              multiline
+              className="text-muted-foreground"
+            />
+          </div>
+        </div>
+
+        {/* Vision */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-gold flex items-center gap-2">
+            <Quote className="w-4 h-4" />{t('transmissionVision')}
+          </h4>
+          <div className="pl-6">
+            <InlineEditableField
+              value={heritage?.legacy_vision || ""}
+              onSave={(value) => handleFieldUpdate("legacy_vision", value)}
+              placeholder={t('yourVisionForFutureGenerations')}
+              multiline
+              className="text-muted-foreground italic"
+            />
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="p-4 bg-gold/5 rounded-lg border border-gold/10">
+          <InlineEditableField
+            value={heritage?.heritage_description || ""}
+            onSave={(value) => handleFieldUpdate("heritage_description", value)}
+            placeholder={t('generalHeritageDescription')}
+            multiline
+            className="text-muted-foreground"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Read-only view
   return (
     <div className="space-y-6">
-      {isEditable && onUpdate && <HeritageEditor heritage={heritage} onUpdate={onUpdate} />}
       {!hasContent ? (
-        <p className="text-muted-foreground text-sm italic">Aucun contenu d'héritage et transmission renseigné.</p>
+        <p className="text-muted-foreground text-sm italic">{t('noHeritageContent')}</p>
       ) : (
         <>
           {heritage?.motto && (
@@ -35,13 +128,13 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
           )}
           {heritage?.values_text && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gold flex items-center gap-2"><Sparkles className="w-4 h-4" />Valeurs transmises</h4>
+              <h4 className="text-sm font-medium text-gold flex items-center gap-2"><Sparkles className="w-4 h-4" />{t('transmittedValues')}</h4>
               <p className="text-muted-foreground whitespace-pre-line pl-6">{heritage.values_text}</p>
             </div>
           )}
           {heritage?.legacy_vision && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gold flex items-center gap-2"><Quote className="w-4 h-4" />Vision de transmission</h4>
+              <h4 className="text-sm font-medium text-gold flex items-center gap-2"><Quote className="w-4 h-4" />{t('transmissionVision')}</h4>
               <p className="text-muted-foreground whitespace-pre-line pl-6 italic">{heritage.legacy_vision}</p>
             </div>
           )}

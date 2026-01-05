@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Edit, Sparkles, Loader2, Plus, Trash2, GripVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface FieldConfig {
   name: string;
@@ -45,6 +46,7 @@ export const FamilyModule = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const handleOpenEdit = () => {
     setEditedContent(content);
@@ -56,7 +58,7 @@ export const FamilyModule = ({
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       if (moduleType === "heritage") {
         const { error } = await supabase.from("family_heritage").upsert({
@@ -72,12 +74,12 @@ export const FamilyModule = ({
         if (error) throw error;
       }
 
-      toast({ title: "Module sauvegardé" });
+      toast({ title: t('moduleSaved') });
       setIsEditing(false);
       onUpdate();
     } catch (error) {
       console.error("Save error:", error);
-      toast({ title: "Erreur de sauvegarde", variant: "destructive" });
+      toast({ title: t('saveError'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -94,11 +96,11 @@ export const FamilyModule = ({
       
       if (data?.suggestion) {
         setEditedContent(data.suggestion);
-        toast({ title: "Suggestion IA générée" });
+        toast({ title: t('aiSuggestionGenerated') });
       }
     } catch (error) {
       console.error("AI suggestion error:", error);
-      toast({ title: "Erreur de génération IA", variant: "destructive" });
+      toast({ title: t('aiGenerationError'), variant: "destructive" });
     } finally {
       setIsGeneratingAI(false);
     }
@@ -130,7 +132,7 @@ export const FamilyModule = ({
         <CardContent>
           {renderContent ? renderContent() : (
             <p className="text-muted-foreground text-sm whitespace-pre-line">
-              {content || "Aucun contenu. Cliquez pour éditer."}
+              {content || t('noContentClickToEdit')}
             </p>
           )}
         </CardContent>
@@ -161,25 +163,25 @@ export const FamilyModule = ({
                 ) : (
                   <Sparkles className="w-4 h-4 mr-2" />
                 )}
-                Suggestion IA
+                {t('aiSuggestion')}
               </Button>
             </div>
             <Textarea
               value={editedContent}
               onChange={(e) => setEditedContent(e.target.value)}
               rows={8}
-              placeholder="Décrivez votre contenu ici..."
+              placeholder={t('describeYourContent')}
               className="resize-none"
             />
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditing(false)}>
-              Annuler
+              {t('cancel')}
             </Button>
             <Button onClick={handleSave} disabled={isLoading} className="bg-gold text-gold-foreground hover:bg-gold/90">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Sauvegarder
+              {t('save')}
             </Button>
           </DialogFooter>
         </DialogContent>

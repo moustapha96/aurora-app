@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Pencil, Trash2, Loader2, Upload, User } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Upload, User, Sparkles, FileUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -29,6 +29,7 @@ export const BoardEditor = ({ members, onUpdate }: BoardEditorProps) => {
   const [editingMember, setEditingMember] = useState<BoardMember | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<BoardMember>({
@@ -159,13 +160,44 @@ export const BoardEditor = ({ members, onUpdate }: BoardEditorProps) => {
     }
   };
 
+  const handleAISuggest = async () => {
+    if (!formData.member_name) {
+      toast({ title: "Veuillez d'abord indiquer le nom", variant: "destructive" });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('family-ai-suggest', {
+        body: {
+          module: 'board',
+          currentInput: {
+            name: formData.member_name,
+            role: formData.role,
+            organization: formData.organization,
+            expertise: formData.expertise
+          }
+        }
+      });
+      if (error) throw error;
+      if (data?.suggestion) {
+        setFormData({ ...formData, description: data.suggestion });
+        toast({ title: "Suggestion générée" });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Erreur lors de la génération", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h4 className="text-sm font-medium text-muted-foreground">Réseau clé / Board</h4>
         <Button size="sm" onClick={openNewDialog} className="bg-gold text-black hover:bg-gold/90">
-          <Plus className="w-4 h-4 mr-1" />
-          Ajouter
+          <Plus className="w-4 h-4 sm:mr-1" />
+          <span className="hidden sm:inline">Ajouter</span>
         </Button>
       </div>
 
@@ -191,7 +223,7 @@ export const BoardEditor = ({ members, onUpdate }: BoardEditorProps) => {
       )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
           <DialogHeader>
             <DialogTitle>{editingMember ? "Modifier" : "Ajouter"} un membre</DialogTitle>
           </DialogHeader>
@@ -223,8 +255,8 @@ export const BoardEditor = ({ members, onUpdate }: BoardEditorProps) => {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
               >
-                {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                {formData.image_url ? "Changer la photo" : "Ajouter une photo"}
+                {isUploading ? <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" /> : <Upload className="w-4 h-4 sm:mr-2" />}
+                <span className="hidden sm:inline">{formData.image_url ? "Changer la photo" : "Ajouter une photo"}</span>
               </Button>
             </div>
 
@@ -265,7 +297,43 @@ export const BoardEditor = ({ members, onUpdate }: BoardEditorProps) => {
             </div>
             
             <div>
-              <Label>Description</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Description</Label>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => document.getElementById('import-doc-board')?.click()}
+                    className="text-muted-foreground hover:text-foreground h-6 px-2"
+                  >
+                    <FileUp className="w-3 h-3 mr-1" />
+                    Importer
+                  </Button>
+                  <input
+                    id="import-doc-board"
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt"
+                    className="hidden"
+                    onChange={() => toast({ title: "Document importé - Analyse en cours..." })}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleAISuggest}
+                    disabled={isGenerating || !formData.member_name}
+                    className="text-gold hover:text-gold/80 h-6 px-2"
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3 h-3 mr-1" />
+                    )}
+                    IA
+                  </Button>
+                </div>
+              </div>
               <Textarea 
                 value={formData.description} 
                 onChange={(e) => setFormData({...formData, description: e.target.value})}

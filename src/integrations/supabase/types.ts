@@ -179,6 +179,42 @@ export type Database = {
         }
         Relationships: []
       }
+      business_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       business_press: {
         Row: {
           created_at: string
@@ -314,6 +350,48 @@ export type Database = {
           requester_id?: string
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      contact_messages: {
+        Row: {
+          category: string
+          created_at: string
+          email: string
+          id: string
+          message: string
+          phone: string | null
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          phone?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          phone?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string | null
+          user_name?: string | null
         }
         Relationships: []
       }
@@ -457,6 +535,60 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      document_verifications: {
+        Row: {
+          created_at: string
+          document_id: string
+          document_path: string | null
+          document_type: string
+          file_name: string | null
+          id: string
+          notification_sent: boolean | null
+          notification_sent_at: string | null
+          rejection_reason: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          verification_result: Json | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          document_path?: string | null
+          document_type: string
+          file_name?: string | null
+          id?: string
+          notification_sent?: boolean | null
+          notification_sent_at?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          verification_result?: Json | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          document_path?: string | null
+          document_type?: string
+          file_name?: string | null
+          id?: string
+          notification_sent?: boolean | null
+          notification_sent_at?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verification_result?: Json | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: []
       }
@@ -865,11 +997,177 @@ export type Database = {
         }
         Relationships: []
       }
+      golf_achievements: {
+        Row: {
+          achievement_type: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          result: string | null
+          tournament_name: string | null
+          updated_at: string
+          user_id: string
+          year: string | null
+        }
+        Insert: {
+          achievement_type?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          result?: string | null
+          tournament_name?: string | null
+          updated_at?: string
+          user_id: string
+          year?: string | null
+        }
+        Update: {
+          achievement_type?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          result?: string | null
+          tournament_name?: string | null
+          updated_at?: string
+          user_id?: string
+          year?: string | null
+        }
+        Relationships: []
+      }
+      golf_courses: {
+        Row: {
+          best_score: number | null
+          country: string | null
+          course_name: string
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          is_favorite: boolean | null
+          location: string | null
+          par: number | null
+          rating: string | null
+          times_played: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_score?: number | null
+          country?: string | null
+          course_name: string
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_favorite?: boolean | null
+          location?: string | null
+          par?: number | null
+          rating?: string | null
+          times_played?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_score?: number | null
+          country?: string | null
+          course_name?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_favorite?: boolean | null
+          location?: string | null
+          par?: number | null
+          rating?: string | null
+          times_played?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      golf_gallery: {
+        Row: {
+          caption: string | null
+          created_at: string
+          date: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          location: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          date?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          date?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      golf_profiles: {
+        Row: {
+          club_city: string | null
+          club_name: string | null
+          created_at: string
+          frequency: string | null
+          handicap: string | null
+          id: string
+          level: string | null
+          updated_at: string
+          user_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          club_city?: string | null
+          club_name?: string | null
+          created_at?: string
+          frequency?: string | null
+          handicap?: string | null
+          id?: string
+          level?: string | null
+          updated_at?: string
+          user_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          club_city?: string | null
+          club_name?: string | null
+          created_at?: string
+          frequency?: string | null
+          handicap?: string | null
+          id?: string
+          level?: string | null
+          updated_at?: string
+          user_id?: string
+          years_experience?: number | null
+        }
+        Relationships: []
+      }
       identity_verifications: {
         Row: {
           created_at: string
           document_country: string | null
           document_type: string | null
+          document_url: string | null
           first_name_extracted: string | null
           id: string
           jumio_account_id: string | null
@@ -885,6 +1183,7 @@ export type Database = {
           created_at?: string
           document_country?: string | null
           document_type?: string | null
+          document_url?: string | null
           first_name_extracted?: string | null
           id?: string
           jumio_account_id?: string | null
@@ -900,6 +1199,7 @@ export type Database = {
           created_at?: string
           document_country?: string | null
           document_type?: string | null
+          document_url?: string | null
           first_name_extracted?: string | null
           id?: string
           jumio_account_id?: string | null
@@ -950,6 +1250,81 @@ export type Database = {
           show_quote?: boolean | null
           show_wealth_badge?: boolean | null
           template?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      linked_accounts: {
+        Row: {
+          created_at: string
+          id: string
+          linked_user_id: string
+          relation_type: string
+          sponsor_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          linked_user_id: string
+          relation_type?: string
+          sponsor_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          linked_user_id?: string
+          relation_type?: string
+          sponsor_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketplace_items: {
+        Row: {
+          additional_images: string[] | null
+          category: string
+          created_at: string
+          currency: string | null
+          description: string | null
+          id: string
+          main_image_url: string | null
+          offer_end_date: string | null
+          price: number
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          additional_images?: string[] | null
+          category: string
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          id?: string
+          main_image_url?: string | null
+          offer_end_date?: string | null
+          price: number
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          additional_images?: string[] | null
+          category?: string
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          id?: string
+          main_image_url?: string | null
+          offer_end_date?: string | null
+          price?: number
+          status?: string | null
+          title?: string
           updated_at?: string
           user_id?: string
         }
@@ -1093,6 +1468,42 @@ export type Database = {
           id?: string
           onboarding_completed?: boolean | null
           onboarding_mode?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      network_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
           updated_at?: string
           user_id?: string
         }
@@ -1434,6 +1845,42 @@ export type Database = {
         }
         Relationships: []
       }
+      personal_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       personal_gastronomie: {
         Row: {
           category: string | null
@@ -1542,8 +1989,223 @@ export type Database = {
         }
         Relationships: []
       }
+      polo_achievements: {
+        Row: {
+          achievement_type: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          has_medals: boolean | null
+          has_qualifications: boolean | null
+          has_special_recognition: boolean | null
+          has_trophies: boolean | null
+          id: string
+          result: string | null
+          role_performance: string | null
+          tournament_name: string | null
+          updated_at: string
+          user_id: string
+          year: string | null
+        }
+        Insert: {
+          achievement_type?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          has_medals?: boolean | null
+          has_qualifications?: boolean | null
+          has_special_recognition?: boolean | null
+          has_trophies?: boolean | null
+          id?: string
+          result?: string | null
+          role_performance?: string | null
+          tournament_name?: string | null
+          updated_at?: string
+          user_id: string
+          year?: string | null
+        }
+        Update: {
+          achievement_type?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          has_medals?: boolean | null
+          has_qualifications?: boolean | null
+          has_special_recognition?: boolean | null
+          has_trophies?: boolean | null
+          id?: string
+          result?: string | null
+          role_performance?: string | null
+          tournament_name?: string | null
+          updated_at?: string
+          user_id?: string
+          year?: string | null
+        }
+        Relationships: []
+      }
+      polo_gallery: {
+        Row: {
+          caption: string | null
+          created_at: string
+          display_order: number | null
+          id: string
+          image_url: string | null
+          slot_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          slot_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          slot_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      polo_horses: {
+        Row: {
+          age: number | null
+          breed: string | null
+          created_at: string
+          display_order: number | null
+          exclusive_rider: boolean | null
+          id: string
+          in_training: boolean | null
+          is_own_horse: boolean | null
+          is_primary: boolean | null
+          name: string
+          together_since: string | null
+          tournament_wins: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          breed?: string | null
+          created_at?: string
+          display_order?: number | null
+          exclusive_rider?: boolean | null
+          id?: string
+          in_training?: boolean | null
+          is_own_horse?: boolean | null
+          is_primary?: boolean | null
+          name: string
+          together_since?: string | null
+          tournament_wins?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          breed?: string | null
+          created_at?: string
+          display_order?: number | null
+          exclusive_rider?: boolean | null
+          id?: string
+          in_training?: boolean | null
+          is_own_horse?: boolean | null
+          is_primary?: boolean | null
+          name?: string
+          together_since?: string | null
+          tournament_wins?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      polo_objectives: {
+        Row: {
+          created_at: string
+          description: string
+          display_order: number | null
+          id: string
+          is_completed: boolean | null
+          objective_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          display_order?: number | null
+          id?: string
+          is_completed?: boolean | null
+          objective_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          display_order?: number | null
+          id?: string
+          is_completed?: boolean | null
+          objective_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      polo_profiles: {
+        Row: {
+          club_city: string | null
+          club_name: string | null
+          created_at: string
+          frequency: string | null
+          handicap: string | null
+          id: string
+          level: string | null
+          preferred_position: string | null
+          updated_at: string
+          user_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          club_city?: string | null
+          club_name?: string | null
+          created_at?: string
+          frequency?: string | null
+          handicap?: string | null
+          id?: string
+          level?: string | null
+          preferred_position?: string | null
+          updated_at?: string
+          user_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          club_city?: string | null
+          club_name?: string | null
+          created_at?: string
+          frequency?: string | null
+          handicap?: string | null
+          id?: string
+          level?: string | null
+          preferred_position?: string | null
+          updated_at?: string
+          user_id?: string
+          years_experience?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          account_active: boolean | null
+          account_number: string | null
           activity_domain: string | null
           avatar_url: string | null
           biometric_enabled: boolean | null
@@ -1555,9 +2217,11 @@ export type Database = {
           identity_verified: boolean | null
           identity_verified_at: string | null
           is_founder: boolean | null
+          is_linked_account: boolean | null
           is_patron: boolean | null
           job_function: string | null
           last_name: string
+          linked_by_user_id: string | null
           personal_quote: string | null
           referral_code: string | null
           updated_at: string | null
@@ -1565,6 +2229,8 @@ export type Database = {
           webauthn_enabled: boolean | null
         }
         Insert: {
+          account_active?: boolean | null
+          account_number?: string | null
           activity_domain?: string | null
           avatar_url?: string | null
           biometric_enabled?: boolean | null
@@ -1576,9 +2242,11 @@ export type Database = {
           identity_verified?: boolean | null
           identity_verified_at?: string | null
           is_founder?: boolean | null
+          is_linked_account?: boolean | null
           is_patron?: boolean | null
           job_function?: string | null
           last_name: string
+          linked_by_user_id?: string | null
           personal_quote?: string | null
           referral_code?: string | null
           updated_at?: string | null
@@ -1586,6 +2254,8 @@ export type Database = {
           webauthn_enabled?: boolean | null
         }
         Update: {
+          account_active?: boolean | null
+          account_number?: string | null
           activity_domain?: string | null
           avatar_url?: string | null
           biometric_enabled?: boolean | null
@@ -1597,9 +2267,11 @@ export type Database = {
           identity_verified?: boolean | null
           identity_verified_at?: string | null
           is_founder?: boolean | null
+          is_linked_account?: boolean | null
           is_patron?: boolean | null
           job_function?: string | null
           last_name?: string
+          linked_by_user_id?: string | null
           personal_quote?: string | null
           referral_code?: string | null
           updated_at?: string | null
@@ -1638,6 +2310,116 @@ export type Database = {
           wealth_billions?: string | null
           wealth_currency?: string | null
           wealth_unit?: string | null
+        }
+        Relationships: []
+      }
+      referral_link_clicks: {
+        Row: {
+          clicked_at: string
+          id: string
+          ip_address: unknown
+          link_id: string
+          referer: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          clicked_at?: string
+          id?: string
+          ip_address?: unknown
+          link_id: string
+          referer?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          clicked_at?: string
+          id?: string
+          ip_address?: unknown
+          link_id?: string
+          referer?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_link_clicks_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "referral_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_links: {
+        Row: {
+          click_count: number | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          is_family_link: boolean | null
+          link_code: string
+          link_name: string | null
+          referral_code: string
+          registration_count: number | null
+          sponsor_id: string
+          updated_at: string
+        }
+        Insert: {
+          click_count?: number | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_family_link?: boolean | null
+          link_code: string
+          link_name?: string | null
+          referral_code: string
+          registration_count?: number | null
+          sponsor_id: string
+          updated_at?: string
+        }
+        Update: {
+          click_count?: number | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_family_link?: boolean | null
+          link_code?: string
+          link_name?: string | null
+          referral_code?: string
+          registration_count?: number | null
+          sponsor_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referral_code: string
+          referred_id: string
+          sponsor_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referral_code: string
+          referred_id: string
+          sponsor_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referral_code?: string
+          referred_id?: string
+          sponsor_id?: string
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1722,6 +2504,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean | null
+          message: string
+          related_document_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message: string
+          related_document_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          related_document_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1737,6 +2552,45 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      verification_batches: {
+        Row: {
+          admin_id: string
+          completed_at: string | null
+          created_at: string
+          error_count: number | null
+          id: string
+          rejected_count: number | null
+          started_at: string | null
+          status: string
+          total_documents: number | null
+          verified_count: number | null
+        }
+        Insert: {
+          admin_id: string
+          completed_at?: string | null
+          created_at?: string
+          error_count?: number | null
+          id?: string
+          rejected_count?: number | null
+          started_at?: string | null
+          status?: string
+          total_documents?: number | null
+          verified_count?: number | null
+        }
+        Update: {
+          admin_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_count?: number | null
+          id?: string
+          rejected_count?: number | null
+          started_at?: string | null
+          status?: string
+          total_documents?: number | null
+          verified_count?: number | null
         }
         Relationships: []
       }
@@ -1772,12 +2626,90 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      member_discovery: {
+        Row: {
+          activity_domain: string | null
+          avatar_url: string | null
+          country: string | null
+          first_name: string | null
+          honorific_title: string | null
+          id: string | null
+          identity_verified: boolean | null
+          is_founder: boolean | null
+          last_name: string | null
+        }
+        Insert: {
+          activity_domain?: string | null
+          avatar_url?: string | null
+          country?: string | null
+          first_name?: string | null
+          honorific_title?: string | null
+          id?: string | null
+          identity_verified?: boolean | null
+          is_founder?: boolean | null
+          last_name?: string | null
+        }
+        Update: {
+          activity_domain?: string | null
+          avatar_url?: string | null
+          country?: string | null
+          first_name?: string | null
+          honorific_title?: string | null
+          id?: string | null
+          identity_verified?: boolean | null
+          is_founder?: boolean | null
+          last_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       create_private_conversation: {
         Args: { other_user_id: string }
         Returns: string
+      }
+      generate_account_number: { Args: never; Returns: string }
+      generate_referral_code: { Args: never; Returns: string }
+      generate_referral_link_code: { Args: never; Returns: string }
+      get_accessible_profile: {
+        Args: { profile_id: string }
+        Returns: {
+          activity_domain: string
+          avatar_url: string
+          can_view_full: boolean
+          country: string
+          created_at: string
+          first_name: string
+          honorific_title: string
+          id: string
+          identity_verified: boolean
+          is_founder: boolean
+          is_linked_account: boolean
+          job_function: string
+          last_name: string
+          linked_by_user_id: string
+          personal_quote: string
+          referral_code: string
+          updated_at: string
+          username: string
+        }[]
+      }
+      get_members_wealth_for_badges: {
+        Args: { member_ids: string[] }
+        Returns: {
+          user_id: string
+          wealth_amount: string
+          wealth_billions: string
+          wealth_currency: string
+          wealth_unit: string
+        }[]
+      }
+      get_user_emails_for_admin: {
+        Args: never
+        Returns: {
+          email: string
+          user_id: string
+        }[]
       }
       has_role: {
         Args: {
@@ -1789,6 +2721,22 @@ export type Database = {
       is_conversation_member: {
         Args: { conv_id: string; user_id: string }
         Returns: boolean
+      }
+      validate_referral_code: {
+        Args: { code: string }
+        Returns: {
+          is_valid: boolean
+          sponsor_id: string
+        }[]
+      }
+      validate_referral_link: {
+        Args: { link_code_param: string }
+        Returns: {
+          is_family_link: boolean
+          is_valid: boolean
+          referral_code: string
+          sponsor_id: string
+        }[]
       }
     }
     Enums: {

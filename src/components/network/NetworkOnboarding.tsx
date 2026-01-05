@@ -24,26 +24,26 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
     {
       id: "import",
       icon: FileDown,
-      title: "Importer",
-      description: "Importez vos données depuis LinkedIn ou un CV existant"
+      title: t("importData"),
+      description: t("importDataDesc")
     },
     {
       id: "ai",
       icon: Sparkles,
-      title: "IA Aurora",
-      description: "Laissez notre IA générer des suggestions personnalisées"
+      title: t("aiAurora"),
+      description: t("aiAuroraDesc")
     },
     {
       id: "concierge",
       icon: Crown,
-      title: "Conciergerie Privée",
-      description: "Un expert dédié vous accompagne dans la création"
+      title: t("privateConcierge"),
+      description: t("privateConciergeDesc")
     },
     {
       id: "manual",
       icon: PenLine,
-      title: "Saisie Manuelle",
-      description: "Complétez votre profil réseau à votre rythme"
+      title: t("manualEntry"),
+      description: t("manualEntryDesc")
     }
   ];
 
@@ -63,7 +63,7 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
     setIsImporting(true);
     setTimeout(() => {
       setIsImporting(false);
-      toast.info("L'import LinkedIn sera disponible prochainement. Vous pouvez continuer avec la saisie manuelle.");
+      toast.info(t("linkedInImportComing"));
       onSelect("manual");
     }, 1500);
   };
@@ -166,38 +166,38 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
     // Validate file type
     const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!validTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
-      toast.error("Format non supporté. Veuillez uploader un fichier PDF ou Word.");
+      toast.error(t("unsupportedFormat"));
       return;
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("Fichier trop volumineux. Maximum 10 Mo.");
+      toast.error(t("fileTooLargeMax10MB"));
       return;
     }
 
     setIsImporting(true);
-    setImportStatus("Lecture du fichier...");
+    setImportStatus(t("readingFile"));
 
     try {
       // Extract text from the file
       let cvText = '';
       
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        setImportStatus("Extraction du texte PDF...");
+        setImportStatus(t("extractingPDFText"));
         cvText = await extractTextFromPDF(file);
       } else {
-        setImportStatus("Extraction du texte Word...");
+        setImportStatus(t("extractingWordText"));
         cvText = await extractTextFromDocx(file);
       }
 
       if (!cvText || cvText.length < 20) {
-        toast.error("Impossible d'extraire le texte du fichier. Essayez un autre format.");
+        toast.error(t("cannotExtractTextFromFile"));
         setIsImporting(false);
         return;
       }
 
-      setImportStatus("Analyse IA en cours...");
+      setImportStatus(t("aiAnalysisInProgress"));
 
       // Call the edge function to analyze the CV
       const { data, error } = await supabase.functions.invoke('parse-cv-network', {
@@ -206,14 +206,14 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
 
       if (error) {
         console.error("Edge function error:", error);
-        throw new Error(error.message || "Erreur lors de l'analyse");
+        throw new Error(error.message || t("errorDuringAnalysis"));
       }
 
       if (data?.error) {
         throw new Error(data.error);
       }
 
-      setImportStatus("Import des données...");
+      setImportStatus(t("importingData"));
 
       const extractedData = data?.data;
       
@@ -227,15 +227,15 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
         (extractedData?.ambitions?.length || 0);
 
       if (totalItems > 0) {
-        toast.success(`${totalItems} éléments extraits de votre CV`);
+        toast.success(`${totalItems} ${t("itemsExtractedFromCV")}`);
         onSelect("import", extractedData);
       } else {
-        toast.info("Aucune information réseau détectée dans le CV. Vous pouvez compléter manuellement.");
+        toast.info(t("noNetworkInfoDetectedInCV"));
         onSelect("manual");
       }
     } catch (error: any) {
       console.error("CV upload error:", error);
-      toast.error(error.message || "Erreur lors de l'analyse du CV");
+      toast.error(error.message || t("errorAnalyzingCV"));
       onSelect("manual");
     } finally {
       setIsImporting(false);
@@ -264,16 +264,16 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
             disabled={isImporting}
           >
             <ArrowLeft className="w-4 h-4" />
-            Retour
+            {t("back")}
           </Button>
         </div>
 
         <div className="text-center mb-12">
           <h2 className="text-3xl font-serif text-primary mb-4">
-            Importer vos données
+            {t("importYourData")}
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Choisissez une méthode d'importation pour accélérer la création de votre profil réseau.
+            {t("chooseImportMethodToAccelerate")}
           </p>
         </div>
 
@@ -292,10 +292,10 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
                 </div>
               )}
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                Importer depuis LinkedIn
+                {t("importFromLinkedIn")}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Connectez votre compte LinkedIn pour importer automatiquement votre réseau professionnel
+                {t("connectLinkedInToImportNetwork")}
               </p>
             </CardContent>
           </Card>
@@ -322,13 +322,13 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
                     <FileText className="w-8 h-8 text-primary" />
                   </div>
                   <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Télécharger un CV
+                    {t("uploadCV")}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Uploadez votre CV au format PDF ou Word pour extraire vos informations réseau
+                    {t("uploadCVToExtractNetworkInfo")}
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Formats acceptés: PDF, DOC, DOCX (max 10 Mo)
+                    {t("acceptedFormatsPDFDOCDOCX")}
                   </p>
                 </>
               )}
@@ -342,7 +342,7 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
             onClick={handleSkipImport}
             disabled={isImporting}
           >
-            Passer cette étape
+            {t("skipThisStep")}
           </Button>
         </div>
       </div>
@@ -366,10 +366,10 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
       
       <div className="text-center mb-12">
         <h2 className="text-3xl font-serif text-primary mb-4">
-          Configurez votre Réseaux, Influence & Lifestyle
+          {t("configureNetwork")}
         </h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Choisissez comment vous souhaitez construire votre profil d'influence et de réseau social.
+          {t("configureNetworkDesc")}
         </p>
       </div>
 
@@ -414,7 +414,7 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
           className="px-8"
           size="lg"
         >
-          Continuer
+          {t("continue")}
         </Button>
       </div>
     </div>

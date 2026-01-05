@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Upload, X, Loader2 } from "lucide-react";
 
 interface FamilyContent {
@@ -34,6 +35,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
     defaultValues: content
   });
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [portraitFile, setPortraitFile] = useState<File | null>(null);
   const [newGalleryFiles, setNewGalleryFiles] = useState<{ file: File; preview: string }[]>([]);
@@ -138,7 +140,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
       }
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t("notAuthenticated"));
 
       let portraitUrl = portraitPreview?.startsWith('data:') ? null : portraitPreview;
       // Utiliser les URLs existantes (qui n'ont pas été supprimées)
@@ -196,8 +198,8 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
       setIsFirstOpen(true);
 
       toast({
-        title: "Contenu sauvegardé",
-        description: "Vos modifications ont été enregistrées avec succès"
+        title: t("contentSaved"),
+        description: t("modificationsSavedSuccessfully")
       });
 
       onSave();
@@ -205,8 +207,8 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
     } catch (error) {
       console.error('Error saving content:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder les modifications",
+        title: t("error"),
+        description: t("cannotSaveModifications"),
         variant: "destructive"
       });
     } finally {
@@ -218,19 +220,19 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Modifier mon contenu</DialogTitle>
+          <DialogTitle>{t("editMyContent")}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <Tabs defaultValue="textes" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="textes">Textes</TabsTrigger>
-              <TabsTrigger value="photos">Photos</TabsTrigger>
+              <TabsTrigger value="textes">{t("texts")}</TabsTrigger>
+              <TabsTrigger value="photos">{t("photos")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="textes" className="space-y-4">
               <div>
-                <Label htmlFor="bio">Biographie</Label>
+                <Label htmlFor="bio">{t("biography")}</Label>
                 <Textarea 
                   id="bio" 
                   {...register("bio")} 
@@ -240,7 +242,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
               </div>
 
               <div>
-                <Label htmlFor="family_text">Famille</Label>
+                <Label htmlFor="family_text">{t("family")}</Label>
                 <Textarea 
                   id="family_text" 
                   {...register("family_text")} 
@@ -250,7 +252,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
               </div>
 
               <div>
-                <Label htmlFor="residences_text">Résidences</Label>
+                <Label htmlFor="residences_text">{t("residences")}</Label>
                 <Textarea 
                   id="residences_text" 
                   {...register("residences_text")} 
@@ -260,7 +262,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
               </div>
 
               <div>
-                <Label htmlFor="philanthropy_text">Philanthropie</Label>
+                <Label htmlFor="philanthropy_text">{t("philanthropy")}</Label>
                 <Textarea 
                   id="philanthropy_text" 
                   {...register("philanthropy_text")} 
@@ -270,7 +272,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
               </div>
 
               <div>
-                <Label htmlFor="network_text">Réseau</Label>
+                <Label htmlFor="network_text">{t("network")}</Label>
                 <Textarea 
                   id="network_text" 
                   {...register("network_text")} 
@@ -280,7 +282,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
               </div>
 
               <div>
-                <Label htmlFor="anecdotes_text">Anecdotes</Label>
+                <Label htmlFor="anecdotes_text">{t("anecdotes")}</Label>
                 <Textarea 
                   id="anecdotes_text" 
                   {...register("anecdotes_text")} 
@@ -290,7 +292,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
               </div>
 
               <div>
-                <Label htmlFor="personal_quote">Citation personnelle</Label>
+                <Label htmlFor="personal_quote">{t("personalQuote")}</Label>
                 <Input 
                   id="personal_quote" 
                   {...register("personal_quote")}
@@ -301,7 +303,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
 
             <TabsContent value="photos" className="space-y-4">
               <div>
-                <Label>Photo de portrait</Label>
+                <Label>{t("portraitPhoto")}</Label>
                 <div className="mt-2 space-y-2">
                   {portraitPreview && (
                     <div className="relative w-32 h-32">
@@ -324,11 +326,11 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
               </div>
 
               <div>
-                <Label>Galerie photos</Label>
+                <Label>{t("photoGallery")}</Label>
                 <div className="mt-2 space-y-4">
                   <div className="grid grid-cols-4 gap-4">
                     {existingGalleryUrls.length === 0 && newGalleryFiles.length === 0 && (
-                      <p className="text-muted-foreground text-sm col-span-4">Aucune photo dans la galerie</p>
+                      <p className="text-muted-foreground text-sm col-span-4">{t("noPhotoInGallery")}</p>
                     )}
                     {/* Photos existantes */}
                     {existingGalleryUrls.map((url, index) => (
@@ -368,16 +370,16 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Sauvegarde...
+                  {t("saving")}
                 </>
               ) : (
-                "Sauvegarder"
+                t("save")
               )}
             </Button>
           </div>

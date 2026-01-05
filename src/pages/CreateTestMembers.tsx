@@ -4,9 +4,11 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const CreateTestMembers = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
 
@@ -18,10 +20,10 @@ const CreateTestMembers = () => {
       if (error) throw error;
       
       setResults(data);
-      toast.success("Membres de test créés avec succès!");
+      toast.success(t("testMembersCreatedSuccess"));
     } catch (error: any) {
       console.error('Error creating test members:', error);
-      toast.error("Erreur lors de la création des membres");
+      toast.error(t("testMembersCreationError"));
     } finally {
       setLoading(false);
     }
@@ -38,20 +40,20 @@ const CreateTestMembers = () => {
             className="text-gold/60 hover:text-gold mr-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Retour
+            {t("back")}
           </Button>
           <h1 className="text-4xl font-serif text-gold tracking-wide">
-            Créer les Membres de Test
+            {t("createTestMembers")}
           </h1>
         </div>
 
         <div className="bg-black/50 border border-gold/20 rounded-lg p-8 space-y-6">
           <div className="space-y-4">
             <h2 className="text-2xl font-serif text-gold">
-              9 Comptes de Test
+              {t("testAccountsCount")}
             </h2>
             <p className="text-gold/70">
-              Cette fonction va créer 9 comptes utilisateurs réels pour les membres fictifs:
+              {t("testMembersDescription")}
             </p>
             <ul className="space-y-2 text-gold/60 ml-4">
               <li>• Alexandre du Roche</li>
@@ -65,10 +67,10 @@ const CreateTestMembers = () => {
               <li>• Catherine Mitchell</li>
             </ul>
             <p className="text-gold/70 mt-4">
-              <strong>Mot de passe pour tous les comptes:</strong> Test1234!
+              <strong>{t("testAccountsPassword")}</strong> Test1234!
             </p>
             <p className="text-gold/60 text-sm">
-              Les emails suivent le format: prenom.nom@aurora.com
+              {t("testAccountsEmailFormat")}
             </p>
           </div>
 
@@ -77,12 +79,12 @@ const CreateTestMembers = () => {
             disabled={loading}
             className="w-full bg-gold text-black hover:bg-gold/90"
           >
-            {loading ? "Création en cours..." : "Créer les Membres"}
+            {loading ? t("creating") : t("createMembers")}
           </Button>
 
           {results && (
             <div className="mt-6 p-4 bg-black/30 border border-gold/20 rounded-lg">
-              <h3 className="text-gold mb-4">Résultats:</h3>
+              <h3 className="text-gold mb-4">{t("results")}:</h3>
               <div className="space-y-2">
                 {results.results?.map((result: any, idx: number) => (
                   <div

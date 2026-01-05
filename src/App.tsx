@@ -1,11 +1,14 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { PlatformProvider } from "@/contexts/PlatformContext";
 import { SessionProvider } from "@/contexts/SessionContext";
+import { GlobalMessageNotifications } from "@/components/GlobalMessageNotifications";
+import { ProgressProvider } from "@/components/ui/progress-bar";
+import createOptimizedQueryClient from "@/lib/queryConfig";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
@@ -34,6 +37,7 @@ import CreateTestMembers from "./pages/CreateTestMembers";
 import Terms from "./pages/Terms";
 import MemberLanding from "./pages/MemberLanding";
 import LandingPreview from "./pages/LandingPreview";
+import VerificationCallback from "./pages/VerificationCallback";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -48,8 +52,13 @@ import AdminReports from "./pages/admin/AdminReports";
 import AdminLogs from "./pages/admin/AdminLogs";
 import AdminContent from "./pages/admin/AdminContent";
 import AdminConnections from "./pages/admin/AdminConnections";
+import AdminDocumentVerification from "./pages/admin/AdminDocumentVerification";
+import AdminApiConfig from "./pages/admin/AdminApiConfig";
+import AdminCron from "./pages/admin/AdminCron";
+import AdminReferrals from "./pages/admin/AdminReferrals";
 
-const queryClient = new QueryClient();
+// Optimized QueryClient with caching
+const queryClient = createOptimizedQueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -59,10 +68,13 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+        <ProgressProvider>
         <SessionProvider>
+        <GlobalMessageNotifications />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verification" element={<VerificationCallback />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/member-card" element={<MemberCard />} />
@@ -106,11 +118,15 @@ const App = () => (
           <Route path="/admin/logs" element={<AdminLogs />} />
           <Route path="/admin/content" element={<AdminContent />} />
           <Route path="/admin/connections" element={<AdminConnections />} />
-          
+          <Route path="/admin/document-verification" element={<AdminDocumentVerification />} />
+          <Route path="/admin/api-config" element={<AdminApiConfig />} />
+          <Route path="/admin/cron" element={<AdminCron />} />
+          <Route path="/admin/referrals" element={<AdminReferrals />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
         </SessionProvider>
+        </ProgressProvider>
         </BrowserRouter>
       </TooltipProvider>
       </LanguageProvider>

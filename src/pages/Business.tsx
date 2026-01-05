@@ -5,6 +5,7 @@ import { Building2, Trophy, Users, Globe, Briefcase, Eye, Newspaper, FolderKanba
 import { Header } from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { BusinessOnboarding } from "@/components/business/BusinessOnboarding";
 import { BusinessModule } from "@/components/business/BusinessModule";
 import { BusinessTimeline } from "@/components/business/BusinessTimeline";
@@ -16,6 +17,7 @@ const Business = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [privateData, setPrivateData] = useState<any>(null);
@@ -127,7 +129,7 @@ const Business = () => {
     } catch (error) {
       console.error('Error loading profile:', error);
       toast({ 
-        title: "Erreur de chargement", 
+        title: t('errorLoading'), 
         variant: "destructive" 
       });
     } finally {
@@ -160,16 +162,16 @@ const Business = () => {
       loadProfile();
 
       toast({
-        title: mode === "concierge" ? "Demande envoyée" : "Profil créé",
+        title: mode === "concierge" ? t('businessRequestSent') : t('businessProfileCreated'),
         description: mode === "concierge" 
-          ? "Votre conciergerie prépare votre section Business."
-          : "Votre section Business est prête à être complétée.",
+          ? t('businessConciergePreparing')
+          : t('businessSectionReady'),
       });
     } catch (error) {
       console.error("Error saving onboarding:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder.",
+        title: t('errorTitle'),
+        description: t('businessCannotSave'),
         variant: "destructive",
       });
     }
@@ -191,10 +193,10 @@ const Business = () => {
       if (error) throw error;
 
       setBusinessContent((prev: any) => ({ ...prev, [field]: value }));
-      toast({ title: "Module mis à jour" });
+      toast({ title: t('businessModuleUpdated') });
     } catch (error) {
       console.error("Error updating module:", error);
-      toast({ title: "Erreur", variant: "destructive" });
+      toast({ title: t("error"), variant: "destructive" });
     }
   };
 
@@ -211,10 +213,10 @@ const Business = () => {
 
       if (error) throw error;
       setTimelineEntries((prev) => [...prev, data]);
-      toast({ title: "Étape ajoutée" });
+      toast({ title: t('businessStepAdded') });
     } catch (error) {
       console.error("Error adding timeline:", error);
-      toast({ title: "Erreur", variant: "destructive" });
+      toast({ title: t("error"), variant: "destructive" });
     }
   };
 
@@ -227,10 +229,10 @@ const Business = () => {
 
       if (error) throw error;
       setTimelineEntries((prev) => prev.map((e) => (e.id === entry.id ? entry : e)));
-      toast({ title: "Étape modifiée" });
+      toast({ title: t('businessStepModified') });
     } catch (error) {
       console.error("Error updating timeline:", error);
-      toast({ title: "Erreur", variant: "destructive" });
+      toast({ title: t("error"), variant: "destructive" });
     }
   };
 
@@ -239,17 +241,17 @@ const Business = () => {
       const { error } = await supabase.from('business_timeline').delete().eq('id', id);
       if (error) throw error;
       setTimelineEntries((prev) => prev.filter((e) => e.id !== id));
-      toast({ title: "Étape supprimée" });
+      toast({ title: t('businessStepDeleted') });
     } catch (error) {
       console.error("Error deleting timeline:", error);
-      toast({ title: "Erreur", variant: "destructive" });
+      toast({ title: t("error"), variant: "destructive" });
     }
   };
 
   // Formater le patrimoine (only visible for own profile)
   const formatWealth = () => {
     if (!isOwnProfile || !privateData?.wealth_amount || !privateData?.wealth_unit || !privateData?.wealth_currency) {
-      return "N/A";
+      return t("notAvailable");
     }
     const amount = Math.round(parseFloat(privateData.wealth_amount));
     const unit = privateData.wealth_unit;
@@ -262,7 +264,7 @@ const Business = () => {
       <>
         <Header />
         <div className="min-h-screen bg-black text-gold p-6 pt-24 flex items-center justify-center">
-          <p className="text-gold">Chargement...</p>
+          <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
         </div>
       </>
     );
@@ -274,13 +276,13 @@ const Business = () => {
         <Header />
         <div className="min-h-screen bg-black text-gold p-6 pt-24 flex items-center justify-center">
           <div className="text-center max-w-md">
-            <p className="text-gold mb-4">Vous n'avez pas accès à cette section du profil.</p>
+            <p className="text-gold mb-4">{t('businessNoAccess')}</p>
             <Button 
               variant="outline" 
               onClick={() => navigate(id ? `/profile/${id}` : "/profile")}
               className="border-gold text-gold hover:bg-gold hover:text-black"
             >
-              Retour au profil général
+              {t('businessBackToProfile')}
             </Button>
           </div>
         </div>
@@ -293,7 +295,7 @@ const Business = () => {
       <>
         <Header />
         <div className="min-h-screen bg-black text-gold p-6 pt-24 flex items-center justify-center">
-          <p className="text-gold">Profil non trouvé</p>
+          <p className="text-gold">{t('businessProfileNotFound')}</p>
         </div>
       </>
     );
@@ -304,7 +306,8 @@ const Business = () => {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-black text-gold p-6 pt-24">
+        <PageNavigation to="/profile" />
+        <div className="min-h-screen bg-black text-gold p-6 pt-32 sm:pt-36">
           <div className="max-w-4xl mx-auto">
             <BusinessOnboarding
               onComplete={handleOnboardingComplete}
@@ -326,13 +329,13 @@ const Business = () => {
     <>
       <Header />
       <PageNavigation to={id ? `/profile/${id}` : "/profile"} />
-      <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-20 sm:pt-24 pb-8 safe-area-all">
+      <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-32 sm:pt-36 pb-8 safe-area-all">
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">Business</h1>
-              <p className="text-gold/60 text-xs sm:text-sm mt-1">Votre profil professionnel et vos opportunités</p>
+              <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('businessTitle')}</h1>
+              <p className="text-gold/60 text-xs sm:text-sm mt-1">{t('businessSubtitle')}</p>
             </div>
 
             {isOwnProfile && !showOnboarding && (
@@ -343,7 +346,7 @@ const Business = () => {
                 className="text-gold/60 hover:text-gold hover:bg-gold/10 self-start sm:self-auto"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
-                Reconfigurer
+                {t('businessReconfigure')}
               </Button>
             )}
           </div>
@@ -360,7 +363,7 @@ const Business = () => {
               </div>
               <div className="text-center sm:text-left">
                 <h2 className="text-xl sm:text-2xl font-serif text-gold">{profile.first_name} {profile.last_name}</h2>
-                <p className="text-gold/70 text-sm sm:text-base">{profile.job_function || "Fonction non spécifiée"}</p>
+                <p className="text-gold/70 text-sm sm:text-base">{profile.job_function || t('businessJobNotSpecified')}</p>
                 <p className="text-gold/50 text-xs sm:text-sm">{profile.activity_domain} • {formatWealth()}</p>
               </div>
             </div>
@@ -371,8 +374,8 @@ const Business = () => {
             {/* Bio Executive */}
             <BusinessModule
               icon={Briefcase}
-              title="Bio Exécutive"
-              subtitle="Présentation concise de votre rôle actuel"
+              title={t('businessBioExecutive')}
+              subtitle={t('businessBioSubtitle')}
               content={businessContent.bio_executive}
               isEmpty={!businessContent.bio_executive}
               editable={isOwnProfile}
@@ -393,8 +396,8 @@ const Business = () => {
             {/* Achievements */}
             <BusinessModule
               icon={Trophy}
-              title="Réalisations Majeures"
-              subtitle="Les accomplissements dont vous êtes fier"
+              title={t('businessAchievements')}
+              subtitle={t('businessAchievementsSubtitle')}
               content={businessContent.achievements_text}
               isEmpty={!businessContent.achievements_text}
               editable={isOwnProfile}
@@ -406,8 +409,8 @@ const Business = () => {
             {/* Press & Distinctions */}
             <BusinessModule
               icon={Newspaper}
-              title="Presse & Distinctions"
-              subtitle="Couverture médiatique et prix"
+              title={t('businessPressDistinctions')}
+              subtitle={t('businessPressSubtitle')}
               content={pressEntries.map(p => `• ${p.title} - ${p.source}`).join('\n') || undefined}
               isEmpty={pressEntries.length === 0}
               editable={isOwnProfile}
@@ -418,8 +421,8 @@ const Business = () => {
             {/* Projects */}
             <BusinessModule
               icon={FolderKanban}
-              title="Projets"
-              subtitle="Initiatives actuelles et futures"
+              title={t('businessProjects')}
+              subtitle={t('businessProjectsSubtitle')}
               content={projectsEntries.map(p => `• ${p.title}`).join('\n') || undefined}
               isEmpty={projectsEntries.length === 0}
               editable={isOwnProfile}
@@ -430,8 +433,8 @@ const Business = () => {
             {/* Vision */}
             <BusinessModule
               icon={Eye}
-              title="Vision & Ambitions"
-              subtitle="Votre vision pour l'avenir"
+              title={t('businessVision')}
+              subtitle={t('businessVisionSubtitle')}
               content={businessContent.vision_text}
               isEmpty={!businessContent.vision_text}
               editable={isOwnProfile}

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { usePlatformContext } from "@/contexts/PlatformContext";
 
 interface BackButtonProps {
   to?: string | number;
@@ -35,23 +36,24 @@ export const BackButton = ({ to = -1, label = "Retour", className = "" }: BackBu
 interface PageNavigationProps {
   to?: string | number;
   label?: string;
-  showBottom?: boolean;
 }
 
-export const PageNavigation = ({ to = -1, label = "Retour", showBottom = true }: PageNavigationProps) => {
+export const PageNavigation = ({ to = -1, label = "Retour" }: PageNavigationProps) => {
+  const { isWeb } = usePlatformContext();
+  
+  // Only show in web mode and on medium screens and above
+  if (!isWeb) {
+    return null;
+  }
+  
   return (
-    <>
-      {/* Top left back button */}
-      <div className="fixed top-24 left-4 z-50">
-        <BackButton to={to} label={label} />
-      </div>
-      
-      {/* Bottom center back button */}
-      {showBottom && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
-          <BackButton to={to} label={label} />
-        </div>
-      )}
-    </>
+    <div className="hidden md:block fixed top-20 sm:top-24 md:top-28 left-3 sm:left-4 md:left-6 z-40 safe-area-top">
+      <BackButton to={to} label={label} />
+    </div>
   );
+};
+
+// Spacer to add margin below fixed back button
+export const PageContentSpacer = () => {
+  return <div className="h-8 sm:h-10" />;
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Search, Shield, Fingerprint, Smartphone, Monitor, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { AdminPagination } from '@/components/ui/admin-pagination';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface UserSecurity {
   id: string;
@@ -24,25 +26,23 @@ interface UserSecurity {
 }
 
 const AdminUsersSecurity = () => {
+  const { t } = useLanguage();
   const [users, setUsers] = useState<UserSecurity[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<UserSecurity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     loadUsers();
   }, []);
 
+  // Reset page when search changes
   useEffect(() => {
-    if (searchQuery) {
-      const filtered = users.filter(user =>
-        `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredUsers(filtered);
-    } else {
-      setFilteredUsers(users);
-    }
-  }, [searchQuery, users]);
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const loadUsers = async () => {
     try {
@@ -61,7 +61,7 @@ const AdminUsersSecurity = () => {
       if (credentialsError) throw credentialsError;
 
       // Get last activity from activity_logs
-      const { data: activityLogs, error: logsError } = await supabase
+      const { data: activityLogs } = await supabase
         .from('activity_logs')
         .select('user_id, created_at')
         .order('created_at', { ascending: false });
@@ -94,13 +94,29 @@ const AdminUsersSecurity = () => {
       }));
 
       setUsers(usersWithSecurity);
-      setFilteredUsers(usersWithSecurity);
     } catch (error) {
       console.error('Error loading users:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery) return users;
+    return users.filter(user =>
+      `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [users, searchQuery]);
+
+  // Paginate filtered users
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredUsers.slice(startIndex, startIndex + pageSize);
+  }, [filteredUsers, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredUsers.length / pageSize);
+  const startIndex = filteredUsers.length > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const endIndex = Math.min(currentPage * pageSize, filteredUsers.length);
 
   const getSecurityLevel = (user: UserSecurity) => {
     const hasWebAuthn = user.webauthn_enabled && user.webauthn_devices_count > 0;
@@ -118,9 +134,9 @@ const AdminUsersSecurity = () => {
     const diffMs = now.getTime() - activityDate.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     
-    if (diffMins < 5) return 'En ligne';
-    if (diffMins < 60) return `Il y a ${diffMins} min`;
-    if (diffMins < 1440) return `Il y a ${Math.floor(diffMins / 60)}h`;
+    if (diffMins < 5) return t('adminOnline');
+    if (diffMins < 60) return t('adminMinutesAgo').replace('{minutes}', diffMins.toString());
+    if (diffMins < 1440) return t('adminHoursAgo').replace('{hours}', Math.floor(diffMins / 60).toString());
     return format(activityDate, 'dd MMM yyyy', { locale: fr });
   };
 
@@ -138,6 +154,15 @@ const AdminUsersSecurity = () => {
     withWebAuthn: users.filter(u => u.webauthn_enabled).length,
     withBiometric: users.filter(u => u.biometric_enabled).length,
     highSecurity: users.filter(u => getSecurityLevel(u).level === 'high').length
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
   };
 
   return (
@@ -224,103 +249,119 @@ const AdminUsersSecurity = () => {
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">Chargement...</div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Utilisateur</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>WebAuthn</TableHead>
-                    <TableHead>Biométrie Mobile</TableHead>
-                    <TableHead>Appareils</TableHead>
-                    <TableHead>Niveau Sécurité</TableHead>
-                    <TableHead>Dernière activité</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user) => {
-                    const securityLevel = getSecurityLevel(user);
-                    const activityStatus = getActivityStatus(user.last_activity);
-                    
-                    return (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="relative">
-                              <Avatar className="h-10 w-10">
-                                <AvatarImage src={user.avatar_url || ''} />
-                                <AvatarFallback className="bg-gold/20 text-gold">
-                                  {user.first_name[0]}{user.last_name[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background ${
-                                activityStatus === 'online' ? 'bg-green-500' :
-                                activityStatus === 'away' ? 'bg-yellow-500' : 'bg-gray-400'
-                              }`} />
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Utilisateur</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>WebAuthn</TableHead>
+                      <TableHead>Biométrie Mobile</TableHead>
+                      <TableHead>Appareils</TableHead>
+                      <TableHead>Niveau Sécurité</TableHead>
+                      <TableHead>Dernière activité</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedUsers.map((user) => {
+                      const securityLevel = getSecurityLevel(user);
+                      const activityStatus = getActivityStatus(user.last_activity);
+                      
+                      return (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="relative">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarImage src={user.avatar_url || ''} />
+                                  <AvatarFallback className="bg-gold/20 text-gold">
+                                    {user.first_name[0]}{user.last_name[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background ${
+                                  activityStatus === 'online' ? 'bg-green-500' :
+                                  activityStatus === 'away' ? 'bg-yellow-500' : 'bg-gray-400'
+                                }`} />
+                              </div>
+                              <div>
+                                <p className="font-medium">{user.first_name} {user.last_name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Inscrit le {format(new Date(user.created_at), 'dd MMM yyyy', { locale: fr })}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium">{user.first_name} {user.last_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Inscrit le {format(new Date(user.created_at), 'dd MMM yyyy', { locale: fr })}
-                              </p>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={activityStatus === 'online' ? 'default' : 'secondary'} className={
+                              activityStatus === 'online' ? 'bg-green-500' :
+                              activityStatus === 'away' ? 'bg-yellow-500' : ''
+                            }>
+                              {activityStatus === 'online' ? t('adminOnline') :
+                               activityStatus === 'away' ? t('adminAway') : t('adminOffline')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {user.webauthn_enabled ? (
+                              <div className="flex items-center gap-1 text-green-500">
+                                <CheckCircle className="h-4 w-4" />
+                                <span className="text-sm">Activé</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <XCircle className="h-4 w-4" />
+                                <span className="text-sm">Désactivé</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {user.biometric_enabled ? (
+                              <div className="flex items-center gap-1 text-green-500">
+                                <CheckCircle className="h-4 w-4" />
+                                <span className="text-sm">Activé</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <XCircle className="h-4 w-4" />
+                                <span className="text-sm">Désactivé</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {user.webauthn_devices_count} appareil{user.webauthn_devices_count !== 1 ? 's' : ''}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${securityLevel.color} text-white`}>
+                              {securityLevel.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              {formatLastActivity(user.last_activity)}
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={activityStatus === 'online' ? 'default' : 'secondary'} className={
-                            activityStatus === 'online' ? 'bg-green-500' :
-                            activityStatus === 'away' ? 'bg-yellow-500' : ''
-                          }>
-                            {activityStatus === 'online' ? 'En ligne' :
-                             activityStatus === 'away' ? 'Absent' : 'Hors ligne'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {user.webauthn_enabled ? (
-                            <div className="flex items-center gap-1 text-green-500">
-                              <CheckCircle className="h-4 w-4" />
-                              <span className="text-sm">Activé</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <XCircle className="h-4 w-4" />
-                              <span className="text-sm">Désactivé</span>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {user.biometric_enabled ? (
-                            <div className="flex items-center gap-1 text-green-500">
-                              <CheckCircle className="h-4 w-4" />
-                              <span className="text-sm">Activé</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <XCircle className="h-4 w-4" />
-                              <span className="text-sm">Désactivé</span>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {user.webauthn_devices_count} appareil{user.webauthn_devices_count !== 1 ? 's' : ''}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`${securityLevel.color} text-white`}>
-                            {securityLevel.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            {formatLastActivity(user.last_activity)}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                {/* Pagination */}
+                {filteredUsers.length > 0 && (
+                  <AdminPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={filteredUsers.length}
+                    pageSize={pageSize}
+                    onPageChange={handlePageChange}
+                    onPageSizeChange={handlePageSizeChange}
+                    startIndex={startIndex}
+                    endIndex={endIndex}
+                  />
+                )}
+              </>
             )}
           </CardContent>
         </Card>

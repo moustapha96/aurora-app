@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LandingClassic, LandingLuxury, LandingMinimal, LandingTemplate } from "@/components/landing-templates";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface MemberData {
   first_name: string;
@@ -28,6 +29,7 @@ interface LandingPreferences {
 
 const MemberLanding = () => {
   const { memberId } = useParams<{ memberId: string }>();
+  const { t } = useLanguage();
   
   const [member, setMember] = useState<MemberData | null>(null);
   const [preferences, setPreferences] = useState<LandingPreferences>({
@@ -110,7 +112,7 @@ const MemberLanding = () => {
   }, [memberId]);
 
   const handleContact = () => {
-    toast.info("Pour contacter ce membre, veuillez vous connecter à Aurora Society");
+    toast.info(t('contactMemberLoginRequired'));
   };
 
   if (loading) {
@@ -125,8 +127,8 @@ const MemberLanding = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Membre introuvable</h1>
-          <p className="text-muted-foreground">Ce profil n'existe pas ou n'est plus disponible.</p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">{t('memberNotFound')}</h1>
+          <p className="text-muted-foreground">{t('profileNotAvailable')}</p>
         </div>
       </div>
     );

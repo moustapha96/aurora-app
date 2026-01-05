@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Lightbulb, Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Lightbulb, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PersonalModule } from "./PersonalModule";
 import { PhilosophieEditor } from "./editors/PhilosophieEditor";
+import { InlineEditableField } from "@/components/ui/inline-editable-field";
 
 interface PhilosophieEntry {
   id: string;
@@ -43,11 +44,6 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
     setEditorOpen(true);
   };
 
-  const handleEdit = (entry: PhilosophieEntry) => {
-    setEditingEntry(entry);
-    setEditorOpen(true);
-  };
-
   const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase
@@ -60,6 +56,20 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
       onDataChange();
     } catch (error) {
       toast.error("Erreur lors de la suppression");
+    }
+  };
+
+  const handleInlineUpdate = async (id: string, field: string, value: string) => {
+    try {
+      const { error } = await supabase
+        .from("personal_art_culture")
+        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      onDataChange();
+    } catch (error) {
+      console.error("Update error:", error);
+      toast.error("Erreur lors de la sauvegarde");
     }
   };
 
@@ -92,18 +102,29 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
                     {entry.image_url && (
                       <img src={entry.image_url} alt="" className="w-10 h-10 rounded object-cover" />
                     )}
-                    <div>
-                      <h4 className="font-medium text-sm text-foreground">{entry.title}</h4>
-                      {entry.description && (
+                    <div className="flex-1">
+                      <InlineEditableField
+                        value={entry.title}
+                        onSave={(value) => handleInlineUpdate(entry.id, "title", value)}
+                        placeholder="Titre"
+                        disabled={!isEditable}
+                        className="font-medium text-sm text-foreground"
+                      />
+                      {isEditable ? (
+                        <InlineEditableField
+                          value={entry.description || ""}
+                          onSave={(value) => handleInlineUpdate(entry.id, "description", value)}
+                          placeholder="Description"
+                          multiline
+                          className="text-xs text-muted-foreground"
+                        />
+                      ) : entry.description && (
                         <p className="text-xs text-muted-foreground line-clamp-2">{entry.description}</p>
                       )}
                     </div>
                   </div>
                   {isEditable && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEdit(entry)}>
-                        <Pencil className="w-3 h-3" />
-                      </Button>
                       <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(entry.id)}>
                         <Trash2 className="w-3 h-3" />
                       </Button>

@@ -5,10 +5,12 @@ import { Heart, Settings, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WealthBadge } from "@/components/WealthBadge";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const LinkedAccount = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { t } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
   const [familyContent, setFamilyContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -22,13 +24,13 @@ const LinkedAccount = () => {
         // Mode prévisualisation pour permettre de voir la fiche sans connexion
         setIsPreview(true);
         setProfile({
-          first_name: "Alexandre",
-          last_name: "Dupont",
-          honorific_title: "M.",
-          job_function: "Entrepreneur",
+          first_name: t('previewFirstName'),
+          last_name: t('previewLastName'),
+          honorific_title: t('previewTitle'),
+          job_function: t('previewJobFunction'),
           is_founder: true,
           is_patron: true,
-          personal_quote: "La véritable richesse est celle que l'on partage.",
+          personal_quote: t('previewQuote'),
           wealth_billions: "2",
           wealth_amount: "2",
           wealth_unit: "Mds",
@@ -36,9 +38,9 @@ const LinkedAccount = () => {
           avatar_url: null,
         });
         setFamilyContent({
-          family_text: "Famille franco-suisse, ancrée entre Paris et Genève.",
-          philanthropy_text: "Soutien actif à l'éducation et aux arts.",
-          network_text: "Réseau international de dirigeants et collectionneurs.",
+          family_text: t('previewFamilyText'),
+          philanthropy_text: t('previewPhilanthropyText'),
+          network_text: t('previewNetworkText'),
         });
         setLoading(false);
         return;
@@ -60,7 +62,7 @@ const LinkedAccount = () => {
 
       if (profileError) {
         console.error('Error loading profile:', profileError);
-        toast.error("Erreur lors du chargement du profil");
+        toast.error(t('errorLoadingProfile'));
       } else if (profileData) {
         setProfile(profileData);
       }
@@ -85,33 +87,33 @@ const LinkedAccount = () => {
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      toast.error("Erreur lors de la déconnexion");
+      toast.error(t('logoutError'));
     } else {
-      toast.success("Déconnexion réussie");
+      toast.success(t('logoutSuccess'));
       navigate("/login");
     }
   };
 
   const accountSections = [
     {
-      title: "Famille & Social",
+      title: t('familySocial'),
       icon: Heart,
       route: "/family",
       items: familyContent ? [
-        familyContent.family_text?.substring(0, 50) || "Famille",
-        familyContent.philanthropy_text?.substring(0, 50) || "Philanthropie",
-        familyContent.network_text?.substring(0, 50) || "Réseau"
-      ] : ["Aucune information renseignée"]
+        familyContent.family_text?.substring(0, 50) || t('family'),
+        familyContent.philanthropy_text?.substring(0, 50) || t('philanthropyEngagement'),
+        familyContent.network_text?.substring(0, 50) || t('exclusiveNetwork')
+      ] : [t('noInfoProvided')]
     },
     {
-      title: "Services Intégrés",
+      title: t('integratedServices'),
       icon: Settings,
       route: "/services",
-      items: ["Concierge", "Immersive Metaverse", "Marketplace"],
+      items: [t('conciergePage'), t('metaversePage'), t('marketplacePage')],
       subsections: [
-        { name: "Concierge", route: "/concierge" },
-        { name: "Metaverse", route: "/metaverse" },
-        { name: "Marketplace", route: "/marketplace" }
+        { name: t('conciergePage'), route: "/concierge" },
+        { name: t('metaversePage'), route: "/metaverse" },
+        { name: t('marketplacePage'), route: "/marketplace" }
       ]
     }
   ];
@@ -119,7 +121,7 @@ const LinkedAccount = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-gold p-6 flex items-center justify-center">
-        <p>Chargement...</p>
+        <p>{t('loading')}</p>
       </div>
     );
   }
@@ -127,7 +129,7 @@ const LinkedAccount = () => {
   if (!profile) {
     return (
       <div className="min-h-screen bg-black text-gold p-6 flex items-center justify-center">
-        <p>Compte non trouvé</p>
+        <p>{t('accountNotFound')}</p>
       </div>
     );
   }
@@ -166,12 +168,12 @@ const LinkedAccount = () => {
           <div className="flex justify-center gap-3 flex-wrap">
             {profile.is_founder && (
               <span className="px-3 py-1 rounded-full bg-gold/20 text-gold text-sm border border-gold/30">
-                Fondateur
+                {t('founderLabel')}
               </span>
             )}
             {profile.is_patron && (
               <span className="px-3 py-1 rounded-full bg-gold/20 text-gold text-sm border border-gold/30">
-                Mécène
+                {t('patronLabel')}
               </span>
             )}
             {profile.wealth_billions && (
@@ -243,7 +245,7 @@ const LinkedAccount = () => {
               className="border-gold/30 text-gold hover:bg-gold/10"
             >
               <LogOut className="w-4 h-4 mr-2" />
-              Déconnexion
+              {t('logout')}
             </Button>
           </div>
         )}

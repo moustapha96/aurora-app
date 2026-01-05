@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "523977122102",
+    "project_id": "aurora-app-ae2ca",
+    "storage_bucket": "aurora-app-ae2ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:523977122102:android:422df168abb9a62627d397",
+        "android_client_info": {
+          "package_name": "ch.aurora.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgU_6GFRL-g_fkx3hVUaGtoCtD6-Pha2Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:523977122102:android:261d9af6da216bf227d397",
+        "android_client_info": {
+          "package_name": "app.lovable.e6cb71785bb7428786ce0e9ee3ec0082"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpRb0gVK8-R6fFvOwvTsK7CpGDmUdW2Sk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

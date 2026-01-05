@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Search, User } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Profile {
   id: string;
@@ -27,6 +28,7 @@ interface NewConversationDialogProps {
 }
 
 export const NewConversationDialog = ({ onConversationCreated }: NewConversationDialogProps) => {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [members, setMembers] = useState<Profile[]>([]);
@@ -91,8 +93,8 @@ export const NewConversationDialog = ({ onConversationCreated }: NewConversation
     } catch (error: any) {
       console.error("Error loading members:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les membres",
+        title: t('error'),
+        description: t('unableToLoadMembers'),
         variant: "destructive",
       });
     } finally {
@@ -103,8 +105,8 @@ export const NewConversationDialog = ({ onConversationCreated }: NewConversation
   const createConversation = async (memberId: string) => {
     if (!currentUserId) {
       toast({
-        title: "Erreur",
-        description: "Vous devez être connecté",
+        title: t('error'),
+        description: t('mustBeConnected'),
         variant: "destructive",
       });
       return;
@@ -115,8 +117,8 @@ export const NewConversationDialog = ({ onConversationCreated }: NewConversation
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast({
-          title: "Erreur",
-          description: "Session expirée, veuillez vous reconnecter",
+          title: t('error'),
+          description: t('sessionExpired'),
           variant: "destructive",
         });
         return;
@@ -141,8 +143,8 @@ export const NewConversationDialog = ({ onConversationCreated }: NewConversation
             const userIds = members.map(m => m.user_id);
             if (userIds.includes(currentUserId) && userIds.includes(memberId)) {
               toast({
-                title: "Information",
-                description: "Une conversation existe déjà avec ce membre",
+                title: t('information'),
+                description: t('conversationAlreadyExists'),
               });
               setOpen(false);
               return;
@@ -164,8 +166,8 @@ export const NewConversationDialog = ({ onConversationCreated }: NewConversation
       if (convError) throw convError;
 
       toast({
-        title: "Succès",
-        description: "Conversation créée avec succès",
+        title: t('success'),
+        description: t('conversationCreatedSuccess'),
       });
 
       setOpen(false);
@@ -173,8 +175,8 @@ export const NewConversationDialog = ({ onConversationCreated }: NewConversation
     } catch (error: any) {
       console.error("Error creating conversation:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de créer la conversation",
+        title: t('error'),
+        description: t('unableToCreateConversation'),
         variant: "destructive",
       });
     }
@@ -183,16 +185,19 @@ export const NewConversationDialog = ({ onConversationCreated }: NewConversation
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Nouvelle conversation</span>
+        <Button 
+          size="icon" 
+          className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0"
+          title={t('newConversation')}
+        >
+          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
         <DialogHeader>
-          <DialogTitle>Nouvelle conversation</DialogTitle>
+          <DialogTitle>{t('newConversation')}</DialogTitle>
           <DialogDescription>
-            Sélectionnez un membre pour démarrer une conversation
+            {t('selectMemberToStartConversation')}
           </DialogDescription>
         </DialogHeader>
 
@@ -205,17 +210,17 @@ export const NewConversationDialog = ({ onConversationCreated }: NewConversation
                 setSearchQuery(e.target.value);
                 loadMembers();
               }}
-              placeholder="Rechercher un membre..."
+              placeholder={t('searchMember')}
               className="pl-10"
             />
           </div>
 
           <ScrollArea className="h-[300px]">
             {loading ? (
-              <p className="text-center py-8 text-muted-foreground">Chargement...</p>
+              <p className="text-center py-8 text-muted-foreground">{t('loading')}</p>
             ) : members.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">
-                Aucun membre trouvé
+                {t('noMemberFound')}
               </p>
             ) : (
               <div className="space-y-2">

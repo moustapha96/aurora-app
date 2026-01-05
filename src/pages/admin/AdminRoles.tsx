@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Shield, ShieldOff, Loader2, Users, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { AdminPagination } from '@/components/ui/admin-pagination';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface UserWithRole {
   id: string;
@@ -19,19 +21,24 @@ interface UserWithRole {
 }
 
 const AdminRoles = () => {
+  const { t } = useLanguage();
   const [users, setUsers] = useState<UserWithRole[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<UserWithRole[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'admins' | 'members'>('all');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     loadUsers();
   }, []);
 
+  // Reset page when filters change
   useEffect(() => {
-    filterUsers();
-  }, [searchQuery, users, filter]);
+    setCurrentPage(1);
+  }, [searchQuery, filter]);
 
   const loadUsers = async () => {
     try {
@@ -59,13 +66,13 @@ const AdminRoles = () => {
       setUsers(usersWithRoles);
     } catch (error) {
       console.error('Error loading users:', error);
-      toast.error('Erreur lors du chargement');
+      toast.error(t('adminLoadError'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filterUsers = () => {
+  const filteredUsers = useMemo(() => {
     let result = users;
 
     // Filter by role
@@ -84,8 +91,18 @@ const AdminRoles = () => {
       );
     }
 
-    setFilteredUsers(result);
-  };
+    return result;
+  }, [users, searchQuery, filter]);
+
+  // Paginate filtered users
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredUsers.slice(startIndex, startIndex + pageSize);
+  }, [filteredUsers, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredUsers.length / pageSize);
+  const startIndex = filteredUsers.length > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const endIndex = Math.min(currentPage * pageSize, filteredUsers.length);
 
   const toggleAdminRole = async (user: UserWithRole) => {
     try {
@@ -97,32 +114,41 @@ const AdminRoles = () => {
           .eq('role', 'admin');
 
         if (error) throw error;
-        toast.success(`Rôle admin retiré à ${user.first_name}`);
+        toast.success(t('adminRoleRemoved').replace('{name}', user.first_name));
       } else {
         const { error } = await supabase
           .from('user_roles')
           .insert({ user_id: user.id, role: 'admin' });
 
         if (error) throw error;
-        toast.success(`Rôle admin attribué à ${user.first_name}`);
+        toast.success(t('adminRoleAssigned').replace('{name}', user.first_name));
       }
 
       loadUsers();
     } catch (error) {
       console.error('Error toggling role:', error);
-      toast.error('Erreur lors de la modification');
+      toast.error(t('adminModificationError'));
     }
   };
 
   const adminCount = users.filter(u => u.is_admin).length;
   const memberCount = users.filter(u => !u.is_admin).length;
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
+
   return (
     <AdminLayout>
       <div className="p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Gestion des Rôles</h1>
-          <p className="text-muted-foreground">Attribuez et gérez les rôles administrateur</p>
+          <h1 className="text-3xl font-bold text-foreground">{t('adminRolesManagement')}</h1>
+          <p className="text-muted-foreground">{t('adminRolesDescription')}</p>
         </div>
 
         {/* Stats */}
@@ -138,7 +164,7 @@ const AdminRoles = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{users.length}</p>
-                  <p className="text-sm text-muted-foreground">Total utilisateurs</p>
+                  <p className="text-sm text-muted-foreground">{t('adminTotalUsers')}</p>
                 </div>
               </div>
             </CardContent>
@@ -155,7 +181,7 @@ const AdminRoles = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{adminCount}</p>
-                  <p className="text-sm text-muted-foreground">Administrateurs</p>
+                  <p className="text-sm text-muted-foreground">{t('adminAdministrators')}</p>
                 </div>
               </div>
             </CardContent>
@@ -172,7 +198,7 @@ const AdminRoles = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{memberCount}</p>
-                  <p className="text-sm text-muted-foreground">Membres standards</p>
+                  <p className="text-sm text-muted-foreground">{t('adminStandardMembers')}</p>
                 </div>
               </div>
             </CardContent>
@@ -183,17 +209,17 @@ const AdminRoles = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Utilisateurs</CardTitle>
+                <CardTitle>{t('adminUsers')}</CardTitle>
                 <CardDescription>
-                  {filter === 'all' && 'Tous les utilisateurs'}
-                  {filter === 'admins' && 'Administrateurs uniquement'}
-                  {filter === 'members' && 'Membres standards uniquement'}
+                  {filter === 'all' && t('adminAllUsers')}
+                  {filter === 'admins' && t('adminAdminsOnly')}
+                  {filter === 'members' && t('adminMembersOnly')}
                 </CardDescription>
               </div>
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Rechercher..."
+                  placeholder={t('search')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -207,66 +233,82 @@ const AdminRoles = () => {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              <div className="space-y-3">
-                {filteredUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={user.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {user.first_name?.[0]}{user.last_name?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {user.first_name} {user.last_name}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {user.job_function || 'Aucune fonction'}
-                        </p>
+              <>
+                <div className="space-y-3">
+                  {paginatedUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={user.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {user.first_name?.[0]}{user.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {user.first_name} {user.last_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {user.job_function || t('adminNoFunction')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        {user.is_admin ? (
+                          <Badge className="bg-red-500/10 text-red-500 border-red-500/20">
+                            <Shield className="h-3 w-3 mr-1" />
+                            Admin
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">{t('member')}</Badge>
+                        )}
+
+                        <Button
+                          variant={user.is_admin ? "outline" : "default"}
+                          size="sm"
+                          onClick={() => toggleAdminRole(user)}
+                        >
+                          {user.is_admin ? (
+                            <>
+                              <ShieldOff className="h-4 w-4 mr-2" />
+                              {t('adminRemoveAdmin')}
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="h-4 w-4 mr-2" />
+                              {t('adminAssignAdmin')}
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
+                  ))}
 
-                    <div className="flex items-center gap-4">
-                      {user.is_admin ? (
-                        <Badge className="bg-red-500/10 text-red-500 border-red-500/20">
-                          <Shield className="h-3 w-3 mr-1" />
-                          Admin
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Membre</Badge>
-                      )}
-
-                      <Button
-                        variant={user.is_admin ? "outline" : "default"}
-                        size="sm"
-                        onClick={() => toggleAdminRole(user)}
-                      >
-                        {user.is_admin ? (
-                          <>
-                            <ShieldOff className="h-4 w-4 mr-2" />
-                            Retirer admin
-                          </>
-                        ) : (
-                          <>
-                            <Shield className="h-4 w-4 mr-2" />
-                            Attribuer admin
-                          </>
-                        )}
-                      </Button>
+                  {paginatedUsers.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      {t('adminNoUserFound')}
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
 
-                {filteredUsers.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Aucun utilisateur trouvé
-                  </div>
+                {/* Pagination */}
+                {filteredUsers.length > 0 && (
+                  <AdminPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={filteredUsers.length}
+                    pageSize={pageSize}
+                    onPageChange={handlePageChange}
+                    onPageSizeChange={handlePageSizeChange}
+                    startIndex={startIndex}
+                    endIndex={endIndex}
+                  />
                 )}
-              </div>
+              </>
             )}
           </CardContent>
         </Card>

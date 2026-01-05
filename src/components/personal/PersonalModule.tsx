@@ -81,7 +81,7 @@ export const PersonalModule = ({
 
   return (
     <>
-      <Card className="module-card rounded-xl overflow-hidden">
+      <Card className="module-card rounded-xl overflow-hidden border-2 border-border">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20">
