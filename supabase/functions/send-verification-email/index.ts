@@ -63,7 +63,7 @@ const handler = async (req: Request): Promise<Response> => {
       </style>
     `;
 
-    const siteUrl = Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || "https://elite-sphere-nexus.lovable.app";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://app.aurorasociety.ch";
 
     if (status === 'verified') {
       subject = "✓ Votre identité a été vérifiée - Aurora Society";

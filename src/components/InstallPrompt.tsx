@@ -74,36 +74,21 @@ export const InstallPrompt = () => {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Afficher automatiquement le prompt après 2 secondes si l'app n'est pas installée
-    // (même si beforeinstallprompt n'est pas encore déclenché)
-    const showPromptTimer = setTimeout(() => {
-      if (!hasChecked && !checkIfInstalled()) {
-        setHasChecked(true);
-        // Vérifier si on est sur iOS Safari
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-        
-        // Afficher pour iOS Safari immédiatement
-        if (isIOS && isSafari) {
+    // Pour iOS Safari, afficher immédiatement
+    if (!hasChecked) {
+      setHasChecked(true);
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+      
+      if (isIOS && isSafari) {
+        if (!checkIfInstalled()) {
           setOpen(true);
-        } else if (!isIOS) {
-          // Pour les autres navigateurs, afficher après 3 secondes au total
-          // (pour laisser le temps à beforeinstallprompt de se déclencher)
-          setTimeout(() => {
-            setOpen((prevOpen) => {
-              if (!prevOpen && !checkIfInstalled()) {
-                return true;
-              }
-              return prevOpen;
-            });
-          }, 1000);
         }
       }
-    }, 2000);
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      clearTimeout(showPromptTimer);
     };
   }, [isNative, hasChecked]);
 

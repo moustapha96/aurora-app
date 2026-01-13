@@ -77,8 +77,9 @@ serve(async (req) => {
     console.log(`Admin ${user.email} sending password reset to ${userEmail}`);
 
     // Send password reset email using Supabase Auth
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://app.aurorasociety.ch';
     const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(userEmail, {
-      redirectTo: redirectUrl || `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/reset-password`,
+      redirectTo: redirectUrl || `${siteUrl}/reset-password`,
     });
 
     if (resetError) {

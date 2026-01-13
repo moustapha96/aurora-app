@@ -181,7 +181,7 @@ serve(async (req) => {
       const forwardedProto = req.headers.get('x-forwarded-proto');
       const inferredUrl = forwardedHost ? `${forwardedProto || 'https'}://${forwardedHost}` : null;
 
-      const siteUrl = originHeader || inferredUrl || Deno.env.get('SITE_URL') || 'https://preview--e6cb71785bb7428786ce0e9ee3ec0082.lovable.app';
+      const siteUrl = originHeader || inferredUrl || Deno.env.get('SITE_URL') || 'https://app.aurorasociety.ch';
 
       console.log('Creating Veriff session for registration:', authUser.user.email, 'User ID:', userId);
       console.log('Profile data:', profile.first_name, profile.last_name);
@@ -365,7 +365,7 @@ serve(async (req) => {
       const forwardedProto = req.headers.get('x-forwarded-proto');
       const inferredUrl = forwardedHost ? `${forwardedProto || 'https'}://${forwardedHost}` : null;
 
-      const siteUrl = originHeader || inferredUrl || Deno.env.get('SITE_URL') || 'https://preview--e6cb71785bb7428786ce0e9ee3ec0082.lovable.app';
+      const siteUrl = originHeader || inferredUrl || Deno.env.get('SITE_URL') || 'https://app.aurorasociety.ch';
 
       const veriffData = await veriffRequest('POST', '/sessions', {
         verification: {
