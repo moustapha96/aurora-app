@@ -9,7 +9,7 @@ const cleanBuildDir = () => {
   return {
     name: "clean-build-dir",
     buildStart() {
-      const buildDir = path.resolve(__dirname, "../app.aurorasociety.ch");
+      const buildDir = path.resolve(__dirname, "./dist");
       if (fs.existsSync(buildDir)) {
         fs.rmSync(buildDir, { recursive: true, force: true });
         console.log(`✓ Dossier de build supprimé: ${buildDir}`);
@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    outDir: path.resolve(__dirname, "../app.aurorasociety.ch"),
+    outDir: path.resolve(__dirname, "./dist"),
     emptyOutDir: false, // Désactivé car on le fait manuellement avec le plugin
     // Réduire la mise en cache avec des noms de fichiers non hashés en dev
     rollupOptions: {
