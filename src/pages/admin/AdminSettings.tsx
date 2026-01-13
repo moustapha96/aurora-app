@@ -242,27 +242,31 @@ const AdminSettings = () => {
   const saveEmailConfig = async () => {
     setSavingEmailConfig(true);
     try {
-      const settings = [
-        { setting_key: 'email_mode', setting_value: emailMode, description: t('adminEmailModeDesc') },
-        { setting_key: 'smtp_host', setting_value: emailConfig.smtpHost, description: t('adminSmtpHostDesc') },
-        { setting_key: 'smtp_port', setting_value: emailConfig.smtpPort, description: t('adminSmtpPortDesc') },
-        { setting_key: 'smtp_user', setting_value: emailConfig.smtpUser, description: t('adminSmtpUserDesc') },
-        { setting_key: 'smtp_password', setting_value: emailConfig.smtpPassword, description: t('adminSmtpPasswordDesc') },
-        { setting_key: 'sender_email', setting_value: emailConfig.senderEmail, description: t('adminSenderEmailDesc') },
-        { setting_key: 'sender_name', setting_value: emailConfig.senderName, description: t('adminSenderNameDesc') }
-      ];
+      // Use the Edge function to update SMTP config
+      const { data, error } = await supabase.functions.invoke('update-smtp-config', {
+        body: {
+          email_mode: emailMode,
+          smtp_host: emailConfig.smtpHost,
+          smtp_port: emailConfig.smtpPort,
+          smtp_user: emailConfig.smtpUser,
+          smtp_password: emailConfig.smtpPassword,
+          sender_email: emailConfig.senderEmail,
+          sender_name: emailConfig.senderName
+        }
+      });
 
-      for (const setting of settings) {
-        const { error } = await supabase
-          .from('admin_settings')
-          .upsert(setting, { onConflict: 'setting_key' });
-        if (error) throw error;
+      if (error) {
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       toast.success(t('adminEmailConfigSaved'));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving email config:', error);
-      toast.error(t('adminErrorSaving'));
+      toast.error(error?.message || t('adminErrorSaving'));
     } finally {
       setSavingEmailConfig(false);
     }

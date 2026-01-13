@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Edit2, Trash2, Trophy, Medal, Star, Loader2, Sparkles, FileText } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { PoloAchievement } from './PoloProfileModule';
 
 interface PoloAchievementsProps {
@@ -18,6 +19,7 @@ interface PoloAchievementsProps {
 }
 
 const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievements, isEditable, onUpdate }) => {
+  const { t } = useLanguage();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAchievement, setEditingAchievement] = useState<PoloAchievement | null>(null);
   const [saving, setSaving] = useState(false);
@@ -77,7 +79,7 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
   const handleAIGenerate = async () => {
     const context = formData.tournament_name || formData.description || '';
     if (!context) {
-      toast.error("Veuillez d'abord saisir un nom de tournoi ou une description");
+      toast.error(t('poloAchievementPleaseEnterTournamentOrDescription'));
       return;
     }
     setIsGenerating(true);
@@ -92,10 +94,10 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
         } else {
           setFormData(prev => ({ ...prev, role_performance: data.suggestion }));
         }
-        toast.success("Suggestion générée");
+        toast.success(t('poloAchievementSuggestionGenerated'));
       }
     } catch {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('poloAchievementGenerationError'));
     } finally {
       setIsGenerating(false);
     }
@@ -107,14 +109,14 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
 
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error("Fichier trop volumineux (max 10MB)");
+      toast.error(t('poloHorseFileTooLarge'));
       return;
     }
 
     setIsImportingDoc(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       const fileExt = file.name.split('.').pop();
       const fileName = `polo-achievement-${user.id}-${Date.now()}.${fileExt}`;
@@ -125,10 +127,10 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
-      toast.success("Document importé avec succès");
+      toast.success(t('poloHorseDocumentImported'));
     } catch (error) {
       console.error(error);
-      toast.error("Erreur lors de l'import du document");
+      toast.error(t('poloHorseImportError'));
     } finally {
       setIsImportingDoc(false);
       if (docInputRef.current) docInputRef.current.value = '';
@@ -163,7 +165,7 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
       onUpdate();
     } catch (error) {
       console.error('Error saving achievement:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(t('poloErrorSaving'));
     } finally {
       setSaving(false);
     }
@@ -193,14 +195,14 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cette réussite ?')) return;
+    if (!confirm(t('poloAchievementDeleteConfirm'))) return;
     try {
       const { error } = await supabase.from('polo_achievements').delete().eq('id', id);
       if (error) throw error;
-      toast.success('Réussite supprimée');
+      toast.success(t('poloAchievementDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error('Erreur lors de la suppression');
+      toast.error(t('poloAchievementDeleteError'));
     }
   };
 
@@ -228,7 +230,7 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Trophy className="h-5 w-5 text-amber-500" />
-          🏆 MES RÉUSSITES
+          🏆 {t('poloAchievementMyAchievements')}
         </h3>
       </div>
 
@@ -236,16 +238,16 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
         {/* Tournaments */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-foreground">Tournois mémorables</h4>
+            <h4 className="font-medium text-foreground">{t('poloAchievementMemorableTournaments')}</h4>
             {isEditable && (
               <Button variant="ghost" size="sm" onClick={() => openAddDialog('tournament')} className="text-primary">
                 <Plus className="h-4 w-4 mr-1" />
-                Ajouter
+                {t('add')}
               </Button>
             )}
           </div>
           {tournaments.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">Aucun tournoi enregistré</p>
+            <p className="text-sm text-muted-foreground italic">{t('poloAchievementNoTournaments')}</p>
           ) : (
             <div className="space-y-2">
               {tournaments.map((t, index) => (
@@ -283,30 +285,30 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
 
         {/* Rewards badges */}
         <div className="space-y-2">
-          <h4 className="font-medium text-foreground">Récompenses</h4>
+          <h4 className="font-medium text-foreground">{t('poloAchievementRewards')}</h4>
           <div className="flex flex-wrap gap-2">
             {hasAnyTrophies && (
               <span className="flex items-center gap-1 px-3 py-1.5 bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full text-sm">
-                <Trophy className="h-4 w-4" /> Trophées
+                <Trophy className="h-4 w-4" /> {t('poloAchievementTrophies')}
               </span>
             )}
             {hasAnyMedals && (
               <span className="flex items-center gap-1 px-3 py-1.5 bg-gray-400/20 text-gray-700 dark:text-gray-300 rounded-full text-sm">
-                <Medal className="h-4 w-4" /> Médailles
+                <Medal className="h-4 w-4" /> {t('poloAchievementMedals')}
               </span>
             )}
             {hasAnyQualifications && (
               <span className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/20 text-blue-700 dark:text-blue-400 rounded-full text-sm">
-                <Star className="h-4 w-4" /> Qualifications
+                <Star className="h-4 w-4" /> {t('poloAchievementQualifications')}
               </span>
             )}
             {hasAnySpecial && (
               <span className="flex items-center gap-1 px-3 py-1.5 bg-purple-500/20 text-purple-700 dark:text-purple-400 rounded-full text-sm">
-                <Star className="h-4 w-4" /> Reconnaissances spéciales
+                <Star className="h-4 w-4" /> {t('poloAchievementSpecialRecognition')}
               </span>
             )}
             {!hasAnyTrophies && !hasAnyMedals && !hasAnyQualifications && !hasAnySpecial && (
-              <span className="text-sm text-muted-foreground italic">Aucune récompense enregistrée</span>
+              <span className="text-sm text-muted-foreground italic">{t('poloAchievementNoRewards')}</span>
             )}
           </div>
         </div>
@@ -314,16 +316,16 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
         {/* Greatest prides */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-foreground">Mes plus grandes fiertés</h4>
+            <h4 className="font-medium text-foreground">{t('poloAchievementMyGreatestPrides')}</h4>
             {isEditable && (
               <Button variant="ghost" size="sm" onClick={() => openAddDialog('pride')} className="text-primary">
                 <Plus className="h-4 w-4 mr-1" />
-                Ajouter
+                {t('add')}
               </Button>
             )}
           </div>
           {prides.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">Aucune fierté enregistrée</p>
+            <p className="text-sm text-muted-foreground italic">{t('poloAchievementNoPrides')}</p>
           ) : (
             <ul className="space-y-2">
               {prides.map((p) => (
@@ -362,13 +364,13 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground">
-              {editingAchievement ? 'Modifier la réussite' : formData.achievement_type === 'tournament' ? 'Ajouter un tournoi' : 'Ajouter une fierté'}
+              {editingAchievement ? t('poloAchievementEditAchievement') : formData.achievement_type === 'tournament' ? t('poloAchievementAddTournament') : t('poloAchievementAddPride')}
               {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </DialogTitle>
             <DialogDescription>
               {formData.achievement_type === 'tournament' 
-                ? 'Enregistrez vos performances en tournoi' 
-                : 'Partagez vos plus grandes fiertés'}
+                ? t('poloAchievementRecordTournamentPerformance') 
+                : t('poloAchievementShareGreatestPrides')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -376,7 +378,7 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="year">Année</Label>
+                    <Label htmlFor="year">{t('poloAchievementYear')}</Label>
                     <Input
                       id="year"
                       value={formData.year || ''}
@@ -385,35 +387,35 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="result">Résultat</Label>
+                    <Label htmlFor="result">{t('poloAchievementResult')}</Label>
                     <Input
                       id="result"
                       value={formData.result || ''}
                       onChange={(e) => setFormData({ ...formData, result: e.target.value })}
-                      placeholder="1ère place"
+                      placeholder={t('poloAchievementResultPlaceholder')}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tournament">Nom du tournoi *</Label>
+                  <Label htmlFor="tournament">{t('poloAchievementTournamentName')} *</Label>
                   <Input
                     id="tournament"
                     value={formData.tournament_name || ''}
                     onChange={(e) => setFormData({ ...formData, tournament_name: e.target.value })}
-                    placeholder="Nom du tournoi"
+                    placeholder={t('poloAchievementTournamentNamePlaceholder')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">Rôle/Performance</Label>
+                  <Label htmlFor="role">{t('poloAchievementRolePerformance')}</Label>
                   <Input
                     id="role"
                     value={formData.role_performance || ''}
                     onChange={(e) => setFormData({ ...formData, role_performance: e.target.value })}
-                    placeholder="Ex: But victorieux en finale"
+                    placeholder={t('poloAchievementRolePerformancePlaceholder')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Récompenses obtenues</Label>
+                  <Label>{t('poloAchievementRewardsObtained')}</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -421,7 +423,7 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
                         checked={formData.has_trophies}
                         onCheckedChange={(checked) => handleCheckboxChange('has_trophies', !!checked)}
                       />
-                      <Label htmlFor="trophies" className="cursor-pointer font-normal">Trophées</Label>
+                      <Label htmlFor="trophies" className="cursor-pointer font-normal">{t('poloAchievementTrophies')}</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -429,7 +431,7 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
                         checked={formData.has_medals}
                         onCheckedChange={(checked) => handleCheckboxChange('has_medals', !!checked)}
                       />
-                      <Label htmlFor="medals" className="cursor-pointer font-normal">Médailles</Label>
+                      <Label htmlFor="medals" className="cursor-pointer font-normal">{t('poloAchievementMedals')}</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -437,7 +439,7 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
                         checked={formData.has_qualifications}
                         onCheckedChange={(checked) => handleCheckboxChange('has_qualifications', !!checked)}
                       />
-                      <Label htmlFor="qualif" className="cursor-pointer font-normal">Qualifications</Label>
+                      <Label htmlFor="qualif" className="cursor-pointer font-normal">{t('poloAchievementQualifications')}</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -445,19 +447,19 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
                         checked={formData.has_special_recognition}
                         onCheckedChange={(checked) => handleCheckboxChange('has_special_recognition', !!checked)}
                       />
-                      <Label htmlFor="special" className="cursor-pointer font-normal">Reconnaissances</Label>
+                      <Label htmlFor="special" className="cursor-pointer font-normal">{t('poloAchievementRecognition')}</Label>
                     </div>
                   </div>
                 </div>
               </>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="pride-desc">Description de votre fierté *</Label>
+                <Label htmlFor="pride-desc">{t('poloAchievementPrideDescription')} *</Label>
                 <Textarea
                   id="pride-desc"
                   value={formData.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Ex: Avoir marqué le but victorieux en finale"
+                  placeholder={t('poloAchievementPrideDescriptionPlaceholder')}
                   rows={3}
                 />
               </div>
@@ -473,7 +475,7 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
                 className="border-primary/30 text-primary hover:bg-primary/10"
               >
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
-                IA Aurora
+                {t('aiAurora')}
               </Button>
               <Button
                 variant="outline"
@@ -483,7 +485,7 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
                 className="border-primary/30 text-primary hover:bg-primary/10"
               >
                 {isImportingDoc ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />}
-                Importer
+                {t('import')}
               </Button>
             </div>
           </div>

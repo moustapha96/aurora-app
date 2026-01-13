@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Camera, Plus, Trash2, MapPin, Calendar, X } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ interface GolfGalleryProps {
 }
 
 const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, onUpdate }) => {
+  const { t } = useLanguage();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [newPhoto, setNewPhoto] = useState({
@@ -52,7 +54,7 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
 
   const uploadPhoto = async () => {
     if (!selectedFile) {
-      toast.error('Veuillez sélectionner une photo');
+      toast.error(t('golfGalleryPleaseSelectPhoto'));
       return;
     }
 
@@ -84,7 +86,7 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
 
       if (insertError) throw insertError;
 
-      toast.success('Photo ajoutée');
+      toast.success(t('golfGalleryPhotoAdded'));
       setIsAddDialogOpen(false);
       setSelectedFile(null);
       setPreviewUrl(null);
@@ -92,7 +94,7 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
       onUpdate();
     } catch (error) {
       console.error('Error uploading photo:', error);
-      toast.error('Erreur lors de l\'upload');
+      toast.error(t('golfGalleryUploadError'));
     } finally {
       setUploading(false);
     }
@@ -109,12 +111,12 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
 
       if (error) throw error;
 
-      toast.success('Photo supprimée');
+      toast.success(t('golfGalleryPhotoDeleted'));
       setViewingPhoto(null);
       onUpdate();
     } catch (error) {
       console.error('Error deleting photo:', error);
-      toast.error('Erreur lors de la suppression');
+      toast.error(t('golfGalleryDeleteError'));
     }
   };
 
@@ -123,19 +125,19 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium flex items-center gap-2">
           <Camera className="h-5 w-5 text-primary" />
-          Galerie de moments
+          {t('golfGalleryTitle')}
         </h3>
         {isEditable && (
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Plus className="h-4 w-4" />
-                Ajouter
+                {t('add')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Ajouter un moment mémorable</DialogTitle>
+                <DialogTitle>{t('golfGalleryAddMemorableMoment')}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 {previewUrl ? (
@@ -161,7 +163,7 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
                   <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
                     <Camera className="h-12 w-12 text-muted-foreground mb-2" />
                     <span className="text-sm text-muted-foreground">
-                      Cliquez pour sélectionner une photo
+                      {t('golfGalleryClickToSelectPhoto')}
                     </span>
                     <input
                       type="file"
@@ -173,7 +175,7 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
                 )}
 
                 <Input
-                  placeholder="Légende (optionnel)"
+                  placeholder={t('golfGalleryCaptionPlaceholder')}
                   value={newPhoto.caption}
                   onChange={(e) => setNewPhoto({ ...newPhoto, caption: e.target.value })}
                 />
@@ -181,7 +183,7 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
                 <div className="flex gap-2">
                   <div className="flex-1">
                     <Input
-                      placeholder="Lieu"
+                      placeholder={t('golfCourseLocation')}
                       value={newPhoto.location}
                       onChange={(e) => setNewPhoto({ ...newPhoto, location: e.target.value })}
                     />
@@ -200,7 +202,7 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
                   onClick={uploadPhoto}
                   disabled={!selectedFile || uploading}
                 >
-                  {uploading ? 'Upload en cours...' : 'Ajouter la photo'}
+                  {uploading ? t('golfGalleryUploading') : t('golfGalleryAddPhoto')}
                 </Button>
               </div>
             </DialogContent>
@@ -211,9 +213,9 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
       {photos.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
-          <p>Aucun moment capturé</p>
+          <p>{t('golfGalleryNoMoments')}</p>
           {isEditable && (
-            <p className="text-sm mt-1">Ajoutez vos photos mémorables sur les parcours</p>
+            <p className="text-sm mt-1">{t('golfGalleryAddMemorablePhotos')}</p>
           )}
         </div>
       ) : (
@@ -226,7 +228,7 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
             >
               <img
                 src={photo.image_url || ''}
-                alt={photo.caption || 'Golf moment'}
+                alt={photo.caption || t('golfGalleryGolfMoment')}
                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
@@ -254,7 +256,7 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
             <div className="space-y-4">
               <img
                 src={viewingPhoto.image_url || ''}
-                alt={viewingPhoto.caption || 'Golf moment'}
+                alt={viewingPhoto.caption || t('golfGalleryGolfMoment')}
                 className="w-full max-h-[60vh] object-contain rounded-lg"
               />
               <div className="flex items-start justify-between">
@@ -278,13 +280,17 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
                   </div>
                 </div>
                 {isEditable && (
-                  <Button
+                    <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => deletePhoto(viewingPhoto)}
+                    onClick={() => {
+                      if (confirm(t('golfGalleryDeleteConfirm'))) {
+                        deletePhoto(viewingPhoto);
+                      }
+                    }}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Supprimer
+                    {t('delete')}
                   </Button>
                 )}
               </div>

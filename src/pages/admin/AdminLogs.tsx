@@ -22,6 +22,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AdminPagination } from '@/components/ui/admin-pagination';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { format, type Locale } from 'date-fns';
+import { fr, enUS, es, de, it, ptBR, ar, zhCN, ja, ru } from 'date-fns/locale';
 
 interface ActivityLog {
   id: string;
@@ -36,7 +38,20 @@ interface ActivityLog {
 }
 
 export default function AdminLogs() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  
+  const localeMap: Record<string, Locale> = {
+    'fr': fr,
+    'en': enUS,
+    'es': es,
+    'de': de,
+    'it': it,
+    'pt': ptBR,
+    'ar': ar,
+    'zh': zhCN,
+    'ja': ja,
+    'ru': ru
+  };
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -274,7 +289,7 @@ export default function AdminLogs() {
                 <Select value={tableFilter} onValueChange={setTableFilter}>
                   <SelectTrigger className="w-[180px]">
                     <Table2 className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Table" />
+                    <SelectValue placeholder={t('adminTable')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('adminAllTables')}</SelectItem>
@@ -330,12 +345,8 @@ export default function AdminLogs() {
                               <span>•</span>
                               <Calendar className="h-3 w-3" />
                               <span>
-                                {new Date(log.created_at).toLocaleDateString('fr-FR', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  second: '2-digit'
+                                {format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss', { 
+                                  locale: localeMap[language] || fr 
                                 })}
                               </span>
                               {log.record_id && (
@@ -352,16 +363,18 @@ export default function AdminLogs() {
                   </div>
 
                   {/* Pagination */}
-                  <AdminPagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={filteredLogs.length}
-                    pageSize={pageSize}
-                    onPageChange={handlePageChange}
-                    onPageSizeChange={handlePageSizeChange}
-                    startIndex={startIndex}
-                    endIndex={endIndex}
-                  />
+                  {filteredLogs.length > 0 && (
+                    <AdminPagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={filteredLogs.length}
+                      pageSize={pageSize}
+                      onPageChange={handlePageChange}
+                      onPageSizeChange={handlePageSizeChange}
+                      startIndex={startIndex}
+                      endIndex={endIndex}
+                    />
+                  )}
                 </>
               )}
             </div>

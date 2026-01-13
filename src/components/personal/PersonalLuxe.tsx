@@ -6,6 +6,7 @@ import { LuxeEditor } from "./editors/LuxeEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { TruncatedText } from "@/components/ui/truncated-text";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface LuxeEntry {
   id: string;
@@ -38,6 +39,7 @@ export const PersonalLuxe = ({ entries, isEditable, onDataChange }: PersonalLuxe
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
   const [addCategory, setAddCategory] = useState<CategoryType | null>(null);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const handleCategoryClick = (category: CategoryType) => {
     setSelectedCategory(prev => prev === category ? null : category);
@@ -71,11 +73,11 @@ export const PersonalLuxe = ({ entries, isEditable, onDataChange }: PersonalLuxe
         .eq("id", id);
 
       if (error) throw error;
-      toast({ title: "Entrée supprimée" });
+      toast({ title: t('personalEntryDeleted') });
       onDataChange();
     } catch (error) {
       console.error("Delete error:", error);
-      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+      toast({ title: t('personalErrorDeletingEntry'), variant: "destructive" });
     }
   };
 

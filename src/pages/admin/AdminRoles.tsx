@@ -114,14 +114,14 @@ const AdminRoles = () => {
           .eq('role', 'admin');
 
         if (error) throw error;
-        toast.success(t('adminRoleRemoved').replace('{name}', user.first_name));
+        toast.success(t('adminRoleRemoved'));
       } else {
         const { error } = await supabase
           .from('user_roles')
           .insert({ user_id: user.id, role: 'admin' });
 
         if (error) throw error;
-        toast.success(t('adminRoleAssigned').replace('{name}', user.first_name));
+        toast.success(t('adminRoleAssigned').replace('{name}', `${user.first_name} ${user.last_name}`));
       }
 
       loadUsers();
@@ -261,7 +261,7 @@ const AdminRoles = () => {
                         {user.is_admin ? (
                           <Badge className="bg-red-500/10 text-red-500 border-red-500/20">
                             <Shield className="h-3 w-3 mr-1" />
-                            Admin
+                            {t('adminRoleLabel')}
                           </Badge>
                         ) : (
                           <Badge variant="secondary">{t('member')}</Badge>

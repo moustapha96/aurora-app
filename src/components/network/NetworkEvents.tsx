@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface EventItem {
   id: string;
@@ -30,6 +31,7 @@ interface NetworkEventsProps {
 }
 
 export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps) => {
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<EventItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -241,12 +243,12 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
   };
 
   return (
-    <NetworkModule title="Événements et Invitations" icon={CalendarDays} moduleType="events" isEditable={isEditable}>
+    <NetworkModule title={t('eventsInvitations')} icon={CalendarDays} moduleType="events" isEditable={isEditable}>
       {/* Private invitation notice */}
       <div className="flex items-center gap-2 mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
         <Lock className="w-4 h-4 text-primary flex-shrink-0" />
         <p className="text-sm text-muted-foreground italic">
-          Notez ici les événements qui doivent rester privés
+          {t('privateEventsNote')}
         </p>
       </div>
 
@@ -279,8 +281,7 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
         <div className="mt-3 pt-3 border-t border-border/50">
           <p className="text-xs text-muted-foreground">
             <span className="inline-block w-3 h-3 bg-primary/20 rounded mr-1"></span>
-            Dates avec événements ({eventDates.length})
-            {isEditable && <span className="ml-2">• Cliquez sur une date pour ajouter</span>}
+            {t('datesWithEvents').replace('{count}', String(eventDates.length))}
           </p>
         </div>
         
@@ -301,7 +302,9 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
 
       {/* Events list */}
       <div className="space-y-3">
-        <h4 className="text-sm font-medium text-foreground">Tous vos événements ({data.length})</h4>
+        <h4 className="text-sm font-medium text-foreground">
+          {t('allYourEvents')} ({data.length})
+        </h4>
         {data.map((item) => (
           <div key={item.id} className="p-3 bg-muted/30 rounded-lg group">
             <div className="flex justify-between items-start">
@@ -333,7 +336,7 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
 
         {data.length === 0 && (
           <p className="text-muted-foreground text-sm text-center py-4">
-            Aucun événement ajouté
+            {t('noEventAdded')}
           </p>
         )}
 

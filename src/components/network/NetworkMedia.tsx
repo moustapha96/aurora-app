@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface MediaItem {
   id: string;
@@ -45,32 +46,49 @@ interface NetworkMediaProps {
   onUpdate: () => void;
 }
 
+// Media types will be translated dynamically using t()
 const MEDIA_TYPES = [
-  { value: 'interview', label: 'Portrait / Interview' },
-  { value: 'tribune', label: 'Tribune sectorielle' },
-  { value: 'citation', label: 'Classement / Citation' },
-  { value: 'documentary', label: 'Documentaire / Intervention' },
-  { value: 'conference', label: 'Conférence' },
-  { value: 'roundtable', label: 'Table ronde' },
-  { value: 'expertise', label: 'Audition / Expertise' },
-  { value: 'award', label: 'Prix / Distinction' },
-  { value: 'ranking', label: 'Classement sectoriel' },
-  { value: 'recognition', label: 'Reconnaissance institutionnelle' }
+  { value: 'interview' },
+  { value: 'tribune' },
+  { value: 'citation' },
+  { value: 'documentary' },
+  { value: 'conference' },
+  { value: 'roundtable' },
+  { value: 'expertise' },
+  { value: 'award' },
+  { value: 'ranking' },
+  { value: 'recognition' }
 ];
 
+// Privacy levels will be translated dynamically using t()
 const PRIVACY_LEVELS = [
-  { value: 'private', label: 'Privé (moi seul)', icon: Lock },
-  { value: 'aurora_circle', label: 'Cercle Aurora', icon: Users },
-  { value: 'concierge_only', label: 'Conciergerie uniquement', icon: Shield }
+  { value: 'private', icon: Lock },
+  { value: 'aurora_circle', icon: Users },
+  { value: 'concierge_only', icon: Shield }
 ];
 
+// Social platforms will be translated dynamically using t()
 const SOCIAL_PLATFORMS = [
-  { value: 'linkedin', label: 'LinkedIn' },
-  { value: 'twitter', label: 'X (Twitter)' },
-  { value: 'publications', label: 'Publications / Tribunes' }
+  { value: 'linkedin' },
+  { value: 'twitter' },
+  { value: 'publications' }
 ];
 
 export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) => {
+  const { t } = useLanguage();
+
+  // Helper functions to get translated labels
+  const getMediaTypeLabel = (value: string) => {
+    return t(`mediaType_${value}` as any) || value;
+  };
+
+  const getPrivacyLevelLabel = (value: string) => {
+    return t(`privacyLevel_${value}` as any) || value;
+  };
+
+  const getSocialPlatformLabel = (value: string) => {
+    return t(`socialPlatform_${value}` as any) || value;
+  };
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MediaItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -198,10 +216,10 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
       if (error) throw error;
       if (data?.suggestion) {
         setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success("Suggestion générée");
+        toast.success(t('suggestionGenerated'));
       }
     } catch (error) {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('generationError'));
     } finally {
       setIsGenerating(false);
     }
@@ -209,7 +227,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      toast.error("Le titre est requis");
+      toast.error(t('titleRequired'));
       return;
     }
 
@@ -234,7 +252,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
           })
           .eq('id', editingItem.id);
         if (error) throw error;
-        toast.success("Élément mis à jour");
+        toast.success(t('mediaItemUpdated'));
       } else {
         const { error } = await supabase
           .from('network_media')
@@ -250,7 +268,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
             category: dialogCategory
           });
         if (error) throw error;
-        toast.success("Élément ajouté");
+        toast.success(t('mediaItemAdded'));
       }
 
       setIsDialogOpen(false);
@@ -258,7 +276,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
       onUpdate();
     } catch (error) {
       console.error('Error saving media:', error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('saveError'));
     } finally {
       setIsLoading(false);
     }
@@ -268,10 +286,10 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
     try {
       const { error } = await supabase.from('network_media').delete().eq('id', id);
       if (error) throw error;
-      toast.success("Élément supprimé");
+      toast.success(t('mediaItemDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('mediaItemDeleteError'));
     }
   };
 
@@ -291,11 +309,11 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
         }, { onConflict: 'user_id' });
 
       if (error) throw error;
-      toast.success("Posture médiatique enregistrée");
+      toast.success(t('mediaPostureSaved'));
       setIsPostureDialogOpen(false);
       loadPosture();
     } catch (error) {
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('saveError'));
     } finally {
       setIsLoading(false);
     }
@@ -303,7 +321,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
   const handleSaveSocialLink = async () => {
     if (!socialFormData.platform) {
-      toast.error("La plateforme est requise");
+      toast.error(t('platformRequired'));
       return;
     }
 
@@ -335,13 +353,13 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
         if (error) throw error;
       }
 
-      toast.success("Lien enregistré");
+      toast.success(t('socialLinkSaved'));
       setIsSocialDialogOpen(false);
       setEditingSocialLink(null);
       setSocialFormData({ platform: '', url: '', privacy_level: 'aurora_circle' });
       loadSocialLinks();
     } catch (error) {
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('saveError'));
     } finally {
       setIsLoading(false);
     }
@@ -351,10 +369,10 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
     try {
       const { error } = await supabase.from('network_social_links').delete().eq('id', id);
       if (error) throw error;
-      toast.success("Lien supprimé");
+      toast.success(t('socialLinkDeleted'));
       loadSocialLinks();
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('socialLinkDeleteError'));
     }
   };
 
@@ -369,13 +387,13 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-foreground">{item.platform || 'Source'}</span>
+            <span className="font-medium text-foreground">{item.platform || t('source')}</span>
             {item.media_type && (
               <span className="text-muted-foreground">—</span>
             )}
             {item.media_type && (
               <span className="text-sm text-muted-foreground">
-                {MEDIA_TYPES.find(t => t.value === item.media_type)?.label || item.media_type}
+                {getMediaTypeLabel(item.media_type)}
               </span>
             )}
             {item.year && (
@@ -426,22 +444,22 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
   const getDialogTitle = () => {
     switch (dialogCategory) {
-      case 'medias': return 'Média & Publication';
-      case 'interventions': return 'Intervention publique';
-      case 'distinctions': return 'Distinction / Reconnaissance';
-      default: return 'Présence médiatique';
+      case 'medias': return t('mediaDialogTitle');
+      case 'interventions': return t('interventionDialogTitle');
+      case 'distinctions': return t('distinctionDialogTitle');
+      default: return t('mediaPresence');
     }
   };
 
   return (
     <NetworkModule 
-      title="Présence médiatique" 
+      title={t('mediaPresence')} 
       icon={Newspaper} 
       moduleType="media" 
       isEditable={isEditable}
     >
       <p className="text-xs text-muted-foreground mb-4">
-        Exposition publique, interventions et visibilité choisie
+        {t('mediaPresenceSubtitle')}
       </p>
 
       <div className="space-y-4">
@@ -450,7 +468,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
           <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
             {expandedBlocs.medias ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             <Newspaper className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Médias & Publications</span>
+            <span className="text-sm font-medium">{t('mediaPublications')}</span>
             <span className="text-xs text-muted-foreground ml-auto">{mediasData.length}</span>
           </CollapsibleTrigger>
           <CollapsibleContent className="pl-6 pt-2">
@@ -459,14 +477,16 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 {mediasData.map(renderMediaItem)}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground py-2">Aucune publication</p>
+              <p className="text-sm text-muted-foreground py-2">
+                {t('noPublication')}
+              </p>
             )}
             {isEditable && (
               <button 
                 onClick={() => handleOpenAdd('medias')}
                 className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
               >
-                <Plus className="w-3.5 h-3.5" /> Ajouter
+                <Plus className="w-3.5 h-3.5" /> {t('add')}
               </button>
             )}
           </CollapsibleContent>
@@ -477,7 +497,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
           <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
             {expandedBlocs.interventions ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             <Mic className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Interventions publiques</span>
+            <span className="text-sm font-medium">{t('publicInterventions')}</span>
             <span className="text-xs text-muted-foreground ml-auto">{interventionsData.length}</span>
           </CollapsibleTrigger>
           <CollapsibleContent className="pl-6 pt-2">
@@ -486,14 +506,16 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 {interventionsData.map(renderMediaItem)}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground py-2">Aucune intervention</p>
+              <p className="text-sm text-muted-foreground py-2">
+                {t('noIntervention')}
+              </p>
             )}
             {isEditable && (
               <button 
                 onClick={() => handleOpenAdd('interventions')}
                 className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
               >
-                <Plus className="w-3.5 h-3.5" /> Ajouter
+                <Plus className="w-3.5 h-3.5" /> {t('add')}
               </button>
             )}
           </CollapsibleContent>
@@ -504,7 +526,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
           <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
             {expandedBlocs.distinctions ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             <Award className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Distinctions & Reconnaissances</span>
+            <span className="text-sm font-medium">{t('distinctionsRecognitions')}</span>
             <span className="text-xs text-muted-foreground ml-auto">{distinctionsData.length}</span>
           </CollapsibleTrigger>
           <CollapsibleContent className="pl-6 pt-2">
@@ -513,14 +535,16 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 {distinctionsData.map(renderDistinctionItem)}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground py-2">Aucune distinction</p>
+              <p className="text-sm text-muted-foreground py-2">
+                {t('noDistinction')}
+              </p>
             )}
             {isEditable && (
               <button 
                 onClick={() => handleOpenAdd('distinctions')}
                 className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
               >
-                <Plus className="w-3.5 h-3.5" /> Ajouter
+                <Plus className="w-3.5 h-3.5" /> {t('add')}
               </button>
             )}
           </CollapsibleContent>
@@ -531,7 +555,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
           <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
             {expandedBlocs.posture ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             <Shield className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Posture médiatique</span>
+            <span className="text-sm font-medium">{t('mediaPosture')}</span>
           </CollapsibleTrigger>
           <CollapsibleContent className="pl-6 pt-2">
             {posture.posture_text ? (
@@ -539,7 +563,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 <p className="text-sm italic text-foreground/90">« {posture.posture_text} »</p>
                 <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
                   {getPrivacyIcon(posture.privacy_level)}
-                  <span>{PRIVACY_LEVELS.find(p => p.value === posture.privacy_level)?.label}</span>
+                  <span>{getPrivacyLevelLabel(posture.privacy_level || '')}</span>
                 </div>
                 {isEditable && (
                   <Button 
@@ -555,14 +579,14 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
             ) : (
               <div>
                 <p className="text-sm text-muted-foreground py-2">
-                  Décrivez votre approche de la visibilité médiatique
+                  {t('describeMediaApproach')}
                 </p>
                 {isEditable && (
                   <button 
                     onClick={() => setIsPostureDialogOpen(true)}
                     className="text-sm text-primary hover:underline inline-flex items-center gap-1"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Définir ma posture
+                    <Plus className="w-3.5 h-3.5" /> {t('add')}
                   </button>
                 )}
               </div>
@@ -575,19 +599,19 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
           <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
             {expandedBlocs.reseaux ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             <Link2 className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Réseaux</span>
+            <span className="text-sm font-medium">{t('networks')}</span>
             <span className="text-xs text-muted-foreground ml-auto">{socialLinks.length}</span>
           </CollapsibleTrigger>
           <CollapsibleContent className="pl-6 pt-2">
             <p className="text-xs text-muted-foreground mb-2">
-              Présence professionnelle (pas d'affichage de followers)
+              {t('professionalPresence')}
             </p>
             {socialLinks.length > 0 ? (
               <div className="space-y-2">
                 {socialLinks.map(link => (
                   <div key={link.id} className="flex items-center gap-2 py-1 group">
                     <span className="font-medium text-sm">
-                      {SOCIAL_PLATFORMS.find(p => p.value === link.platform)?.label || link.platform}
+                      {getSocialPlatformLabel(link.platform)}
                     </span>
                     {link.url && (
                       <span className="text-xs text-muted-foreground truncate max-w-[150px]">{link.url}</span>
@@ -625,7 +649,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground py-2">Aucun réseau ajouté</p>
+              <p className="text-sm text-muted-foreground py-2">{t('noNetworkAdded')}</p>
             )}
             {isEditable && (
               <button 
@@ -636,7 +660,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 }}
                 className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
               >
-                <Plus className="w-3.5 h-3.5" /> Ajouter
+                <Plus className="w-3.5 h-3.5" /> {t('add')}
               </button>
             )}
           </CollapsibleContent>
@@ -647,59 +671,59 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingItem ? "Modifier" : "Ajouter"} — {getDialogTitle()}</DialogTitle>
+            <DialogTitle>{editingItem ? t('edit') : t('add')} — {getDialogTitle()}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Source / Média *</Label>
+                <Label>{t('sourceMedia')} *</Label>
                 <Input
                   value={formData.platform}
                   onChange={(e) => setFormData(prev => ({ ...prev, platform: e.target.value }))}
-                  placeholder="Ex: Le Monde, Forbes, Arte"
+                  placeholder={t('sourceMediaPlaceholder')}
                 />
               </div>
               <div>
-                <Label>Année</Label>
+                <Label>{t('year')}</Label>
                 <Input
                   value={formData.year}
                   onChange={(e) => setFormData(prev => ({ ...prev, year: e.target.value }))}
-                  placeholder="2024"
+                  placeholder={t('yearPlaceholder')}
                 />
               </div>
             </div>
             <div>
-              <Label>Type</Label>
+              <Label>{t('type')}</Label>
               <Select value={formData.media_type} onValueChange={(v) => setFormData(prev => ({ ...prev, media_type: v }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner le type" />
+                  <SelectValue placeholder={t('selectType')} />
                 </SelectTrigger>
                 <SelectContent>
                   {MEDIA_TYPES.map(type => (
-                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    <SelectItem key={type.value} value={type.value}>{getMediaTypeLabel(type.value)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Titre / Sujet</Label>
+              <Label>{t('titleSubject')}</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Titre de l'article ou intervention"
+                placeholder={t('articleTitlePlaceholder')}
               />
             </div>
             <div>
-              <Label>Description (optionnel)</Label>
+              <Label>{t('descriptionOptional')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Description courte..."
+                placeholder={t('shortDescriptionPlaceholder')}
                 rows={2}
               />
             </div>
             <div>
-              <Label>Confidentialité</Label>
+              <Label>{t('privacy')}</Label>
               <Select value={formData.privacy_level} onValueChange={(v) => setFormData(prev => ({ ...prev, privacy_level: v }))}>
                 <SelectTrigger>
                   <SelectValue />
@@ -709,7 +733,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                     <SelectItem key={level.value} value={level.value}>
                       <div className="flex items-center gap-2">
                         <level.icon className="w-4 h-4" />
-                        {level.label}
+                        {getPrivacyLevelLabel(level.value)}
                       </div>
                     </SelectItem>
                   ))}
@@ -719,12 +743,12 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                Suggestion Aurora
+                {t('auroraSuggestion')}
               </Button>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('cancel')}</Button>
                 <Button onClick={handleSave} disabled={isLoading}>
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Valider"}
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>
             </div>
@@ -736,23 +760,23 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
       <Dialog open={isPostureDialogOpen} onOpenChange={setIsPostureDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Posture médiatique</DialogTitle>
+            <DialogTitle>{t('mediaPosture')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Décrivez votre approche de la visibilité médiatique. Cela clarifie vos préférences auprès du réseau.
+              {t('describeMediaApproachDescription')}
             </p>
             <div>
-              <Label>Votre posture</Label>
+              <Label>{t('yourPosture')}</Label>
               <Textarea
                 value={postureText}
                 onChange={(e) => setPostureText(e.target.value)}
-                placeholder="Ex: Je privilégie une présence médiatique ponctuelle, liée à des enjeux de fond..."
+                placeholder={t('posturePlaceholder')}
                 rows={4}
               />
             </div>
             <div>
-              <Label>Confidentialité</Label>
+              <Label>{t('privacy')}</Label>
               <Select value={posturePrivacy} onValueChange={setPosturePrivacy}>
                 <SelectTrigger>
                   <SelectValue />
@@ -762,7 +786,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                     <SelectItem key={level.value} value={level.value}>
                       <div className="flex items-center gap-2">
                         <level.icon className="w-4 h-4" />
-                        {level.label}
+                        {getPrivacyLevelLabel(level.value)}
                       </div>
                     </SelectItem>
                   ))}
@@ -770,9 +794,9 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
               </Select>
             </div>
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setIsPostureDialogOpen(false)}>Annuler</Button>
+              <Button variant="outline" onClick={() => setIsPostureDialogOpen(false)}>{t('cancel')}</Button>
               <Button onClick={handleSavePosture} disabled={isLoading}>
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Valider"}
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
               </Button>
             </div>
           </div>
@@ -783,32 +807,32 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
       <Dialog open={isSocialDialogOpen} onOpenChange={setIsSocialDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingSocialLink ? "Modifier" : "Ajouter"} un réseau</DialogTitle>
+            <DialogTitle>{editingSocialLink ? t('edit') : t('add')} {t('aNetwork')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Plateforme</Label>
+              <Label>{t('platform')}</Label>
               <Select value={socialFormData.platform} onValueChange={(v) => setSocialFormData(prev => ({ ...prev, platform: v }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner" />
+                  <SelectValue placeholder={t('select')} />
                 </SelectTrigger>
                 <SelectContent>
                   {SOCIAL_PLATFORMS.map(p => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    <SelectItem key={p.value} value={p.value}>{getSocialPlatformLabel(p.value)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>URL (optionnel)</Label>
+              <Label>{t('urlOptional')}</Label>
               <Input
                 value={socialFormData.url}
                 onChange={(e) => setSocialFormData(prev => ({ ...prev, url: e.target.value }))}
-                placeholder="https://linkedin.com/in/..."
+                placeholder={t('urlPlaceholder')}
               />
             </div>
             <div>
-              <Label>Confidentialité</Label>
+              <Label>{t('privacy')}</Label>
               <Select value={socialFormData.privacy_level} onValueChange={(v) => setSocialFormData(prev => ({ ...prev, privacy_level: v }))}>
                 <SelectTrigger>
                   <SelectValue />
@@ -818,7 +842,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                     <SelectItem key={level.value} value={level.value}>
                       <div className="flex items-center gap-2">
                         <level.icon className="w-4 h-4" />
-                        {level.label}
+                        {getPrivacyLevelLabel(level.value)}
                       </div>
                     </SelectItem>
                   ))}
@@ -826,9 +850,9 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
               </Select>
             </div>
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setIsSocialDialogOpen(false)}>Annuler</Button>
+              <Button variant="outline" onClick={() => setIsSocialDialogOpen(false)}>{t('cancel')}</Button>
               <Button onClick={handleSaveSocialLink} disabled={isLoading}>
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Valider"}
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
               </Button>
             </div>
           </div>

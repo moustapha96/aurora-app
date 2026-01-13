@@ -139,47 +139,58 @@ export const FamilyModule = ({
       </Card>
 
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gold/10 text-gold">
-                {icon}
+        <DialogContent className="w-[95vw] max-w-2xl mx-auto max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader className="space-y-2 sm:space-y-3">
+            <DialogTitle className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-gold/10 text-gold flex-shrink-0">
+                <div className="w-4 h-4 sm:w-5 sm:h-5">
+                  {icon}
+                </div>
               </div>
-              {title}
+              <span className="break-words">{title}</span>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
             <div className="flex justify-end">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleAISuggest}
                 disabled={isGeneratingAI}
-                className="border-gold/30 text-gold hover:bg-gold/10"
+                className="border-gold/30 text-gold hover:bg-gold/10 text-xs sm:text-sm h-8 sm:h-9"
               >
                 {isGeneratingAI ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
                 ) : (
-                  <Sparkles className="w-4 h-4 mr-2" />
+                  <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                 )}
-                {t('aiSuggestion')}
+                <span className="hidden sm:inline">{t('aiSuggestion')}</span>
+                <span className="sm:hidden">{t('ai')}</span>
               </Button>
             </div>
             <Textarea
               value={editedContent}
               onChange={(e) => setEditedContent(e.target.value)}
-              rows={8}
+              rows={6}
               placeholder={t('describeYourContent')}
-              className="resize-none"
+              className="resize-none text-sm sm:text-base min-h-[120px] sm:min-h-[200px]"
             />
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditing(false)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-end">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditing(false)}
+              className="w-full sm:w-auto order-2 sm:order-1 h-9 sm:h-10"
+            >
               {t('cancel')}
             </Button>
-            <Button onClick={handleSave} disabled={isLoading} className="bg-gold text-gold-foreground hover:bg-gold/90">
+            <Button 
+              onClick={handleSave} 
+              disabled={isLoading} 
+              className="bg-gold text-gold-foreground hover:bg-gold/90 w-full sm:w-auto order-1 sm:order-2 h-9 sm:h-10"
+            >
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               {t('save')}
             </Button>

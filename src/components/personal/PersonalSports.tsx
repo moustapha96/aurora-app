@@ -7,6 +7,7 @@ import { PoloProfileModule } from "@/components/polo";
 import { GolfProfileModule } from "@/components/golf";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SportEntry {
   id: string;
@@ -67,50 +68,48 @@ type CategoryType =
 
 interface SportOption {
   type: CategoryType;
-  label: string;
-  description?: string;
 }
 
 const SPORT_OPTIONS: SportOption[] = [
-  { type: 'custom', label: 'Mes sports particuliers', description: 'Ajoutez vos activités personnalisées' },
-  { type: 'polo', label: 'Polo', description: 'Le sport des rois, alliant stratégie et maîtrise équestre' },
-  { type: 'equitation', label: 'Équitation', description: 'Dressage, saut d\'obstacles, concours complet' },
-  { type: 'chasse', label: 'Chasse', description: 'Chasse à courre, battue, safari' },
-  { type: 'fauconnerie', label: 'Fauconnerie', description: 'Art ancestral de la chasse au vol' },
-  { type: 'golf', label: 'Golf', description: 'Parcours prestigieux et compétitions internationales' },
-  { type: 'yachting', label: 'Yachting', description: 'Navigation de plaisance et régates' },
-  { type: 'voile', label: 'Voile de compétition', description: 'America\'s Cup, courses transatlantiques' },
-  { type: 'plongee', label: 'Plongée sous-marine', description: 'Exploration des fonds marins' },
-  { type: 'kitesurf', label: 'Kitesurf', description: 'Glisse et sensations fortes' },
-  { type: 'surf', label: 'Surf', description: 'Vagues et spots exclusifs' },
-  { type: 'wakeboard', label: 'Wakeboard & Ski nautique', description: 'Sports tractés' },
-  { type: 'jetski', label: 'Jet-ski', description: 'Vitesse sur l\'eau' },
-  { type: 'peche', label: 'Pêche sportive', description: 'Pêche au gros, mouche, destinations exclusives' },
-  { type: 'ski', label: 'Ski alpin', description: 'Stations prestigieuses et hors-piste' },
-  { type: 'heliskiing', label: 'Héliski', description: 'Ski hors-piste accessible par hélicoptère' },
-  { type: 'alpinisme', label: 'Alpinisme', description: 'Ascensions et expéditions en haute montagne' },
-  { type: 'randonnee', label: 'Trekking & Randonnée', description: 'Expéditions et sentiers d\'exception' },
-  { type: 'tennis', label: 'Tennis', description: 'Courts privés et tournois' },
-  { type: 'padel', label: 'Padel', description: 'Sport en pleine expansion' },
-  { type: 'squash', label: 'Squash', description: 'Intensité et réactivité' },
-  { type: 'automobile', label: 'Conduite sportive', description: 'Supercars et circuits privés' },
-  { type: 'course_automobile', label: 'Course automobile', description: 'GT, Endurance, Formule' },
-  { type: 'rallye', label: 'Rallye', description: 'Compétition sur routes et terrains variés' },
-  { type: 'karting', label: 'Karting', description: 'Base de la course automobile' },
-  { type: 'collection_voitures', label: 'Collection automobile', description: 'Voitures de collection et concours d\'élégance' },
-  { type: 'aviation', label: 'Aviation privée', description: 'Pilotage avion, hélicoptère, ULM' },
-  { type: 'escrime', label: 'Escrime', description: 'Art du duel et discipline olympique' },
-  { type: 'tir', label: 'Tir sportif', description: 'Précision et concentration' },
-  { type: 'art_martial', label: 'Arts martiaux', description: 'Disciplines traditionnelles et modernes' },
-  { type: 'cricket', label: 'Cricket', description: 'Sport gentleman par excellence' },
-  { type: 'croquet', label: 'Croquet', description: 'Élégance sur pelouse' },
-  { type: 'cyclisme', label: 'Cyclisme sur route', description: 'Parcours mythiques et sorties club' },
-  { type: 'vtt', label: 'VTT', description: 'Trails et descente' },
-  { type: 'triathlon', label: 'Triathlon', description: 'Natation, cyclisme, course à pied' },
-  { type: 'marathon', label: 'Course à pied', description: 'Marathons et ultra-trails prestigieux' },
-  { type: 'fitness', label: 'Fitness & Musculation', description: 'Entraînement personnel et coaching' },
-  { type: 'yoga', label: 'Yoga', description: 'Pratique physique et spirituelle' },
-  { type: 'meditation', label: 'Méditation', description: 'Pleine conscience et relaxation' },
+  { type: 'custom' },
+  { type: 'polo' },
+  { type: 'equitation' },
+  { type: 'chasse' },
+  { type: 'fauconnerie' },
+  { type: 'golf' },
+  { type: 'yachting' },
+  { type: 'voile' },
+  { type: 'plongee' },
+  { type: 'kitesurf' },
+  { type: 'surf' },
+  { type: 'wakeboard' },
+  { type: 'jetski' },
+  { type: 'peche' },
+  { type: 'ski' },
+  { type: 'heliskiing' },
+  { type: 'alpinisme' },
+  { type: 'randonnee' },
+  { type: 'tennis' },
+  { type: 'padel' },
+  { type: 'squash' },
+  { type: 'automobile' },
+  { type: 'course_automobile' },
+  { type: 'rallye' },
+  { type: 'karting' },
+  { type: 'collection_voitures' },
+  { type: 'aviation' },
+  { type: 'escrime' },
+  { type: 'tir' },
+  { type: 'art_martial' },
+  { type: 'cricket' },
+  { type: 'croquet' },
+  { type: 'cyclisme' },
+  { type: 'vtt' },
+  { type: 'triathlon' },
+  { type: 'marathon' },
+  { type: 'fitness' },
+  { type: 'yoga' },
+  { type: 'meditation' },
 ];
 
 export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSportsProps) => {
@@ -122,6 +121,7 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
   const [dragOverItem, setDragOverItem] = useState<CategoryType | null>(null);
   const [otherActivitiesOpen, setOtherActivitiesOpen] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -243,8 +243,8 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
     setSportOrder([...newOrder, ...nonCustomized]);
 
     toast({
-      title: "Ordre mis à jour",
-      description: "Vos passions ont été réorganisées",
+      title: t('personalOrderUpdatedTitle'),
+      description: t('personalOrderUpdatedDescription'),
     });
 
     setDraggedItem(null);
@@ -257,11 +257,15 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
   };
 
   const getSportLabel = (type: CategoryType) => {
-    return SPORT_OPTIONS.find(s => s.type === type)?.label || type;
+    const option = SPORT_OPTIONS.find(s => s.type === type);
+    if (!option) return type;
+    return t(`personalSportLabel_${type}`);
   };
 
   const getSportDescription = (type: CategoryType) => {
-    return SPORT_OPTIONS.find(s => s.type === type)?.description || '';
+    const option = SPORT_OPTIONS.find(s => s.type === type);
+    if (!option) return '';
+    return t(`personalSportDescription_${type}`);
   };
 
   const renderSportModule = (sportType: CategoryType) => {
@@ -276,8 +280,8 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
         return (
           <div className="text-center py-12 text-muted-foreground">
             <Dumbbell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Module {getSportLabel(sportType)} en cours de développement</p>
-            <p className="text-sm mt-2">Revenez bientôt pour découvrir ce module !</p>
+            <p>{t('personalSportModuleInDevelopment')}</p>
+            <p className="text-sm mt-2">{t('personalSportModuleComingSoon')}</p>
           </div>
         );
     }
@@ -324,15 +328,15 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
                   "font-medium",
                   isCustomized ? "text-primary" : "text-foreground"
                 )}>
-                  {sport.label}
+                  {getSportLabel(sport.type)}
                 </span>
                 {isCustomized && (
                   <Check className="h-4 w-4 text-primary" />
                 )}
               </div>
-              {sport.description && !isExpanded && (
+              {getSportDescription(sport.type) && !isExpanded && (
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {sport.description}
+                  {getSportDescription(sport.type)}
                 </p>
               )}
             </div>
@@ -359,12 +363,12 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
   if (!currentUserId) {
     return (
       <PersonalModule
-        title="Sports & Activités"
+        title={t('personalSportsTitle')}
         icon={Dumbbell}
         moduleType="sports"
       >
         <div className="flex items-center justify-center py-8">
-          <span className="text-muted-foreground">Chargement...</span>
+          <span className="text-muted-foreground">{t('loading')}</span>
         </div>
       </PersonalModule>
     );
@@ -375,7 +379,7 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
 
   return (
     <PersonalModule
-      title="Sports & Activités"
+      title={t('personalSportsTitle')}
       icon={Dumbbell}
       moduleType="sports"
     >
@@ -383,7 +387,8 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
         {customizedSportsList.length > 0 && (
           <div className="space-y-2">
             <p className="text-muted-foreground text-sm mb-2">
-              Mes passions {isEditable && customizedSportsList.length > 1 && "(glissez pour réordonner)"}
+              {t('personalMyPassions')}{" "}
+              {isEditable && customizedSportsList.length > 1 && t('personalMyPassionsReorderHint')}
             </p>
             {customizedSportsList.map((type) => {
               const sport = SPORT_OPTIONS.find(s => s.type === type)!;
@@ -394,7 +399,7 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
 
         <Collapsible open={otherActivitiesOpen} onOpenChange={setOtherActivitiesOpen}>
           <CollapsibleTrigger className="w-full flex items-center justify-between p-4 bg-muted/50 hover:bg-muted rounded-xl transition-colors border border-border">
-            <span className="font-medium text-foreground">Autres activités</span>
+            <span className="font-medium text-foreground">{t('personalOtherActivities')}</span>
             {otherActivitiesOpen ? (
               <ChevronUp className="h-5 w-5 text-muted-foreground" />
             ) : (

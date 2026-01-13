@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { WealthBadge } from "@/components/WealthBadge";
 import { WebAuthnPrompt } from "@/components/WebAuthnPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageNavigation } from "@/components/BackButton";
+import { PageHeaderBackButton } from "@/components/BackButton";
 import { useProfileImageVerification } from "@/hooks/useProfileImageVerification";
 import { IdentityVerifiedBadge } from "@/components/VerificationBadge";
 import { useProgress } from "@/components/ui/progress-bar";
@@ -328,12 +328,12 @@ const MemberCard = () => {
             {/* Sections Grid Skeleton */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {[...Array(6)].map((_, index) => (
-                <div key={index} className="bg-black/50 border border-gold/20 rounded-lg p-4 sm:p-6">
-                  <div className="flex items-center mb-4">
-                    <Skeleton className="w-6 h-6 rounded bg-gold/10 mr-3" />
-                    <Skeleton className="h-5 w-32 bg-gold/10" />
+                <div key={index} className="bg-black/50 border border-gold/20 rounded-lg p-4 sm:p-6 flex flex-col h-full min-h-[200px]">
+                  <div className="flex items-center mb-3 sm:mb-4 flex-shrink-0">
+                    <Skeleton className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-gold/10 mr-2 sm:mr-3" />
+                    <Skeleton className="h-4 sm:h-5 w-24 sm:w-32 bg-gold/10" />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 sm:space-y-2 flex-1">
                     <Skeleton className="h-3 w-full bg-gold/10" />
                     <Skeleton className="h-3 w-4/5 bg-gold/10" />
                     <Skeleton className="h-3 w-3/4 bg-gold/10" />
@@ -354,7 +354,6 @@ const MemberCard = () => {
   return (
     <>
       <Header />
-      <PageNavigation to="/profile" />
       {/* WebAuthn Biometric Prompt - shows when biometrics available but not enabled */}
       {currentUserId && currentUserEmail && (
         <WebAuthnPrompt
@@ -362,7 +361,7 @@ const MemberCard = () => {
           userEmail={currentUserEmail}
         />
       )}
-      <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-32 sm:pt-36 pb-8 safe-area-all">
+      <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-20 sm:pt-24 pb-8 safe-area-all">
         <div className="max-w-4xl mx-auto">
           {/* Language Selector */}
           <div className="flex justify-end mb-6">
@@ -463,12 +462,12 @@ const MemberCard = () => {
             {currentUserEmail && (
               <p className="text-gold/50 text-xs mb-4">{currentUserEmail}</p>
             )}
-
+{/* 
             {profile.account_number && (
               <div className="text-xs sm:text-sm text-gold/60 font-mono tracking-wider">
                 {profile.account_number}
               </div>
-            )}
+            )} */}
 
 
           </div>
@@ -476,7 +475,7 @@ const MemberCard = () => {
           {/* Profile Sections Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {profileSections.map((section, index) => (
-              <div key={index} className="relative">
+              <div key={index} className="relative flex flex-col h-full">
                 {/* Mécène Badge - Above Business section */}
                 {section.title === t('business') && profile.is_patron && (
                   <div className="mb-2 flex justify-center">
@@ -504,10 +503,10 @@ const MemberCard = () => {
                 )}
 
                 <div
-                  className="bg-black/50 border border-gold/20 rounded-lg p-4 sm:p-6 hover:border-gold/40 transition-all duration-300 cursor-pointer"
+                  className="bg-black/50 border border-gold/20 rounded-lg p-4 sm:p-6 hover:border-gold/40 transition-all duration-300 cursor-pointer flex flex-col h-full min-h-[200px]"
                   onClick={() => section.title !== t('integratedServices') && navigate(section.route)}
                 >
-                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4 flex-shrink-0">
                     <div className="flex items-center">
                       <section.icon className="w-5 h-5 sm:w-6 sm:h-6 text-gold mr-2 sm:mr-3 flex-shrink-0" />
                       <h3 className="text-base sm:text-lg font-semibold text-gold">{section.title}</h3>
@@ -515,71 +514,75 @@ const MemberCard = () => {
                    
                   </div>
 
-                  {section.title === t('integratedServices') ? (
-                    <div className="flex flex-col gap-2 sm:gap-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/concierge');
-                        }}
-                      >
-                        {t('concierge')}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/metaverse');
-                        }}
-                      >
-                        {t('metaverse')}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/marketplace');
-                        }}
-                      >
-                        {t('marketplace')}
-                      </Button>
-                    </div>
-                  ) : (
-                    <ul className="space-y-1.5 sm:space-y-2">
-                      {section.items.map((item, itemIndex) => (
-                        <li key={itemIndex} className="text-gold/70 text-xs sm:text-sm flex items-start">
-                          <span className="text-gold mr-2">•</span>
-                          <span className="line-clamp-2">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <div className="flex-1 flex flex-col min-h-0">
+                    {section.title === t('integratedServices') ? (
+                      <div className="flex flex-col gap-2 sm:gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate('/concierge');
+                          }}
+                        >
+                          {t('concierge')}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate('/metaverse');
+                          }}
+                        >
+                          {t('metaverse')}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate('/marketplace');
+                          }}
+                        >
+                          {t('marketplace')}
+                        </Button>
+                      </div>
+                    ) : (
+                      <ul className="space-y-1.5 sm:space-y-2 flex-1">
+                        {section.items.map((item, itemIndex) => (
+                          <li key={itemIndex} className="text-gold/70 text-xs sm:text-sm flex items-start">
+                            <span className="text-gold mr-2 flex-shrink-0">•</span>
+                            <span className="line-clamp-2 break-words">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
 
                   {section.title === t('business') && (
-                    <div className="flex items-center gap-2 sm:gap-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gold/20 flex-wrap">
+                    <div className="flex items-center gap-2 sm:gap-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gold/20 flex-wrap flex-shrink-0">
                       <div className="text-xs text-gold/60">{t('forbes30')}</div>
                       <div className="text-xs text-gold/60">{t('ey')}</div>
                       <div className="text-xs text-gold/60">{t('harvardMBA')}</div>
                     </div>
                   )}
 
-                  {section.title === t('members') && (
-                    <div className="flex items-center mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gold/20">
+                  {/* {section.title === t('members') && (
+                    <div className="flex items-center mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gold/20 flex-shrink-0">
                       <Users className="w-4 h-4 text-gold mr-2" />
                       <span className="text-xs text-gold/60">{t('exclusiveLabel')}</span>
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
             ))}
           </div>
+
+
 
           {/* Bottom Actions */}
           <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">

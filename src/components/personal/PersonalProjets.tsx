@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PersonalModule } from "./PersonalModule";
 import { ProjetsEditor } from "./editors/ProjetsEditor";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ProjetEntry {
   id: string;
@@ -23,15 +24,16 @@ interface PersonalProjetsProps {
 type CategoryType = 'en_cours' | 'a_venir' | 'realises';
 
 const CATEGORY_LABELS: Record<CategoryType, string> = {
-  en_cours: "Projets en cours",
-  a_venir: "Projets à venir",
-  realises: "Projets réalisés"
+  en_cours: "en_cours",
+  a_venir: "a_venir",
+  realises: "realises"
 };
 
 export const PersonalProjets = ({ entries, isEditable, onDataChange }: PersonalProjetsProps) => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ProjetEntry | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
+  const { t } = useLanguage();
 
   const handleCategoryClick = (category: CategoryType) => {
     setSelectedCategory(selectedCategory === category ? null : category);
@@ -55,16 +57,28 @@ export const PersonalProjets = ({ entries, isEditable, onDataChange }: PersonalP
         .eq('id', id);
 
       if (error) throw error;
-      toast.success("Projet supprimé");
+      toast.success(t('personalProjectDeleted'));
       onDataChange();
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('personalErrorDeletingEntry'));
     }
   };
 
   const renderCategory = (category: CategoryType) => {
     const categoryEntries = entries.filter(e => e.category === category);
     const isExpanded = selectedCategory === category;
+
+    const label = (() => {
+      switch (category) {
+        case 'en_cours':
+          return t('personalProjectsOngoing');
+        case 'a_venir':
+          return t('personalProjectsUpcoming');
+        case 'realises':
+        default:
+          return t('personalProjectsCompleted');
+      }
+    })();
 
     return (
       <div key={category}>
@@ -77,7 +91,7 @@ export const PersonalProjets = ({ entries, isEditable, onDataChange }: PersonalP
           ) : (
             <ChevronRight className="w-3.5 h-3.5" />
           )}
-          <span className="text-sm">{CATEGORY_LABELS[category]}</span>
+          <span className="text-sm">{label}</span>
           {categoryEntries.length > 0 && (
             <span className="text-xs text-muted-foreground">({categoryEntries.length})</span>
           )}
@@ -117,7 +131,7 @@ export const PersonalProjets = ({ entries, isEditable, onDataChange }: PersonalP
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Plus className="w-3 h-3" />
-                <span>Ajouter</span>
+                <span>{t('add')}</span>
               </button>
             )}
           </div>
@@ -128,7 +142,7 @@ export const PersonalProjets = ({ entries, isEditable, onDataChange }: PersonalP
 
   return (
     <PersonalModule
-      title="Projets perso en cours"
+      title={t('personalProjectsTitle')}
       icon={Rocket}
       moduleType="projets"
     >

@@ -11,7 +11,7 @@ import { BusinessModule } from "@/components/business/BusinessModule";
 import { BusinessTimeline } from "@/components/business/BusinessTimeline";
 import { BusinessOpportunities } from "@/components/business/BusinessOpportunities";
 import { getCurrencySymbol } from "@/lib/currencySymbols";
-import { PageNavigation } from "@/components/BackButton";
+import { PageHeaderBackButton } from "@/components/BackButton";
 
 const Business = () => {
   const navigate = useNavigate();
@@ -279,7 +279,13 @@ const Business = () => {
             <p className="text-gold mb-4">{t('businessNoAccess')}</p>
             <Button 
               variant="outline" 
-              onClick={() => navigate(id ? `/profile/${id}` : "/profile")}
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate("/member-card");
+                }
+              }}
               className="border-gold text-gold hover:bg-gold hover:text-black"
             >
               {t('businessBackToProfile')}
@@ -306,8 +312,7 @@ const Business = () => {
     return (
       <>
         <Header />
-        <PageNavigation to="/profile" />
-        <div className="min-h-screen bg-black text-gold p-6 pt-32 sm:pt-36">
+        <div className="min-h-screen bg-black text-gold p-6 pt-20 sm:pt-24">
           <div className="max-w-4xl mx-auto">
             <BusinessOnboarding
               onComplete={handleOnboardingComplete}
@@ -328,14 +333,17 @@ const Business = () => {
   return (
     <>
       <Header />
-      <PageNavigation to={id ? `/profile/${id}` : "/profile"} />
-      <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-32 sm:pt-36 pb-8 safe-area-all">
+      <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-20 sm:pt-24 pb-8 safe-area-all">
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('businessTitle')}</h1>
-              <p className="text-gold/60 text-xs sm:text-sm mt-1">{t('businessSubtitle')}</p>
+            <div className="flex items-center">
+              {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
+              <PageHeaderBackButton to={"/member-card"} />
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('businessTitle')}</h1>
+                <p className="text-gold/60 text-xs sm:text-sm mt-1">{t('businessSubtitle')}</p>
+              </div>
             </div>
 
             {isOwnProfile && !showOnboarding && (

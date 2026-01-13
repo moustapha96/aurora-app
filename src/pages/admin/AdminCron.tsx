@@ -36,8 +36,8 @@ import {
   Users,
   Loader2
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format, type Locale } from 'date-fns';
+import { fr, enUS, es, de, it, ptBR, ar, zhCN, ja, ru } from 'date-fns/locale';
 
 interface CronJob {
   id: string;
@@ -85,31 +85,44 @@ interface DocumentAnalysis {
   analyzedAt: string;
 }
 
-// Common cron schedules
-const commonSchedules = [
-  { label: 'Toutes les minutes', value: '* * * * *' },
-  { label: 'Toutes les 5 minutes', value: '*/5 * * * *' },
-  { label: 'Toutes les 15 minutes', value: '*/15 * * * *' },
-  { label: 'Toutes les 30 minutes', value: '*/30 * * * *' },
-  { label: 'Toutes les heures', value: '0 * * * *' },
-  { label: 'Tous les jours à minuit', value: '0 0 * * *' },
-  { label: 'Tous les jours à 8h', value: '0 8 * * *' },
-  { label: 'Tous les lundis à 9h', value: '0 9 * * 1' },
-  { label: 'Premier du mois à minuit', value: '0 0 1 * *' },
+// Common cron schedules - will be translated in component
+const getCommonSchedules = (t: (key: string) => string) => [
+  { label: t('adminCronScheduleEveryMinute'), value: '* * * * *' },
+  { label: t('adminCronScheduleEvery5Minutes'), value: '*/5 * * * *' },
+  { label: t('adminCronScheduleEvery15Minutes'), value: '*/15 * * * *' },
+  { label: t('adminCronScheduleEvery30Minutes'), value: '*/30 * * * *' },
+  { label: t('adminCronScheduleEveryHour'), value: '0 * * * *' },
+  { label: t('adminCronScheduleDailyMidnight'), value: '0 0 * * *' },
+  { label: t('adminCronScheduleDaily8am'), value: '0 8 * * *' },
+  { label: t('adminCronScheduleMonday9am'), value: '0 9 * * 1' },
+  { label: t('adminCronScheduleFirstOfMonth'), value: '0 0 1 * *' },
 ];
 
 // Available edge functions that can be scheduled as cron jobs
 // Note: Functions requiring user input (like analyze-id-card, analyze-profile-image) 
 // should NOT be scheduled as cron jobs - they need user-provided data
-const availableFunctions = [
-  { name: 'auto-verify-documents', description: 'Vérification automatique IA des documents (recommandé pour cron)' },
-  { name: 'analyze-section-documents', description: 'Analyse et extraction du contenu des documents de section' },
-  { name: 'verify-documents-batch', description: 'Récupération des documents en attente' },
-  { name: 'migrate-base64-avatars', description: 'Migration des avatars base64' },
+const getAvailableFunctions = (t: (key: string) => string) => [
+  { name: 'auto-verify-documents', description: t('adminCronFunctionAutoVerify') },
+  { name: 'analyze-section-documents', description: t('adminCronFunctionAnalyzeSection') },
+  { name: 'verify-documents-batch', description: t('adminCronFunctionVerifyBatch') },
+  { name: 'migrate-base64-avatars', description: t('adminCronFunctionMigrateAvatars') },
 ];
 
 const AdminCron = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  
+  const localeMap: Record<string, Locale> = {
+    'fr': fr,
+    'en': enUS,
+    'es': es,
+    'de': de,
+    'it': it,
+    'pt': ptBR,
+    'ar': ar,
+    'zh': zhCN,
+    'ja': ja,
+    'ru': ru
+  };
   const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
   const [executions, setExecutions] = useState<CronExecution[]>([]);
   const [documentAnalyses, setDocumentAnalyses] = useState<DocumentAnalysis[]>([]);
@@ -170,7 +183,7 @@ const AdminCron = () => {
       setCronJobs(jobs);
     } catch (error) {
       console.error('Error loading cron jobs:', error);
-      toast.error('Erreur lors du chargement des tâches cron');
+      toast.error(t('adminCronLoadingError'));
     } finally {
       setIsLoading(false);
     }
@@ -233,18 +246,18 @@ const AdminCron = () => {
   const runDocumentAnalysis = async () => {
     setIsAnalyzing(true);
     try {
-      toast.info('Analyse des documents en cours...');
+      toast.info(t('adminCronAnalysisRunning'));
       const { data, error } = await supabase.functions.invoke('analyze-section-documents', {
         body: { section: sectionFilter !== 'all' ? sectionFilter : undefined },
       });
 
       if (error) throw error;
 
-      toast.success(`${data?.stats?.totalAnalyzed || 0} documents analysés`);
+      toast.success(t('adminCronDocumentsAnalyzedSuccess').replace('{count}', (data?.stats?.totalAnalyzed || 0).toString()));
       loadDocumentAnalyses();
     } catch (error) {
       console.error('Error running analysis:', error);
-      toast.error('Erreur lors de l\'analyse');
+      toast.error(t('adminCronAnalysisError'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -266,7 +279,7 @@ const AdminCron = () => {
 
   const saveCronJob = async () => {
     if (!newJob.name || !newJob.function_name || !newJob.schedule) {
-      toast.error('Veuillez remplir tous les champs obligatoires');
+      toast.error(t('fillAllRequiredFields'));
       return;
     }
 
@@ -289,7 +302,7 @@ const AdminCron = () => {
 
       if (error) throw error;
 
-      toast.success('Tâche cron créée avec succès');
+      toast.success(t('adminCronTaskCreated'));
       setIsDialogOpen(false);
       setNewJob({
         name: '',
@@ -301,7 +314,7 @@ const AdminCron = () => {
       loadCronJobs();
     } catch (error) {
       console.error('Error saving cron job:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(t('adminCronSaveError'));
     }
   };
 
@@ -323,12 +336,12 @@ const AdminCron = () => {
       loadCronJobs();
     } catch (error) {
       console.error('Error toggling job status:', error);
-      toast.error('Erreur lors de la mise à jour');
+      toast.error(t('adminCronUpdateError'));
     }
   };
 
   const deleteJob = async (job: CronJob) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer la tâche "${job.name}" ?`)) {
+    if (!confirm(t('adminCronDeleteConfirm').replace('{name}', job.name))) {
       return;
     }
 
@@ -344,13 +357,13 @@ const AdminCron = () => {
       loadCronJobs();
     } catch (error) {
       console.error('Error deleting job:', error);
-      toast.error('Erreur lors de la suppression');
+      toast.error(t('adminCronDeleteError'));
     }
   };
 
   const runJobNow = async (job: CronJob) => {
     try {
-      toast.info(`Exécution de "${job.name}"...`);
+      toast.info(t('adminCronExecutionRunning').replace('{name}', job.name));
       
       // Create execution record
       const executionId = `cron_execution_${Date.now()}`;
@@ -366,7 +379,7 @@ const AdminCron = () => {
         .insert({
           setting_key: executionId,
           setting_value: JSON.stringify(executionData),
-          description: `Exécution manuelle de ${job.name}`,
+          description: t('adminCronManualExecution').replace('{name}', job.name),
         });
 
       // Call the edge function
@@ -404,29 +417,29 @@ const AdminCron = () => {
         .eq('id', job.id);
 
       if (error) {
-        toast.error(`Erreur: ${error.message}`);
+        toast.error(t('adminCronExecutionError').replace('{message}', error.message));
       } else {
-        toast.success('Tâche exécutée avec succès');
+        toast.success(t('adminCronTaskExecuted'));
       }
 
       loadCronJobs();
       loadExecutionHistory();
     } catch (error) {
       console.error('Error running job:', error);
-      toast.error('Erreur lors de l\'exécution');
+      toast.error(t('adminCronExecutionError').replace('{message}', 'Erreur inconnue'));
     }
   };
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
       case 'success':
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30"><CheckCircle className="h-3 w-3 mr-1" /> Succès</Badge>;
+        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30"><CheckCircle className="h-3 w-3 mr-1" /> {t('adminCronStatusSuccess')}</Badge>;
       case 'error':
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><XCircle className="h-3 w-3 mr-1" /> Erreur</Badge>;
+        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><XCircle className="h-3 w-3 mr-1" /> {t('adminCronStatusError')}</Badge>;
       case 'running':
-        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30"><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> En cours</Badge>;
+        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30"><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> {t('adminCronStatusRunning')}</Badge>;
       default:
-        return <Badge variant="outline"><AlertTriangle className="h-3 w-3 mr-1" /> Jamais exécuté</Badge>;
+        return <Badge variant="outline"><AlertTriangle className="h-3 w-3 mr-1" /> {t('adminCronStatusNever')}</Badge>;
     }
   };
 
@@ -435,54 +448,54 @@ const AdminCron = () => {
       <div className="container mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Tâches Planifiées (Cron)</h1>
-            <p className="text-muted-foreground mt-1">Gérez les tâches automatisées et leur planification</p>
+            <h1 className="text-3xl font-bold">{t('adminCronTitle')}</h1>
+            <p className="text-muted-foreground mt-1">{t('adminCronDescription')}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowHistory(!showHistory)}>
               <History className="h-4 w-4 mr-2" />
-              {showHistory ? 'Masquer l\'historique' : 'Voir l\'historique'}
+              {showHistory ? t('adminCronHideHistory') : t('adminCronViewHistory')}
             </Button>
             <Button variant="outline" onClick={() => { loadCronJobs(); loadExecutionHistory(); }}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              Actualiser
+              {t('adminCronRefresh')}
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
-                  Nouvelle tâche
+                  {t('adminCronNewTask')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>Créer une tâche cron</DialogTitle>
+                  <DialogTitle>{t('adminCronCreateTask')}</DialogTitle>
                   <DialogDescription>
-                    Configurez une nouvelle tâche planifiée
+                    {t('adminCronCreateTaskDescription')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nom de la tâche *</Label>
+                    <Label htmlFor="name">{t('adminCronTaskName')}</Label>
                     <Input
                       id="name"
-                      placeholder="Ex: Nettoyage quotidien"
+                      placeholder={t('adminCronTaskNamePlaceholder')}
                       value={newJob.name}
                       onChange={(e) => setNewJob({ ...newJob, name: e.target.value })}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="function">Fonction Edge *</Label>
+                    <Label htmlFor="function">{t('adminCronEdgeFunction')}</Label>
                     <Select
                       value={newJob.function_name}
                       onValueChange={(value) => setNewJob({ ...newJob, function_name: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez une fonction" />
+                        <SelectValue placeholder={t('adminCronSelectFunction')} />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableFunctions.map((fn) => (
+                        {getAvailableFunctions(t).map((fn) => (
                           <SelectItem key={fn.name} value={fn.name}>
                             {fn.name} - {fn.description}
                           </SelectItem>
@@ -492,16 +505,16 @@ const AdminCron = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="schedule">Planification (Cron) *</Label>
+                    <Label htmlFor="schedule">{t('adminCronSchedule')}</Label>
                     <Select
                       value={newJob.schedule}
                       onValueChange={(value) => setNewJob({ ...newJob, schedule: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez une fréquence" />
+                        <SelectValue placeholder={t('adminCronSelectSchedule')} />
                       </SelectTrigger>
                       <SelectContent>
-                        {commonSchedules.map((schedule) => (
+                        {getCommonSchedules(t).map((schedule) => (
                           <SelectItem key={schedule.value} value={schedule.value}>
                             {schedule.label} ({schedule.value})
                           </SelectItem>
@@ -509,21 +522,21 @@ const AdminCron = () => {
                       </SelectContent>
                     </Select>
                     <Input
-                      placeholder="Ou entrez une expression cron personnalisée"
+                      placeholder={t('adminCronCustomSchedule')}
                       value={newJob.schedule}
                       onChange={(e) => setNewJob({ ...newJob, schedule: e.target.value })}
                       className="mt-2"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Format: minute heure jour mois jour_semaine
+                      {t('adminCronScheduleFormat')}
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">{t('adminCronTaskDescription')}</Label>
                     <Textarea
                       id="description"
-                      placeholder="Description de la tâche..."
+                      placeholder={t('adminCronTaskDescriptionPlaceholder')}
                       value={newJob.description}
                       onChange={(e) => setNewJob({ ...newJob, description: e.target.value })}
                     />
@@ -535,15 +548,15 @@ const AdminCron = () => {
                       checked={newJob.is_active}
                       onCheckedChange={(checked) => setNewJob({ ...newJob, is_active: checked })}
                     />
-                    <Label htmlFor="is_active">Activer immédiatement</Label>
+                    <Label htmlFor="is_active">{t('adminCronActivateImmediately')}</Label>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Annuler
+                    {t('adminCronCancel')}
                   </Button>
                   <Button onClick={saveCronJob}>
-                    Créer la tâche
+                    {t('adminCronCreate')}
                   </Button>
                 </div>
               </DialogContent>
@@ -557,11 +570,9 @@ const AdminCron = () => {
             <div className="flex items-start gap-3">
               <Settings className="h-5 w-5 text-blue-400 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-blue-400">Configuration des tâches Cron</p>
+                <p className="font-medium text-blue-400">{t('adminCronConfigTitle')}</p>
                 <p className="text-muted-foreground mt-1">
-                  Les tâches cron sont gérées via pg_cron et pg_net. Pour activer une tâche en production,
-                  vous devez exécuter la requête SQL correspondante dans la base de données.
-                  Les exécutions manuelles sont disponibles directement depuis cette interface.
+                  {t('adminCronConfigDescription')}
                 </p>
               </div>
             </div>
@@ -573,10 +584,10 @@ const AdminCron = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Tâches planifiées
+              {t('adminCronScheduledTasks')}
             </CardTitle>
             <CardDescription>
-              {cronJobs.length} tâche(s) configurée(s)
+              {t('adminCronTasksConfigured').replace('{count}', cronJobs.length.toString())}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -587,20 +598,20 @@ const AdminCron = () => {
             ) : cronJobs.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Aucune tâche cron configurée</p>
-                <p className="text-sm">Créez votre première tâche planifiée</p>
+                <p>{t('adminCronNoTasks')}</p>
+                <p className="text-sm">{t('adminCronNoTasksHint')}</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Fonction</TableHead>
-                    <TableHead>Planification</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Dernière exécution</TableHead>
-                    <TableHead>Actif</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t('adminCronTableName')}</TableHead>
+                    <TableHead>{t('adminCronTableFunction')}</TableHead>
+                    <TableHead>{t('adminCronTableSchedule')}</TableHead>
+                    <TableHead>{t('adminCronTableStatus')}</TableHead>
+                    <TableHead>{t('adminCronTableLastExecution')}</TableHead>
+                    <TableHead>{t('adminCronTableActive')}</TableHead>
+                    <TableHead className="text-right">{t('adminCronTableActions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -616,8 +627,8 @@ const AdminCron = () => {
                       <TableCell>{getStatusBadge(job.last_status)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {job.last_run 
-                          ? format(new Date(job.last_run), 'dd MMM yyyy HH:mm', { locale: fr })
-                          : 'Jamais'
+                          ? format(new Date(job.last_run), 'dd MMM yyyy HH:mm', { locale: localeMap[language] || fr })
+                          : t('adminCronNever')
                         }
                       </TableCell>
                       <TableCell>
@@ -632,7 +643,7 @@ const AdminCron = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => runJobNow(job)}
-                            title="Exécuter maintenant"
+                            title={t('adminCronRunNow')}
                           >
                             <Play className="h-4 w-4" />
                           </Button>
@@ -641,7 +652,7 @@ const AdminCron = () => {
                             size="sm"
                             onClick={() => deleteJob(job)}
                             className="text-destructive hover:text-destructive"
-                            title="Supprimer"
+                            title={t('adminCronDelete')}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -661,27 +672,27 @@ const AdminCron = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <History className="h-5 w-5" />
-                Historique des exécutions
+                {t('adminCronExecutionHistory')}
               </CardTitle>
               <CardDescription>
-                Les 50 dernières exécutions
+                {t('adminCronLast50Executions')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {executions.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Aucune exécution enregistrée</p>
+                  <p>{t('adminCronNoExecutions')}</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tâche</TableHead>
-                      <TableHead>Démarré</TableHead>
-                      <TableHead>Terminé</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t('adminCronTableTask')}</TableHead>
+                      <TableHead>{t('adminCronTableStarted')}</TableHead>
+                      <TableHead>{t('adminCronTableCompleted')}</TableHead>
+                      <TableHead>{t('adminCronTableStatus')}</TableHead>
+                      <TableHead className="text-right">{t('adminCronTableActions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -689,11 +700,11 @@ const AdminCron = () => {
                       <TableRow key={exec.id}>
                         <TableCell className="font-medium">{exec.job_name}</TableCell>
                         <TableCell className="text-sm">
-                          {format(new Date(exec.started_at), 'dd/MM/yyyy HH:mm:ss', { locale: fr })}
+                          {format(new Date(exec.started_at), 'dd/MM/yyyy HH:mm:ss', { locale: localeMap[language] || fr })}
                         </TableCell>
                         <TableCell className="text-sm">
                           {exec.completed_at 
-                            ? format(new Date(exec.completed_at), 'HH:mm:ss', { locale: fr })
+                            ? format(new Date(exec.completed_at), 'HH:mm:ss', { locale: localeMap[language] || fr })
                             : '-'
                           }
                         </TableCell>
@@ -705,7 +716,7 @@ const AdminCron = () => {
                             onClick={() => setSelectedExecution(exec)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
-                            Voir résultat
+                            {t('adminCronViewResult')}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -723,27 +734,27 @@ const AdminCron = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 {selectedExecution && getStatusBadge(selectedExecution.status)}
-                Résultat de l'exécution
+                {t('adminCronExecutionResult')}
               </DialogTitle>
               <DialogDescription>
-                {selectedExecution?.job_name} - {selectedExecution?.started_at && format(new Date(selectedExecution.started_at), 'dd MMM yyyy HH:mm:ss', { locale: fr })}
+                {selectedExecution?.job_name} - {selectedExecution?.started_at && format(new Date(selectedExecution.started_at), 'dd MMM yyyy HH:mm:ss', { locale: localeMap[language] || fr })}
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh]">
               <div className="space-y-4 p-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Démarré:</span>
+                    <span className="text-muted-foreground">{t('adminCronStarted')}</span>
                     <p className="font-medium">
-                      {selectedExecution?.started_at && format(new Date(selectedExecution.started_at), 'dd/MM/yyyy HH:mm:ss', { locale: fr })}
+                      {selectedExecution?.started_at && format(new Date(selectedExecution.started_at), 'dd/MM/yyyy HH:mm:ss', { locale: localeMap[language] || fr })}
                     </p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Terminé:</span>
+                    <span className="text-muted-foreground">{t('adminCronCompleted')}</span>
                     <p className="font-medium">
                       {selectedExecution?.completed_at 
-                        ? format(new Date(selectedExecution.completed_at), 'dd/MM/yyyy HH:mm:ss', { locale: fr })
-                        : 'En cours...'
+                        ? format(new Date(selectedExecution.completed_at), 'dd/MM/yyyy HH:mm:ss', { locale: localeMap[language] || fr })
+                        : t('adminCronInProgress')
                       }
                     </p>
                   </div>
@@ -753,7 +764,7 @@ const AdminCron = () => {
                   <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
                     <div className="flex items-center gap-2 text-red-400 mb-2">
                       <XCircle className="h-4 w-4" />
-                      <span className="font-medium">Erreur</span>
+                      <span className="font-medium">{t('adminCronStatusError')}</span>
                     </div>
                     <pre className="text-sm whitespace-pre-wrap text-red-300">
                       {selectedExecution.error_message}
@@ -765,7 +776,7 @@ const AdminCron = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-green-400">
                       <CheckCircle className="h-4 w-4" />
-                      <span className="font-medium">Résultat</span>
+                      <span className="font-medium">{t('adminCronResult')}</span>
                     </div>
                     <div className="p-4 bg-muted rounded-lg">
                       <pre className="text-sm whitespace-pre-wrap overflow-auto">
@@ -785,7 +796,7 @@ const AdminCron = () => {
                 {!selectedExecution?.result && !selectedExecution?.error_message && (
                   <div className="text-center py-8 text-muted-foreground">
                     <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>Aucun résultat disponible</p>
+                    <p>{t('adminCronNoResult')}</p>
                   </div>
                 )}
               </div>
@@ -798,21 +809,21 @@ const AdminCron = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Contenu des documents analysés
+              {t('adminCronDocumentContentTitle')}
             </CardTitle>
             <CardDescription className="flex items-center justify-between">
-              <span>{filteredAnalyses.length} document(s) analysé(s)</span>
+              <span>{t('adminCronDocumentsAnalyzed').replace('{count}', filteredAnalyses.length.toString())}</span>
               <div className="flex gap-2">
                 <Select value={sectionFilter} onValueChange={setSectionFilter}>
                   <SelectTrigger className="w-[150px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Toutes sections</SelectItem>
-                    <SelectItem value="family">Famille</SelectItem>
-                    <SelectItem value="business">Business</SelectItem>
-                    <SelectItem value="personal">Personnel</SelectItem>
-                    <SelectItem value="network">Réseau</SelectItem>
+                    <SelectItem value="all">{t('adminCronAllSections')}</SelectItem>
+                    <SelectItem value="family">{t('adminCronSectionFamily')}</SelectItem>
+                    <SelectItem value="business">{t('adminCronSectionBusiness')}</SelectItem>
+                    <SelectItem value="personal">{t('adminCronSectionPersonal')}</SelectItem>
+                    <SelectItem value="network">{t('adminCronSectionNetwork')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button variant="outline" size="sm" onClick={loadDocumentAnalyses} disabled={isLoadingAnalyses}>
@@ -820,7 +831,7 @@ const AdminCron = () => {
                 </Button>
                 <Button size="sm" onClick={runDocumentAnalysis} disabled={isAnalyzing}>
                   {isAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                  Analyser
+                  {t('adminCronAnalyze')}
                 </Button>
               </div>
             </CardDescription>
@@ -833,8 +844,8 @@ const AdminCron = () => {
             ) : filteredAnalyses.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Aucun document analysé</p>
-                <p className="text-sm">Lancez une analyse pour extraire le contenu des documents</p>
+                <p>{t('adminCronNoDocumentsAnalyzed')}</p>
+                <p className="text-sm">{t('adminCronNoDocumentsHint')}</p>
               </div>
             ) : (
               <Accordion type="single" collapsible className="w-full">
@@ -851,7 +862,7 @@ const AdminCron = () => {
                               <Badge variant="secondary" className="text-xs">{analysis.extractedContent.documentType}</Badge>
                             )}
                             <Badge className={analysis.status === 'analyzed' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
-                              {analysis.status === 'analyzed' ? 'Analysé' : 'Erreur'}
+                              {analysis.status === 'analyzed' ? t('adminCronAnalyzed') : t('adminCronError')}
                             </Badge>
                           </div>
                         </div>
@@ -860,31 +871,31 @@ const AdminCron = () => {
                     <AccordionContent>
                       <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                         {analysis.extractedContent?.summary && (
-                          <div><strong>Résumé:</strong> {analysis.extractedContent.summary}</div>
+                          <div><strong>{t('adminCronSummary')}</strong> {analysis.extractedContent.summary}</div>
                         )}
                         {analysis.extractedContent?.names?.length > 0 && (
-                          <div><strong>Noms:</strong> {analysis.extractedContent.names.join(', ')}</div>
+                          <div><strong>{t('adminCronNames')}</strong> {analysis.extractedContent.names.join(', ')}</div>
                         )}
                         {analysis.extractedContent?.dates?.length > 0 && (
-                          <div><strong>Dates:</strong> {analysis.extractedContent.dates.join(', ')}</div>
+                          <div><strong>{t('adminCronDates')}</strong> {analysis.extractedContent.dates.join(', ')}</div>
                         )}
                         {analysis.extractedContent?.organizations?.length > 0 && (
-                          <div><strong>Organisations:</strong> {analysis.extractedContent.organizations.join(', ')}</div>
+                          <div><strong>{t('adminCronOrganizations')}</strong> {analysis.extractedContent.organizations.join(', ')}</div>
                         )}
                         {analysis.extractedContent?.addresses?.length > 0 && (
-                          <div><strong>Adresses:</strong> {analysis.extractedContent.addresses.join(', ')}</div>
+                          <div><strong>{t('adminCronAddresses')}</strong> {analysis.extractedContent.addresses.join(', ')}</div>
                         )}
                         {analysis.extractedContent?.amounts?.length > 0 && (
-                          <div><strong>Montants:</strong> {analysis.extractedContent.amounts.join(', ')}</div>
+                          <div><strong>{t('adminCronAmounts')}</strong> {analysis.extractedContent.amounts.join(', ')}</div>
                         )}
                         {analysis.extractedContent?.rawText && (
                           <div className="mt-2">
-                            <strong>Texte extrait:</strong>
+                            <strong>{t('adminCronExtractedText')}</strong>
                             <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{analysis.extractedContent.rawText}</p>
                           </div>
                         )}
                         <div className="text-xs text-muted-foreground mt-2">
-                          Analysé le {format(new Date(analysis.analyzedAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                          {t('adminCronAnalyzedOn')} {format(new Date(analysis.analyzedAt), 'dd/MM/yyyy HH:mm', { locale: localeMap[language] || fr })}
                         </div>
                       </div>
                     </AccordionContent>

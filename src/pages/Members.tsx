@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, ArrowLeft, Crown, Heart, Diamond, BadgeDollarSign, SlidersHorizontal, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { Search, Crown, Heart, Diamond, BadgeDollarSign, SlidersHorizontal, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { PageHeaderBackButton } from "@/components/BackButton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,7 +115,7 @@ const MemberCard = ({ member, onClick, status, isSelected, t }: { member: Member
               </Avatar>
               
               {/* Badge de vérification d'identité */}
-              <IdentityVerifiedBadge isVerified={member.identity_verified} />
+              {/* <IdentityVerifiedBadge isVerified={member.identity_verified} /> */}
               
               {/* Wealth Badge - Top right (2 o'clock/14h) */}
               <WealthBadge 
@@ -616,15 +617,7 @@ const Members = () => {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
             <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/member-card")}
-                className="text-gold/60 hover:text-gold mr-2 sm:mr-4"
-              >
-                <ArrowLeft className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">{t('back')}</span>
-              </Button>
+              <PageHeaderBackButton />
               <h1 className="text-2xl sm:text-4xl font-serif text-gold tracking-wide">{t('membersTitle')}</h1>
             </div>
           </div>

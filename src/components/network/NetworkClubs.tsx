@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ClubItem {
   id: string;
@@ -26,6 +27,7 @@ interface NetworkClubsProps {
 }
 
 export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) => {
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ClubItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,10 +76,10 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
       if (error) throw error;
       if (data?.suggestion) {
         setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success("Suggestion générée");
+        toast.success(t('suggestionGenerated'));
       }
     } catch (error) {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('generationError'));
     } finally {
       setIsGenerating(false);
     }
@@ -85,14 +87,14 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      toast.error("Le titre est requis");
+      toast.error(t('titleRequired'));
       return;
     }
 
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       if (editingItem) {
         const { error } = await supabase
@@ -107,7 +109,7 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
           })
           .eq('id', editingItem.id);
         if (error) throw error;
-        toast.success("Club mis à jour");
+        toast.success(t('clubUpdated'));
       } else {
         const { error } = await supabase
           .from('network_clubs')
@@ -120,7 +122,7 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
             description: formData.description
           });
         if (error) throw error;
-        toast.success("Club ajouté");
+        toast.success(t('clubAdded'));
       }
 
       setIsDialogOpen(false);
@@ -128,7 +130,7 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
       onUpdate();
     } catch (error) {
       console.error('Error saving club:', error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('saveError'));
     } finally {
       setIsLoading(false);
     }
@@ -138,10 +140,10 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
     try {
       const { error } = await supabase.from('network_clubs').delete().eq('id', id);
       if (error) throw error;
-      toast.success("Club supprimé");
+      toast.success(t('clubDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('clubDeleteError'));
     }
   };
 
@@ -155,12 +157,12 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
       onUpdate();
     } catch (error) {
       console.error("Update error:", error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('saveError'));
     }
   };
 
   return (
-    <NetworkModule title="Clubs & Associations" icon={Users} moduleType="clubs" isEditable={isEditable}>
+    <NetworkModule title={t('clubsAssociations')} icon={Users} moduleType="clubs" isEditable={isEditable}>
       <div className="space-y-3">
         {data.map((item) => (
           <div key={item.id} className="p-3 bg-muted/30 rounded-lg group">
@@ -169,20 +171,20 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
                 <InlineEditableField
                   value={item.title}
                   onSave={(value) => handleInlineUpdate(item.id, "title", value)}
-                  placeholder="Nom du club"
+                  placeholder={t('clubName')}
                   disabled={!isEditable}
                   className="font-medium text-foreground"
                 />
                 <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                   {item.club_type && <span className="text-primary">{item.club_type}</span>}
                   {item.role && <span>• {item.role}</span>}
-                  {item.since_year && <span>• Depuis {item.since_year}</span>}
+                  {item.since_year && <span>• {t('since')} {item.since_year}</span>}
                 </div>
                 {isEditable ? (
                   <InlineEditableField
                     value={item.description || ""}
                     onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                    placeholder="Description"
+                    placeholder={t('description')}
                     multiline
                     className="text-sm text-muted-foreground mt-1"
                   />
@@ -203,14 +205,14 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
 
         {data.length === 0 && (
           <p className="text-muted-foreground text-sm text-center py-4">
-            Aucun club ou association ajouté
+            {t('noClubAssociationAdded')}
           </p>
         )}
 
         {isEditable && (
           <Button variant="outline" className="w-full mt-3" onClick={() => handleOpenAdd()}>
             <Plus className="w-4 h-4 mr-2" />
-            Ajouter
+            {t('add')}
           </Button>
         )}
       </div>
@@ -218,60 +220,60 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingItem ? "Modifier" : "Ajouter"} un club</DialogTitle>
+            <DialogTitle>{editingItem ? t('edit') : t('add')} {t('aClub')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Nom du club *</Label>
+              <Label>{t('clubName')} *</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Ex: Yacht Club de Monaco"
+                placeholder={t('clubNamePlaceholder')}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Type</Label>
+                <Label>{t('type')}</Label>
                 <Input
                   value={formData.club_type}
                   onChange={(e) => setFormData(prev => ({ ...prev, club_type: e.target.value }))}
-                  placeholder="Ex: Yacht Club, Cercle"
+                  placeholder={t('clubTypePlaceholder')}
                 />
               </div>
               <div>
-                <Label>Membre depuis</Label>
+                <Label>{t('memberSince')}</Label>
                 <Input
                   value={formData.since_year}
                   onChange={(e) => setFormData(prev => ({ ...prev, since_year: e.target.value }))}
-                  placeholder="Ex: 2015"
+                  placeholder={t('yearPlaceholder')}
                 />
               </div>
             </div>
             <div>
-              <Label>Rôle</Label>
+              <Label>{t('role')}</Label>
               <Input
                 value={formData.role}
                 onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                placeholder="Ex: Membre fondateur, Président"
+                placeholder={t('rolePlaceholder')}
               />
             </div>
             <div>
-              <Label>Description</Label>
+              <Label>{t('description')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Description du club et de votre implication..."
+                placeholder={t('clubDescriptionPlaceholder')}
               />
             </div>
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                Suggestion Aurora
+                {t('auroraSuggestion')}
               </Button>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('cancel')}</Button>
                 <Button onClick={handleSave} disabled={isLoading}>
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Valider"}
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>
             </div>

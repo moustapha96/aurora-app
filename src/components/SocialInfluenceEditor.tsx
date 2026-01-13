@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SocialInfluenceEditorProps {
   open?: boolean;
@@ -16,6 +17,7 @@ interface SocialInfluenceEditorProps {
 }
 
 export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }: SocialInfluenceEditorProps) {
+  const { t } = useLanguage();
   const [platform, setPlatform] = useState("");
   const [metric, setMetric] = useState("");
   const [value, setValue] = useState("");
@@ -47,7 +49,7 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
@@ -63,10 +65,10 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
         .getPublicUrl(filePath);
 
       setImageUrl(data.publicUrl);
-      toast({ title: "Image téléchargée" });
+      toast({ title: t('imageUploaded') });
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast({ title: "Erreur lors du téléchargement", variant: "destructive" });
+      toast({ title: t('uploadError'), variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -78,7 +80,7 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast({ title: "Veuillez vous connecter", variant: "destructive" });
+        toast({ title: t('pleaseConnect'), variant: "destructive" });
         return;
       }
 
@@ -98,72 +100,72 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
           .eq('id', influence.id);
 
         if (error) throw error;
-        toast({ title: "Influence modifiée" });
+        toast({ title: t('influenceUpdated') });
       } else {
         const { error } = await supabase
           .from('social_influence')
           .insert([influenceData]);
 
         if (error) throw error;
-        toast({ title: "Influence ajoutée" });
+        toast({ title: t('influenceAdded') });
       }
 
       onSave();
       if (onOpenChange) onOpenChange(false);
     } catch (error) {
       console.error('Error saving influence:', error);
-      toast({ title: "Erreur lors de l'enregistrement", variant: "destructive" });
+      toast({ title: t('saveError'), variant: "destructive" });
     }
   };
 
   const content = (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="platform">Plateforme / Événement</Label>
+        <Label htmlFor="platform">{t('platformEvent')}</Label>
         <Input
           id="platform"
           value={platform}
           onChange={(e) => setPlatform(e.target.value)}
-          placeholder="Instagram, Forbes, Gala de charité..."
+          placeholder={t('platformEventPlaceholder')}
           required
         />
       </div>
 
       <div>
-        <Label htmlFor="metric">Métrique</Label>
+        <Label htmlFor="metric">{t('metric')}</Label>
         <Input
           id="metric"
           value={metric}
           onChange={(e) => setMetric(e.target.value)}
-          placeholder="Abonnés, Couverture, Participation..."
+          placeholder={t('metricPlaceholder')}
           required
         />
       </div>
 
       <div>
-        <Label htmlFor="value">Valeur</Label>
+        <Label htmlFor="value">{t('value')}</Label>
         <Input
           id="value"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="250K, Article principal, Président d'honneur..."
+          placeholder={t('valuePlaceholder')}
           required
         />
       </div>
 
       <div>
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">{t('description')}</Label>
         <Textarea
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Décrivez votre impact..."
+          placeholder={t('describeYourImpact')}
           rows={4}
         />
       </div>
 
       <div>
-        <Label htmlFor="image">Image</Label>
+        <Label htmlFor="image">{t('image')}</Label>
         <div className="flex gap-2">
           <Input
             id="image"
@@ -172,15 +174,15 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
             onChange={handleImageUpload}
             disabled={uploading}
           />
-          {uploading && <span className="text-sm text-muted-foreground">Téléchargement...</span>}
+          {uploading && <span className="text-sm text-muted-foreground">{t('uploading')}</span>}
         </div>
         {imageUrl && (
-          <img src={imageUrl} alt="Aperçu" className="mt-2 h-32 w-full object-cover rounded" />
+          <img src={imageUrl} alt={t('preview')} className="mt-2 h-32 w-full object-cover rounded" />
         )}
       </div>
 
       <Button type="submit" className="w-full">
-        {influence ? "Modifier" : "Ajouter"}
+        {influence ? t('edit') : t('add')}
       </Button>
     </form>
   );
@@ -191,7 +193,7 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
         <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
           <DialogHeader>
             <DialogTitle>
-              {influence ? "Modifier l'influence" : "Ajouter une influence"}
+              {influence ? t('editInfluence') : t('addInfluence')}
             </DialogTitle>
           </DialogHeader>
           {content}
@@ -204,7 +206,7 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
     <Dialog>
       <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
         <DialogHeader>
-          <DialogTitle>Ajouter une influence</DialogTitle>
+          <DialogTitle>{t('addInfluence')}</DialogTitle>
         </DialogHeader>
         {content}
       </DialogContent>

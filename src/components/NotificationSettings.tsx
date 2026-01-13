@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Capacitor } from '@capacitor/core';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const NotificationSettings = () => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const {
     isSupported,
     isInitialized,
@@ -63,13 +65,13 @@ const NotificationSettings = () => {
       });
       
       toast({
-        title: 'Notifications activées',
-        description: 'Vous recevrez des notifications sur cet appareil.',
+        title: t('notificationsEnabled'),
+        description: t('notificationsEnabledDescription'),
       });
     } else {
       toast({
-        title: 'Permission refusée',
-        description: 'Veuillez autoriser les notifications dans les paramètres de votre appareil.',
+        title: t('permissionDenied'),
+        description: t('permissionDeniedDescription'),
         variant: 'destructive',
       });
     }
@@ -85,21 +87,21 @@ const NotificationSettings = () => {
     });
     
     toast({
-      title: 'Notifications désactivées',
-      description: 'Vous ne recevrez plus de notifications.',
+      title: t('notificationsDisabled'),
+      description: t('notificationsDisabledDescription'),
     });
   };
 
   const handleTestNotification = async () => {
     await showNotification({
-      title: 'Test Aurora Society',
-      body: 'Les notifications fonctionnent correctement sur votre appareil.',
+      title: t('testNotificationTitle'),
+      body: t('testNotificationBody'),
       data: { type: 'test' },
     });
     
     toast({
-      title: 'Notification envoyée',
-      description: 'Vérifiez la notification sur votre appareil.',
+      title: t('notificationSent'),
+      description: t('notificationSentDescription'),
     });
   };
 
@@ -133,19 +135,19 @@ const NotificationSettings = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gold">
             <Bell className="h-5 w-5" />
-            Notifications Push
+            {t('pushNotifications')}
           </CardTitle>
           <CardDescription>
-            Les notifications push sont disponibles uniquement sur l'application mobile.
+            {t('pushNotificationsMobileOnly')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg">
             <Smartphone className="h-8 w-8 text-gold/60" />
             <div>
-              <p className="text-sm font-medium">Téléchargez l'application mobile</p>
+              <p className="text-sm font-medium">{t('downloadMobileApp')}</p>
               <p className="text-xs text-muted-foreground">
-                Pour recevoir des notifications push en temps réel
+                {t('receivePushNotificationsRealTime')}
               </p>
             </div>
           </div>
@@ -159,10 +161,10 @@ const NotificationSettings = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-gold">
           <Bell className="h-5 w-5" />
-          Notifications Push
+          {t('pushNotifications')}
         </CardTitle>
         <CardDescription>
-          Gérez vos préférences de notifications pour rester informé.
+          {t('manageNotificationPreferences')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -175,9 +177,9 @@ const NotificationSettings = () => {
               <BellOff className="h-5 w-5 text-muted-foreground" />
             )}
             <div>
-              <p className="font-medium">Notifications</p>
+              <p className="font-medium">{t('notifications')}</p>
               <p className="text-xs text-muted-foreground">
-                {notificationsEnabled ? 'Activées' : 'Désactivées'}
+                {notificationsEnabled ? t('enabled') : t('disabled')}
               </p>
             </div>
           </div>
@@ -198,12 +200,12 @@ const NotificationSettings = () => {
           {permissions.push || permissions.local ? (
             <>
               <Check className="h-4 w-4 text-green-500" />
-              <span className="text-muted-foreground">Permissions accordées</span>
+              <span className="text-muted-foreground">{t('permissionsGranted')}</span>
             </>
           ) : (
             <>
               <X className="h-4 w-4 text-red-500" />
-              <span className="text-muted-foreground">Permissions non accordées</span>
+              <span className="text-muted-foreground">{t('permissionsNotGranted')}</span>
             </>
           )}
         </div>
@@ -212,14 +214,14 @@ const NotificationSettings = () => {
         {notificationsEnabled && (
           <div className="space-y-4 pt-4 border-t border-gold/10">
             <h4 className="text-sm font-medium text-muted-foreground">
-              Types de notifications
+              {t('notificationTypes')}
             </h4>
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Messages</p>
+                <p className="text-sm font-medium">{t('messages')}</p>
                 <p className="text-xs text-muted-foreground">
-                  Nouveaux messages reçus
+                  {t('newMessagesReceived')}
                 </p>
               </div>
               <Switch
@@ -230,9 +232,9 @@ const NotificationSettings = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Connexions</p>
+                <p className="text-sm font-medium">{t('connections')}</p>
                 <p className="text-xs text-muted-foreground">
-                  Demandes et acceptations
+                  {t('requestsAndAcceptances')}
                 </p>
               </div>
               <Switch
@@ -243,9 +245,9 @@ const NotificationSettings = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Événements</p>
+                <p className="text-sm font-medium">{t('events')}</p>
                 <p className="text-xs text-muted-foreground">
-                  Rappels et invitations
+                  {t('remindersAndInvitations')}
                 </p>
               </div>
               <Switch
@@ -263,7 +265,7 @@ const NotificationSettings = () => {
             className="w-full border-gold/30 hover:bg-gold/10"
             onClick={handleTestNotification}
           >
-            Tester les notifications
+            {t('testNotifications')}
           </Button>
         )}
       </CardContent>

@@ -6,6 +6,7 @@ import { CollectionsEditor } from "./editors/CollectionsEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CollectionEntry {
   id: string;
@@ -24,12 +25,12 @@ interface PersonalCollectionsProps {
 type CategoryType = 'art' | 'montres' | 'voitures' | 'vins' | 'livres' | 'autre';
 
 const CATEGORY_LABELS: Record<CategoryType, string> = {
-  art: 'Art & Antiquités',
-  montres: 'Montres & Horlogerie',
-  voitures: 'Voitures de collection',
-  vins: 'Vins & Spiritueux',
-  livres: 'Livres rares & Manuscrits',
-  autre: 'Autres collections'
+  art: 'art',
+  montres: 'montres',
+  voitures: 'voitures',
+  vins: 'vins',
+  livres: 'livres',
+  autre: 'autre'
 };
 
 export const PersonalCollections = ({ entries, isEditable, onDataChange }: PersonalCollectionsProps) => {
@@ -38,6 +39,7 @@ export const PersonalCollections = ({ entries, isEditable, onDataChange }: Perso
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
   const [addCategory, setAddCategory] = useState<CategoryType | null>(null);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const handleCategoryClick = (category: CategoryType) => {
     setSelectedCategory(prev => prev === category ? null : category);
@@ -65,11 +67,11 @@ export const PersonalCollections = ({ entries, isEditable, onDataChange }: Perso
         .eq("id", id);
 
       if (error) throw error;
-      toast({ title: "Collection supprimée" });
+      toast({ title: t('personalCollectionDeleted') });
       onDataChange();
     } catch (error) {
       console.error("Delete error:", error);
-      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+      toast({ title: t('personalErrorDeletingEntry'), variant: "destructive" });
     }
   };
 
@@ -83,12 +85,30 @@ export const PersonalCollections = ({ entries, isEditable, onDataChange }: Perso
       onDataChange();
     } catch (error) {
       console.error("Update error:", error);
-      toast({ title: "Erreur lors de la sauvegarde", variant: "destructive" });
+      toast({ title: t('personalErrorSavingEntry'), variant: "destructive" });
     }
   };
 
   const getItemsByCategory = (category: CategoryType) => {
     return entries.filter(item => (item.category || 'autre') === category);
+  };
+
+  const getCategoryLabel = (category: CategoryType) => {
+    switch (category) {
+      case 'art':
+        return t('personalCollectionsArt');
+      case 'montres':
+        return t('personalCollectionsWatches');
+      case 'voitures':
+        return t('personalCollectionsCars');
+      case 'vins':
+        return t('personalCollectionsWine');
+      case 'livres':
+        return t('personalCollectionsBooks');
+      case 'autre':
+      default:
+        return t('personalCollectionsOther');
+    }
   };
 
   const renderCategory = (category: CategoryType) => {
@@ -106,7 +126,7 @@ export const PersonalCollections = ({ entries, isEditable, onDataChange }: Perso
           ) : (
             <ChevronRight className="w-3.5 h-3.5" />
           )}
-          <span className="text-sm">{CATEGORY_LABELS[category]}</span>
+          <span className="text-sm">{getCategoryLabel(category)}</span>
           {items.length > 0 && (
             <span className="text-xs text-muted-foreground">({items.length})</span>
           )}
@@ -120,7 +140,7 @@ export const PersonalCollections = ({ entries, isEditable, onDataChange }: Perso
                     <InlineEditableField
                       value={item.title}
                       onSave={(value) => handleInlineUpdate(item.id, "title", value)}
-                      placeholder="Titre"
+                      placeholder={t('personalTitlePlaceholder')}
                       disabled={!isEditable}
                       className="font-medium text-sm text-foreground"
                     />
@@ -128,7 +148,7 @@ export const PersonalCollections = ({ entries, isEditable, onDataChange }: Perso
                       <InlineEditableField
                         value={item.description || ""}
                         onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                        placeholder="Description"
+                        placeholder={t('personalDescriptionPlaceholder')}
                         multiline
                         className="text-xs text-muted-foreground"
                       />
@@ -150,7 +170,7 @@ export const PersonalCollections = ({ entries, isEditable, onDataChange }: Perso
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Plus className="w-3 h-3" />
-                <span>Ajouter</span>
+                <span>{t('add')}</span>
               </button>
             )}
           </div>
@@ -161,7 +181,7 @@ export const PersonalCollections = ({ entries, isEditable, onDataChange }: Perso
 
   return (
     <PersonalModule
-      title="Collections"
+      title={t('personalCollectionsTitle')}
       icon={Library}
       moduleType="collections"
     >

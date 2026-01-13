@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import PoloPractice from './PoloPractice';
 import PoloHorses from './PoloHorses';
 import PoloAchievements from './PoloAchievements';
@@ -76,6 +77,7 @@ export interface PoloGalleryItem {
 }
 
 const PoloProfileModule: React.FC<PoloProfileModuleProps> = ({ userId, isEditable = false }) => {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<PoloProfile | null>(null);
   const [horses, setHorses] = useState<PoloHorse[]>([]);
@@ -105,7 +107,7 @@ const PoloProfileModule: React.FC<PoloProfileModuleProps> = ({ userId, isEditabl
       if (galleryRes.data) setGallery(galleryRes.data as PoloGalleryItem[]);
     } catch (error) {
       console.error('Error loading polo data:', error);
-      toast.error('Erreur lors du chargement des données');
+      toast.error(t('poloErrorLoadingData'));
     } finally {
       setLoading(false);
     }
@@ -125,7 +127,7 @@ const PoloProfileModule: React.FC<PoloProfileModuleProps> = ({ userId, isEditabl
         <CardHeader className="border-b border-border/10">
           <CardTitle className="flex items-center gap-3 text-2xl font-serif text-primary">
             <span className="text-3xl">🏇</span>
-            MA PASSION POLO
+            {t('poloMyPassion')}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-8">

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Loader2, Upload, User, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Upload, User, Sparkles, FileUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -240,22 +240,24 @@ export const CloseFamilyEditor = ({ members, onUpdate }: CloseFamilyEditorProps)
       )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
-          <DialogHeader>
-            <DialogTitle>{editingMember ? "Modifier" : "Ajouter"} un membre</DialogTitle>
+        <DialogContent className="w-[95vw] max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-3 sm:p-4 md:p-6" data-scroll>
+          <DialogHeader className="pb-2 sm:pb-3">
+            <DialogTitle className="text-base sm:text-lg font-serif text-gold">
+              {editingMember ? "Modifier" : "Ajouter"} un membre
+            </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {/* Photo Upload */}
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-2 sm:gap-3">
               <div 
-                className="w-24 h-24 rounded-full border-2 border-dashed border-gold/30 flex items-center justify-center overflow-hidden cursor-pointer hover:border-gold/50 transition-colors"
+                className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border-2 border-dashed border-gold/30 flex items-center justify-center overflow-hidden cursor-pointer hover:border-gold/50 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
               >
                 {formData.image_url ? (
                   <img src={formData.image_url} alt="Photo" className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-8 h-8 text-muted-foreground" />
+                  <User className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
                 )}
               </div>
               <input
@@ -271,92 +273,125 @@ export const CloseFamilyEditor = ({ members, onUpdate }: CloseFamilyEditorProps)
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="border-gold/30 text-gold hover:bg-gold/10"
+                className="border-gold/30 text-gold hover:bg-gold/10 text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3"
               >
                 {isUploading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1.5 animate-spin" />
                 ) : (
-                  <Upload className="w-4 h-4 sm:mr-2" />
+                  <Upload className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1.5" />
                 )}
-                <span className="hidden sm:inline">{formData.image_url ? "Changer la photo" : "Ajouter une photo"}</span>
+                <span className="hidden sm:inline text-xs">{formData.image_url ? "Changer" : "Ajouter photo"}</span>
               </Button>
             </div>
 
             <div>
-              <Label>Relation *</Label>
+              <Label className="text-xs sm:text-sm font-medium text-foreground">Relation *</Label>
               <Select value={formData.relation_type} onValueChange={(v) => setFormData({...formData, relation_type: v})}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
                   <SelectValue placeholder="Sélectionner..." />
                 </SelectTrigger>
                 <SelectContent>
                   {RELATION_TYPES.map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                    <SelectItem key={r} value={r} className="text-xs sm:text-sm">{r}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             
             <div>
-              <Label>Nom complet *</Label>
+              <Label className="text-xs sm:text-sm font-medium text-foreground">Nom complet *</Label>
               <Input 
                 value={formData.member_name} 
                 onChange={(e) => setFormData({...formData, member_name: e.target.value})}
                 placeholder="Prénom Nom"
+                className="h-8 sm:h-10 text-xs sm:text-sm"
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label>Année de naissance</Label>
+                <Label className="text-xs sm:text-sm font-medium text-foreground">Année de naissance</Label>
                 <Input 
                   value={formData.birth_year} 
                   onChange={(e) => setFormData({...formData, birth_year: e.target.value})}
                   placeholder="1990"
+                  className="h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
               <div>
-                <Label>Profession</Label>
+                <Label className="text-xs sm:text-sm font-medium text-foreground">Profession</Label>
                 <Input 
                   value={formData.occupation} 
                   onChange={(e) => setFormData({...formData, occupation: e.target.value})}
                   placeholder="Avocat, Médecin..."
+                  className="h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
             </div>
             
             <div>
               <div className="flex items-center justify-between mb-1">
-                <Label>Description</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleAISuggest}
-                  disabled={isGenerating || !formData.member_name}
-                  className="text-gold hover:text-gold/80 h-6 px-2"
-                >
-                  {isGenerating ? (
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3 h-3 mr-1" />
-                  )}
-                  IA
-                </Button>
+                <Label className="text-xs sm:text-sm font-medium text-foreground">Description</Label>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => document.getElementById('import-doc-close-family')?.click()}
+                    className="text-muted-foreground hover:text-foreground h-6 sm:h-7 px-1.5 sm:px-2 text-xs"
+                  >
+                    <FileUp className="w-3 h-3 mr-0.5 sm:mr-1" />
+                    <span className="hidden sm:inline">DOC</span>
+                  </Button>
+                  <input
+                    id="import-doc-close-family"
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt"
+                    className="hidden"
+                    onChange={() => toast({ title: "Document importé - Analyse en cours..." })}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleAISuggest}
+                    disabled={isGenerating || !formData.member_name}
+                    className="text-gold hover:text-gold/80 h-6 sm:h-7 px-1.5 sm:px-2 text-xs"
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="w-3 h-3 mr-0.5 sm:mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3 h-3 mr-0.5 sm:mr-1" />
+                    )}
+                    <span className="hidden sm:inline">IA</span>
+                  </Button>
+                </div>
               </div>
               <Textarea 
                 value={formData.description} 
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 placeholder="Quelques mots sur cette personne..."
                 rows={3}
+                className="text-xs sm:text-sm min-h-[60px] sm:min-h-[80px]"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
-            <Button onClick={handleSave} disabled={isLoading || isUploading} className="bg-gold text-black hover:bg-gold/90">
-              {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Valider
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9 px-3 sm:px-4"
+            >
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              disabled={isLoading || isUploading} 
+              className="w-full sm:w-auto bg-gold text-black hover:bg-gold/90 text-xs sm:text-sm h-8 sm:h-9 px-3 sm:px-4"
+            >
+              {isLoading && <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 animate-spin" />}
+              {editingMember ? "Modifier" : "Ajouter"}
             </Button>
           </DialogFooter>
         </DialogContent>

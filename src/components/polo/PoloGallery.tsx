@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Upload, Camera, Plus, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { PoloGalleryItem } from './PoloProfileModule';
 
 interface PoloGalleryProps {
@@ -16,52 +17,23 @@ type SlotType = 'action' | 'horse_portrait' | 'complicity' | 'team' | 'trophy' |
 
 interface GallerySlot {
   type: SlotType;
-  title: string;
-  description: string;
-  defaultPlaceholder: string;
 }
 
 const GALLERY_SLOTS: GallerySlot[] = [
-  {
-    type: 'action',
-    title: 'PHOTO PRINCIPALE',
-    description: 'Action emblématique',
-    defaultPlaceholder: 'Silhouette de joueur frappant la balle au galop',
-  },
-  {
-    type: 'horse_portrait',
-    title: 'MON ÉQUIPIER FÉTICHE',
-    description: 'Portrait de votre cheval',
-    defaultPlaceholder: 'Cheval de polo portrait',
-  },
-  {
-    type: 'complicity',
-    title: 'NOTRE COMPLICITÉ',
-    description: 'Moment de complicité avec votre cheval',
-    defaultPlaceholder: 'Joueur soignant son cheval',
-  },
-  {
-    type: 'team',
-    title: 'ESPRIT D\'ÉQUIPE',
-    description: 'Photo avec votre équipe/club',
-    defaultPlaceholder: 'Groupe de joueurs avec leurs chevaux',
-  },
-  {
-    type: 'trophy',
-    title: 'RÉCOMPENSE MÉMORABLE',
-    description: 'Votre plus beau trophée/réussite',
-    defaultPlaceholder: 'Trophée sur fond de terrain',
-  },
-  {
-    type: 'ambiance',
-    title: 'AMBIANCE DE JEU',
-    description: 'Terrain, tournoi, entraînement',
-    defaultPlaceholder: 'Vue aérienne d\'un terrain de polo',
-  },
+  { type: 'action' },
+  { type: 'horse_portrait' },
+  { type: 'complicity' },
+  { type: 'team' },
+  { type: 'trophy' },
+  { type: 'ambiance' },
 ];
 
 const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, onUpdate }) => {
+  const { t } = useLanguage();
   const [uploading, setUploading] = useState<string | null>(null);
+
+  const getSlotTitle = (type: SlotType) => t(`poloGallerySlot_${type}_title`);
+  const getSlotDescription = (type: SlotType) => t(`poloGallerySlot_${type}_description`);
 
   const getImageForSlot = (slotType: SlotType): PoloGalleryItem | undefined => {
     return gallery.find(g => g.slot_type === slotType);
@@ -104,11 +76,11 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
         if (error) throw error;
       }
 
-      toast.success('Photo ajoutée');
+      toast.success(t('poloGalleryPhotoAdded'));
       onUpdate();
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Erreur lors du téléchargement');
+      toast.error(t('poloGalleryUploadError'));
     } finally {
       setUploading(null);
     }
@@ -157,25 +129,25 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
         });
       if (error) throw error;
 
-      toast.success('Photo ajoutée');
+      toast.success(t('poloGalleryPhotoAdded'));
       onUpdate();
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Erreur lors du téléchargement');
+      toast.error(t('poloGalleryUploadError'));
     } finally {
       setUploading(null);
     }
   };
 
   const handleDeleteAdditional = async (id: string) => {
-    if (!confirm('Supprimer cette photo ?')) return;
+    if (!confirm(t('poloGalleryDeleteConfirm'))) return;
     try {
       const { error } = await supabase.from('polo_gallery').delete().eq('id', id);
       if (error) throw error;
-      toast.success('Photo supprimée');
+      toast.success(t('poloGalleryPhotoDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error('Erreur lors de la suppression');
+      toast.error(t('poloGalleryDeleteError'));
     }
   };
 
@@ -184,7 +156,7 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Camera className="h-5 w-5 text-primary" />
-          📸 GALERIE POLO
+          📸 {t('poloGalleryTitle')}
         </h3>
       </div>
 
@@ -202,7 +174,7 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
                 <>
                   <img
                     src={item.image_url}
-                    alt={slot.title}
+                    alt={getSlotTitle(slot.type)}
                     className="w-full h-full object-cover"
                   />
                   {isEditable && (
@@ -218,7 +190,7 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
                           }}
                         />
                         <Button size="sm" variant="secondary" asChild>
-                          <span><Upload className="h-4 w-4 mr-1" /> Remplacer</span>
+                          <span><Upload className="h-4 w-4 mr-1" /> {t('poloGalleryReplace')}</span>
                         </Button>
                       </label>
                       <Button
@@ -238,8 +210,8 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
                   ) : (
                     <>
                       <ImageIcon className="h-8 w-8 text-primary/50 mb-2" />
-                      <p className="text-xs font-medium text-foreground">{slot.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{slot.description}</p>
+                      <p className="text-xs font-medium text-foreground">{getSlotTitle(slot.type)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{getSlotDescription(slot.type)}</p>
                       {isEditable && (
                         <label className="cursor-pointer mt-2">
                           <input
@@ -252,7 +224,7 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
                             }}
                           />
                           <Button size="sm" variant="outline" className="text-primary border-primary/30" asChild>
-                            <span><Upload className="h-3 w-3 mr-1" /> Ajouter</span>
+                            <span><Upload className="h-3 w-3 mr-1" /> {t('add')}</span>
                           </Button>
                         </label>
                       )}
@@ -269,7 +241,7 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
       {(gallery.filter(g => g.slot_type === 'additional').length > 0 || isEditable) && (
         <div className="space-y-3 pt-4">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-foreground">Photos supplémentaires</h4>
+            <h4 className="font-medium text-foreground">{t('poloGalleryAdditionalPhotos')}</h4>
             {isEditable && (
               <label className="cursor-pointer">
                 <input
@@ -288,7 +260,7 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
                     ) : (
                       <Plus className="h-4 w-4 mr-1" />
                     )}
-                    Ajouter
+                    {t('add')}
                   </span>
                 </Button>
               </label>
@@ -303,7 +275,7 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
                   <div key={photo.id} className="relative group aspect-square rounded-lg overflow-hidden">
                     <img
                       src={photo.image_url || ''}
-                      alt="Photo supplémentaire"
+                      alt={t('poloGalleryAdditionalPhoto')}
                       className="w-full h-full object-cover"
                     />
                     {isEditable && (

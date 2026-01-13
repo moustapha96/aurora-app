@@ -18,6 +18,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { AdminPagination } from '@/components/ui/admin-pagination';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { format } from 'date-fns';
+import { fr, enUS, es, de, it, ptBR, ar, zhCN, ja, ru, type Locale } from 'date-fns/locale';
 
 interface ConnectionStats {
   totalFriendships: number;
@@ -50,7 +52,20 @@ interface Friendship {
 }
 
 export default function AdminConnections() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  
+  const localeMap: Record<string, Locale> = {
+    'fr': fr,
+    'en': enUS,
+    'es': es,
+    'de': de,
+    'it': it,
+    'pt': ptBR,
+    'ar': ar,
+    'zh': zhCN,
+    'ja': ja,
+    'ru': ru
+  };
   const [stats, setStats] = useState<ConnectionStats | null>(null);
   const [requests, setRequests] = useState<ConnectionRequest[]>([]);
   const [friendships, setFriendships] = useState<Friendship[]>([]);
@@ -185,10 +200,10 @@ export default function AdminConnections() {
 
   const getAccessBadges = (friendship: Friendship) => {
     const badges = [];
-    if (friendship.business_access) badges.push(<Badge key="b" variant="outline" className="text-xs">Business</Badge>);
-    if (friendship.family_access) badges.push(<Badge key="f" variant="outline" className="text-xs">Family</Badge>);
-    if (friendship.personal_access) badges.push(<Badge key="p" variant="outline" className="text-xs">Personal</Badge>);
-    if (friendship.influence_access) badges.push(<Badge key="i" variant="outline" className="text-xs">Influence</Badge>);
+    if (friendship.business_access) badges.push(<Badge key="b" variant="outline" className="text-xs">{t('adminBusiness')}</Badge>);
+    if (friendship.family_access) badges.push(<Badge key="f" variant="outline" className="text-xs">{t('adminFamily')}</Badge>);
+    if (friendship.personal_access) badges.push(<Badge key="p" variant="outline" className="text-xs">{t('adminPersonal')}</Badge>);
+    if (friendship.influence_access) badges.push(<Badge key="i" variant="outline" className="text-xs">{t('adminInfluence')}</Badge>);
     return badges;
   };
 
@@ -336,12 +351,8 @@ export default function AdminConnections() {
                                   {request.requester_name} → {request.recipient_name}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {new Date(request.created_at).toLocaleDateString('fr-FR', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
+                                  {format(new Date(request.created_at), 'dd MMM yyyy, HH:mm', { 
+                                    locale: localeMap[language] || fr 
                                   })}
                                 </p>
                               </div>
@@ -393,7 +404,9 @@ export default function AdminConnections() {
                                   {friendship.user_name} ↔ {friendship.friend_name}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {t('adminConnectedOn')} {new Date(friendship.created_at).toLocaleDateString('fr-FR')}
+                                  {t('adminConnectedOn')} {format(new Date(friendship.created_at), 'dd MMM yyyy', { 
+                                    locale: localeMap[language] || fr 
+                                  })}
                                 </p>
                               </div>
                             </div>

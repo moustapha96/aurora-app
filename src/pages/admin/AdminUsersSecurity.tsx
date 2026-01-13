@@ -6,11 +6,18 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Shield, Fingerprint, Smartphone, Monitor, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { Search, Shield, Fingerprint, Smartphone, Monitor, CheckCircle, XCircle, Clock, Mail, ShieldOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { format, type Locale } from 'date-fns';
+import { fr, enUS, es, de, it, ptBR, ar, zhCN, ja, ru } from 'date-fns/locale';
 import { AdminPagination } from '@/components/ui/admin-pagination';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+// Map language codes to date-fns locales
+const localeMap: Record<string, Locale> = {
+  fr, en: enUS, es, de, it, pt: ptBR, ar, zh: zhCN, ja, ru
+};
 
 interface UserSecurity {
   id: string;
@@ -19,6 +26,7 @@ interface UserSecurity {
   avatar_url: string | null;
   biometric_enabled: boolean;
   webauthn_enabled: boolean;
+  two_factor_enabled: boolean;
   created_at: string;
   updated_at: string;
   webauthn_devices_count: number;
@@ -26,10 +34,12 @@ interface UserSecurity {
 }
 
 const AdminUsersSecurity = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { toast } = useToast();
   const [users, setUsers] = useState<UserSecurity[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [disabling2FA, setDisabling2FA] = useState<string | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,7 +59,7 @@ const AdminUsersSecurity = () => {
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, biometric_enabled, webauthn_enabled, created_at, updated_at');
+        .select('id, first_name, last_name, avatar_url, biometric_enabled, webauthn_enabled, two_factor_enabled, created_at, updated_at');
 
       if (profilesError) throw profilesError;
 
@@ -87,6 +97,7 @@ const AdminUsersSecurity = () => {
         avatar_url: profile.avatar_url,
         biometric_enabled: profile.biometric_enabled || false,
         webauthn_enabled: profile.webauthn_enabled || false,
+        two_factor_enabled: profile.two_factor_enabled || false,
         created_at: profile.created_at || '',
         updated_at: profile.updated_at || '',
         webauthn_devices_count: credentialCounts[profile.id] || 0,
@@ -121,14 +132,45 @@ const AdminUsersSecurity = () => {
   const getSecurityLevel = (user: UserSecurity) => {
     const hasWebAuthn = user.webauthn_enabled && user.webauthn_devices_count > 0;
     const hasBiometric = user.biometric_enabled;
+    const has2FA = user.two_factor_enabled;
     
-    if (hasWebAuthn && hasBiometric) return { level: 'high', label: 'Élevé', color: 'bg-green-500' };
-    if (hasWebAuthn || hasBiometric) return { level: 'medium', label: 'Moyen', color: 'bg-yellow-500' };
-    return { level: 'low', label: 'Basique', color: 'bg-red-500' };
+    if ((hasWebAuthn && hasBiometric) || (hasWebAuthn && has2FA) || (hasBiometric && has2FA)) return { level: 'high', label: t('adminUsersSecurityLevelHigh'), color: 'bg-green-500' };
+    if (hasWebAuthn || hasBiometric || has2FA) return { level: 'medium', label: t('adminUsersSecurityLevelMedium'), color: 'bg-yellow-500' };
+    return { level: 'low', label: t('adminUsersSecurityLevelBasic'), color: 'bg-red-500' };
+  };
+
+  const handleDisable2FA = async (userId: string, userName: string) => {
+    setDisabling2FA(userId);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ two_factor_enabled: false })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setUsers(prev => prev.map(u => 
+        u.id === userId ? { ...u, two_factor_enabled: false } : u
+      ));
+
+      toast({
+        title: t('admin2FADisabledTitle'),
+        description: t('admin2FADisabledDesc').replace('{name}', userName),
+      });
+    } catch (error: any) {
+      console.error('Error disabling 2FA:', error);
+      toast({
+        title: t('errorTitle'),
+        description: t('admin2FADisableError'),
+        variant: "destructive",
+      });
+    } finally {
+      setDisabling2FA(null);
+    }
   };
 
   const formatLastActivity = (date: string | null) => {
-    if (!date) return 'Jamais';
+    if (!date) return t('adminUsersSecurityNever');
     const activityDate = new Date(date);
     const now = new Date();
     const diffMs = now.getTime() - activityDate.getTime();
@@ -137,7 +179,20 @@ const AdminUsersSecurity = () => {
     if (diffMins < 5) return t('adminOnline');
     if (diffMins < 60) return t('adminMinutesAgo').replace('{minutes}', diffMins.toString());
     if (diffMins < 1440) return t('adminHoursAgo').replace('{hours}', Math.floor(diffMins / 60).toString());
-    return format(activityDate, 'dd MMM yyyy', { locale: fr });
+    const localeMap: Record<string, Locale> = {
+      'fr': fr,
+      'en': enUS,
+      'es': es,
+      'de': de,
+      'it': it,
+      'pt': ptBR,
+      'ar': ar,
+      'zh': zhCN,
+      'ja': ja,
+      'ru': ru
+    };
+    const locale = localeMap[language] || fr;
+    return format(activityDate, 'dd MMM yyyy', { locale });
   };
 
   const getActivityStatus = (date: string | null) => {
@@ -153,6 +208,7 @@ const AdminUsersSecurity = () => {
     total: users.length,
     withWebAuthn: users.filter(u => u.webauthn_enabled).length,
     withBiometric: users.filter(u => u.biometric_enabled).length,
+    with2FA: users.filter(u => u.two_factor_enabled).length,
     highSecurity: users.filter(u => getSecurityLevel(u).level === 'high').length
   };
 
@@ -169,8 +225,8 @@ const AdminUsersSecurity = () => {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Sécurité des Utilisateurs</h1>
-          <p className="text-muted-foreground">Gérez et surveillez les paramètres de sécurité des membres</p>
+          <h1 className="text-2xl font-bold text-foreground">{t('adminUsersSecurityTitle')}</h1>
+          <p className="text-muted-foreground">{t('adminUsersSecurityDescription')}</p>
         </div>
 
         {/* Stats Cards */}
@@ -183,7 +239,7 @@ const AdminUsersSecurity = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.total}</p>
-                  <p className="text-sm text-muted-foreground">Utilisateurs</p>
+                  <p className="text-sm text-muted-foreground">{t('adminUsersSecurityUsers')}</p>
                 </div>
               </div>
             </CardContent>
@@ -196,7 +252,7 @@ const AdminUsersSecurity = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.withWebAuthn}</p>
-                  <p className="text-sm text-muted-foreground">WebAuthn activé</p>
+                  <p className="text-sm text-muted-foreground">{t('adminUsersSecurityWebAuthnEnabled')}</p>
                 </div>
               </div>
             </CardContent>
@@ -209,7 +265,7 @@ const AdminUsersSecurity = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.withBiometric}</p>
-                  <p className="text-sm text-muted-foreground">Biométrie mobile</p>
+                  <p className="text-sm text-muted-foreground">{t('adminUsersSecurityBiometricMobile')}</p>
                 </div>
               </div>
             </CardContent>
@@ -222,7 +278,7 @@ const AdminUsersSecurity = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.highSecurity}</p>
-                  <p className="text-sm text-muted-foreground">Sécurité élevée</p>
+                  <p className="text-sm text-muted-foreground">{t('adminUsersSecurityHighSecurity')}</p>
                 </div>
               </div>
             </CardContent>
@@ -233,11 +289,11 @@ const AdminUsersSecurity = () => {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Liste des utilisateurs</CardTitle>
+              <CardTitle>{t('adminUsersSecurityUsersList')}</CardTitle>
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Rechercher..."
+                  placeholder={t('adminUsersSecuritySearchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -247,19 +303,20 @@ const AdminUsersSecurity = () => {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+              <div className="text-center py-8 text-muted-foreground">{t('adminUsersSecurityLoading')}</div>
             ) : (
               <>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Utilisateur</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead>WebAuthn</TableHead>
-                      <TableHead>Biométrie Mobile</TableHead>
-                      <TableHead>Appareils</TableHead>
-                      <TableHead>Niveau Sécurité</TableHead>
-                      <TableHead>Dernière activité</TableHead>
+                      <TableHead>{t('adminUsersSecurityTableUser')}</TableHead>
+                      <TableHead>{t('adminUsersSecurityTableStatus')}</TableHead>
+                      <TableHead>{t('adminUsersSecurityTable2FA')}</TableHead>
+                      <TableHead>{t('adminUsersSecurityTableWebAuthn')}</TableHead>
+                      <TableHead>{t('adminUsersSecurityTableBiometricMobile')}</TableHead>
+                      <TableHead>{t('adminUsersSecurityTableDevices')}</TableHead>
+                      <TableHead>{t('adminUsersSecurityTableSecurityLevel')}</TableHead>
+                      <TableHead>{t('adminUsersSecurityTableActions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -286,7 +343,7 @@ const AdminUsersSecurity = () => {
                               <div>
                                 <p className="font-medium">{user.first_name} {user.last_name}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  Inscrit le {format(new Date(user.created_at), 'dd MMM yyyy', { locale: fr })}
+                                  {t('adminUsersSecurityRegisteredOn')} {format(new Date(user.created_at), 'dd MMM yyyy', { locale: localeMap[language] || fr })}
                                 </p>
                               </div>
                             </div>
@@ -301,15 +358,28 @@ const AdminUsersSecurity = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {user.webauthn_enabled ? (
+                            {user.two_factor_enabled ? (
                               <div className="flex items-center gap-1 text-green-500">
                                 <CheckCircle className="h-4 w-4" />
-                                <span className="text-sm">Activé</span>
+                                <span className="text-sm">{t('adminUsersSecurityEnabled')}</span>
                               </div>
                             ) : (
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <XCircle className="h-4 w-4" />
-                                <span className="text-sm">Désactivé</span>
+                                <span className="text-sm">{t('adminUsersSecurityDisabled')}</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {user.webauthn_enabled ? (
+                              <div className="flex items-center gap-1 text-green-500">
+                                <CheckCircle className="h-4 w-4" />
+                                <span className="text-sm">{t('adminUsersSecurityEnabled')}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <XCircle className="h-4 w-4" />
+                                <span className="text-sm">{t('adminUsersSecurityDisabled')}</span>
                               </div>
                             )}
                           </TableCell>
@@ -317,18 +387,18 @@ const AdminUsersSecurity = () => {
                             {user.biometric_enabled ? (
                               <div className="flex items-center gap-1 text-green-500">
                                 <CheckCircle className="h-4 w-4" />
-                                <span className="text-sm">Activé</span>
+                                <span className="text-sm">{t('adminUsersSecurityEnabled')}</span>
                               </div>
                             ) : (
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <XCircle className="h-4 w-4" />
-                                <span className="text-sm">Désactivé</span>
+                                <span className="text-sm">{t('adminUsersSecurityDisabled')}</span>
                               </div>
                             )}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">
-                              {user.webauthn_devices_count} appareil{user.webauthn_devices_count !== 1 ? 's' : ''}
+                              {user.webauthn_devices_count} {user.webauthn_devices_count !== 1 ? t('adminUsersSecurityDevices') : t('adminUsersSecurityDevice')}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -337,10 +407,18 @@ const AdminUsersSecurity = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {formatLastActivity(user.last_activity)}
-                            </div>
+                            {user.two_factor_enabled && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDisable2FA(user.id, `${user.first_name} ${user.last_name}`)}
+                                disabled={disabling2FA === user.id}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <ShieldOff className="h-4 w-4 mr-1" />
+                                {t('admin2FADisable')}
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       );

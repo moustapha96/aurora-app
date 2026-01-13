@@ -18,6 +18,7 @@ import {
 import { useIdentityVerification } from '@/hooks/useIdentityVerification';
 import { toast } from 'sonner';
 import { VerificationBadge, VerificationStatus } from '@/components/VerificationBadge';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ interface IdentityVerificationProps {
 }
 
 export function IdentityVerification({ onVerificationChange }: IdentityVerificationProps) {
+  const { t } = useLanguage();
   const { 
     verificationStatus, 
     profileVerification, 
@@ -57,13 +59,13 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
     
     if (result.success) {
       if (testModeEnabled && profileVerification.verified) {
-        toast.success('Vérification réinitialisée (mode test). Vous pouvez recommencer.');
+        toast.success(t('verificationResetTestMode'));
         onVerificationChange?.();
       } else {
-        toast.success('Document supprimé. Veuillez télécharger un nouveau document.');
+        toast.success(t('documentDeletedPleaseUploadNew'));
       }
     } else {
-      toast.error(result.error || 'Erreur lors de la suppression');
+      toast.error(result.error || t('errorDeleting'));
     }
   };
 
@@ -84,13 +86,13 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
     // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (!validTypes.includes(file.type)) {
-      toast.error('Format non supporté. Utilisez JPG, PNG, WebP ou PDF.');
+      toast.error(t('unsupportedFormatUseJpgPngWebpPdf'));
       return;
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('Fichier trop volumineux. Maximum 10 Mo.');
+      toast.error(t('fileTooLargeMax10MB'));
       return;
     }
 
@@ -98,12 +100,12 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
     if (result.success) {
       if (result.extractedName?.firstName || result.extractedName?.lastName) {
         const name = `${result.extractedName.firstName || ''} ${result.extractedName.lastName || ''}`.trim();
-        toast.success(`Document enregistré - Identité détectée : ${name}`);
+        toast.success(`${t('documentSavedIdentityDetected')} ${name}`);
       } else {
-        toast.success('Document enregistré avec succès');
+        toast.success(t('documentSavedSuccessfully'));
       }
     } else {
-      toast.error(result.error || 'Erreur lors du téléchargement');
+      toast.error(result.error || t('uploadError'));
     }
 
     // Reset input
@@ -115,14 +117,14 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
   const handleStartVerification = async () => {
     // Check if document exists first
     if (!verificationStatus.documentUrl) {
-      toast.error('Veuillez d\'abord télécharger votre pièce d\'identité');
+      toast.error(t('pleaseUploadIdFirst'));
       return;
     }
 
     const result = await initiateVerification();
     
     if (result.success && result.redirectUrl) {
-      toast.success('Redirection vers la vérification...');
+      toast.success(t('redirectingToVerification'));
       
       // On mobile, use direct navigation instead of popup (which is often blocked)
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -135,7 +137,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
         window.open(result.redirectUrl, '_blank');
       }
     } else {
-      toast.error(result.error || 'Erreur lors de l\'initialisation de la vérification');
+      toast.error(result.error || t('errorInitializingVerification'));
     }
   };
 
@@ -164,7 +166,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
             <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Chargement...</span>
+            <span className="ml-2 text-muted-foreground">{t('loading')}</span>
           </div>
         </CardContent>
       </Card>
@@ -178,12 +180,12 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Fingerprint className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Vérification d'identité</CardTitle>
+              <CardTitle className="text-lg">{t('identityVerification')}</CardTitle>
             </div>
             <VerificationBadge status={getVerificationStatusValue()} type="identity" size="md" />
           </div>
           <CardDescription>
-            Vérifiez votre identité pour accéder à toutes les fonctionnalités de la plateforme
+            {t('verifyIdentityToAccessAllFeatures')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -192,18 +194,18 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
               <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4">
                 <div className="flex items-center gap-2 text-green-500 mb-2">
                   <CheckCircle className="h-5 w-5" />
-                  <span className="font-medium">Identité vérifiée</span>
+                  <span className="font-medium">{t('identityVerified')}</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Votre identité a été vérifiée avec succès
+                  {t('identityVerifiedSuccessfully')}
                   {profileVerification.verifiedAt && (
-                    <> le {new Date(profileVerification.verifiedAt).toLocaleDateString('fr-FR')}</>
+                    <> {t('on')} {new Date(profileVerification.verifiedAt).toLocaleDateString(navigator.language || 'en-US')}</>
                   )}
                   .
                 </p>
                 {verificationStatus.documentType && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Document: {verificationStatus.documentType}
+                    {t('document')}: {verificationStatus.documentType}
                     {verificationStatus.documentCountry && ` (${verificationStatus.documentCountry})`}
                   </p>
                 )}
@@ -215,7 +217,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <FileImage className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-medium">Document d'identité enregistré</span>
+                      <span className="text-sm font-medium">{t('identityDocumentSaved')}</span>
                     </div>
                     <Button 
                       variant="outline" 
@@ -223,7 +225,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                       onClick={() => setShowDocument(true)}
                     >
                       <Eye className="h-4 w-4 mr-2" />
-                      Voir
+                      {t('view')}
                     </Button>
                   </div>
                 </div>
@@ -234,11 +236,10 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                 <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-4">
                   <div className="flex items-center gap-2 text-purple-500 mb-2">
                     <AlertCircle className="h-4 w-4" />
-                    <span className="text-sm font-medium">Mode Test Activé</span>
+                    <span className="text-sm font-medium">{t('testModeEnabled')}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mb-3">
-                    Vous pouvez réinitialiser votre vérification d'identité pour tester à nouveau le processus.
-                    Vous ne serez pas déconnecté.
+                    {t('canResetVerificationForTesting')}
                   </p>
                   <Button 
                     variant="outline" 
@@ -250,12 +251,12 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                     {deleting ? (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Réinitialisation...
+                        {t('resetting')}
                       </>
                     ) : (
                       <>
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Réinitialiser la vérification
+                        {t('resetVerification')}
                       </>
                     )}
                   </Button>
@@ -267,12 +268,12 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
               <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-4">
                 <div className="flex items-center gap-2 text-yellow-500 mb-2">
                   <Clock className="h-5 w-5" />
-                  <span className="font-medium">Vérification en cours</span>
+                  <span className="font-medium">{t('verificationInProgress')}</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {hasVeriffSession
-                    ? "Votre vérification est en cours de traitement. Cliquez sur le bouton ci-dessous pour obtenir le résultat de Veriff."
-                    : "Votre document est enregistré, mais la vérification Veriff n'a pas encore été lancée. Lancez-la pour continuer."}
+                    ? t('verificationProcessingClickForResult')
+                    : t('documentSavedVeriffNotLaunched')}
                 </p>
                 <div className="flex flex-wrap gap-2 mt-3">
                   {hasVeriffSession ? (
@@ -283,23 +284,23 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                         const result = await refreshAndUpdateStatus();
                         if (result.success) {
                           if (result.status === 'verified') {
-                            toast.success('Vérification approuvée ! Votre identité a été confirmée.');
+                            toast.success(t('verificationApprovedIdentityConfirmed'));
                             onVerificationChange?.();
                           } else if (result.status === 'rejected') {
-                            toast.error('Vérification rejetée. Veuillez supprimer et ajouter un nouveau document.');
+                            toast.error(t('verificationRejectedDeleteAndAddNew'));
                           } else if (result.status === 'pending' || result.status === 'initiated') {
                             if (isStaleRequest) {
-                              toast.warning('Vérification toujours en cours depuis un moment. Si cela reste bloqué, supprimez le document et recommencez.');
+                              toast.warning(t('verificationStuckDeleteAndRestart'));
                             } else {
-                              toast.info('Vérification toujours en cours. Le service Veriff n\'a pas encore traité votre demande. Réessayez dans quelques minutes.');
+                              toast.info(t('verificationStillProcessingRetryLater'));
                             }
                           } else if (result.status === 'review_needed') {
-                            toast.warning('Vérification en cours de révision manuelle. Un administrateur examinera votre demande.');
+                            toast.warning(t('verificationManualReviewAdminWillExamine'));
                           } else {
-                            toast.info(`Statut actuel : ${result.status || 'inconnu'}. Veuillez patienter ou réessayer.`);
+                            toast.info(`${t('currentStatus')}: ${result.status || t('unknown')}. ${t('pleaseWaitOrRetry')}`);
                           }
                         } else {
-                          toast.error(result.error || 'Erreur lors de la vérification');
+                          toast.error(result.error || t('verificationError'));
                         }
                       }}
                       disabled={refreshing || deleting}
@@ -307,12 +308,12 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                       {refreshing ? (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Vérification...
+                          {t('verifying')}
                         </>
                       ) : (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2" />
-                          Obtenir résultat
+                          {t('getResult')}
                         </>
                       )}
                     </Button>
@@ -326,12 +327,12 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                       {initiating ? (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Lancement...
+                          {t('launching')}
                         </>
                       ) : (
                         <>
                           <ExternalLink className="h-4 w-4 mr-2" />
-                          Démarrer la vérification
+                          {t('startVerification')}
                         </>
                       )}
                     </Button>
@@ -346,12 +347,12 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                     {deleting ? (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Suppression...
+                        {t('deleting')}
                       </>
                     ) : (
                       <>
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Supprimer et réessayer
+                        {t('deleteAndRetry')}
                       </>
                     )}
                   </Button>
@@ -359,7 +360,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
 
                 {isStaleRequest && (
                   <p className="mt-3 text-xs text-muted-foreground">
-                    Cette demande semble bloquée. Vous pouvez supprimer le document et recommencer.
+                    {t('requestSeemsBlockedDeleteAndRestart')}
                   </p>
                 )}
               </div>
@@ -370,7 +371,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <FileImage className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-medium">Document soumis</span>
+                      <span className="text-sm font-medium">{t('documentSubmitted')}</span>
                     </div>
                     <Button 
                       variant="outline" 
@@ -378,7 +379,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                       onClick={() => setShowDocument(true)}
                     >
                       <Eye className="h-4 w-4 mr-2" />
-                      Voir
+                      {t('view')}
                     </Button>
                   </div>
                 </div>
@@ -401,14 +402,14 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                   )}
                   <span className="font-medium">
                     {verificationStatus.status === 'rejected' 
-                      ? 'Vérification rejetée' 
-                      : 'Vérification incomplète'}
+                      ? t('verificationRejected') 
+                      : t('verificationIncomplete')}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">
                   {verificationStatus.status === 'rejected' 
-                    ? "Votre vérification n'a pas pu être validée. Supprimez le document et téléchargez-en un nouveau pour réessayer."
-                    : "Des informations supplémentaires sont nécessaires. Veuillez recommencer la vérification avec un nouveau document."}
+                    ? t('verificationNotValidatedDeleteAndUploadNew')
+                    : t('additionalInfoNeededRestartWithNewDocument')}
                 </p>
                 <Button 
                   variant="destructive" 
@@ -436,7 +437,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
               <div className="rounded-lg border border-border p-4">
                 <h4 className="font-medium mb-3 flex items-center gap-2">
                   <Camera className="h-4 w-4" />
-                  Pièce d'identité (CNI)
+                  {t('identityDocumentCNI')}
                 </h4>
                 
                 {verificationStatus.documentUrl ? (
@@ -446,7 +447,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                       <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
                         <CheckCircle className="h-4 w-4 text-green-500" />
                         <span className="text-sm font-medium text-green-500">
-                          Identité détectée : {extractedName}
+                          {t('identityDetected')}: {extractedName}
                         </span>
                       </div>
                     )}
@@ -454,7 +455,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                     <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div className="flex items-center gap-2">
                         <FileImage className="h-5 w-5 text-green-500" />
-                        <span className="text-sm font-medium">Document enregistré</span>
+                        <span className="text-sm font-medium">{t('documentSaved')}</span>
                       </div>
                       <Button 
                         variant="outline" 
@@ -462,7 +463,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                         onClick={() => setShowDocument(true)}
                       >
                         <Eye className="h-4 w-4 mr-2" />
-                        Voir
+                        {t('view')}
                       </Button>
                     </div>
                     
@@ -480,13 +481,13 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                       disabled={uploading}
                       className="text-muted-foreground"
                     >
-                      {uploading ? 'Téléchargement...' : 'Remplacer le document'}
+                      {uploading ? t('uploading') : t('replaceDocument')}
                     </Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground">
-                      Veuillez télécharger votre pièce d'identité (CNI, passeport ou permis de conduire) pour démarrer la vérification.
+                      {t('pleaseUploadIdDocumentToStartVerification')}
                     </p>
                     <input
                       type="file"
@@ -504,17 +505,17 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                       {uploading ? (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Téléchargement...
+                          {t('uploading')}
                         </>
                       ) : analyzing ? (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Analyse en cours...
+                          {t('analyzing')}
                         </>
                       ) : (
                         <>
                           <Upload className="h-4 w-4 mr-2" />
-                          Télécharger le document
+                          {t('uploadDocument')}
                         </>
                       )}
                     </Button>
@@ -523,21 +524,21 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
               </div>
 
               <div className="rounded-lg bg-muted/50 p-4">
-                <h4 className="font-medium mb-2">Pourquoi vérifier votre identité ?</h4>
+                <h4 className="font-medium mb-2">{t('whyVerifyIdentity')}</h4>
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                  <li>Accès complet à toutes les fonctionnalités</li>
-                  <li>Badge de membre vérifié sur votre profil</li>
-                  <li>Confiance accrue auprès des autres membres</li>
-                  <li>Protection contre l'usurpation d'identité</li>
+                  <li>{t('fullAccessToAllFeatures')}</li>
+                  <li>{t('verifiedMemberBadgeOnProfile')}</li>
+                  <li>{t('increasedTrustFromOtherMembers')}</li>
+                  <li>{t('protectionAgainstIdentityTheft')}</li>
                 </ul>
               </div>
 
               <div className="rounded-lg bg-muted/50 p-4">
-                <h4 className="font-medium mb-2">Documents acceptés</h4>
+                <h4 className="font-medium mb-2">{t('acceptedDocuments')}</h4>
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                  <li>Passeport</li>
-                  <li>Carte d'identité nationale</li>
-                  <li>Permis de conduire</li>
+                  <li>{t('passport')}</li>
+                  <li>{t('nationalIdCard')}</li>
+                  <li>{t('driversLicense')}</li>
                 </ul>
               </div>
 
@@ -549,25 +550,28 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
                 {initiating ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Initialisation...
+                    {t('initializing')}
                   </>
                 ) : (
                   <>
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    Démarrer la vérification
+                    {t('startVerification')}
                   </>
                 )}
               </Button>
 
               {!verificationStatus.documentUrl && (
                 <p className="text-xs text-yellow-500 text-center">
-                  Téléchargez d'abord votre document pour démarrer la vérification
+                  {t('uploadDocumentFirstToStartVerification')}
                 </p>
               )}
 
-              <p className="text-xs text-muted-foreground text-center">
-                La vérification est sécurisée et effectuée par Veriff, leader mondial de la vérification d'identité.
-              </p>
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <h4 className="font-medium text-sm">{t('veriffCertificationsTitle')}</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t('veriffCertificationsDescription')}
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
@@ -577,7 +581,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
       <Dialog open={showDocument} onOpenChange={setShowDocument}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Document d'identité</DialogTitle>
+            <DialogTitle>{t('identityDocument')}</DialogTitle>
           </DialogHeader>
           <div className="mt-4 space-y-4">
             {/* Extracted name in dialog */}
@@ -585,7 +589,7 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
               <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 <span className="text-sm font-medium">
-                  Identité détectée : {extractedName}
+                  {t('identityDetected')}: {extractedName}
                 </span>
               </div>
             )}
@@ -593,18 +597,18 @@ export function IdentityVerification({ onVerificationChange }: IdentityVerificat
               verificationStatus.documentUrl.toLowerCase().endsWith('.pdf') ? (
                 <div className="flex flex-col items-center gap-4 p-8 border rounded-lg">
                   <FileImage className="h-16 w-16 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Document PDF</p>
+                  <p className="text-sm text-muted-foreground">{t('pdfDocument')}</p>
                   <Button asChild variant="outline">
                     <a href={verificationStatus.documentUrl} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="h-4 w-4 mr-2" />
-                      Ouvrir le PDF
+                      {t('openPdf')}
                     </a>
                   </Button>
                 </div>
               ) : (
                 <img 
                   src={verificationStatus.documentUrl} 
-                  alt="Document d'identité"
+                  alt={t('identityDocument')}
                   className="w-full rounded-lg border"
                 />
               )

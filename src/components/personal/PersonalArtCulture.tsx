@@ -6,6 +6,7 @@ import { ArtCultureEditor } from "./editors/ArtCultureEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ArtCultureEntry {
   id: string;
@@ -24,12 +25,12 @@ interface PersonalArtCultureProps {
 type CategoryType = 'peinture' | 'sculpture' | 'musique' | 'theatre' | 'litterature' | 'autre';
 
 const CATEGORY_LABELS: Record<CategoryType, string> = {
-  peinture: 'Peinture & Arts visuels',
-  sculpture: 'Sculpture & Installation',
-  musique: 'Musique & Opéra',
-  theatre: 'Théâtre & Spectacle vivant',
-  litterature: 'Littérature & Poésie',
-  autre: 'Autres arts'
+  peinture: 'peinture',
+  sculpture: 'sculpture',
+  musique: 'musique',
+  theatre: 'theatre',
+  litterature: 'litterature',
+  autre: 'autre'
 };
 
 export const PersonalArtCulture = ({ entries, isEditable, onDataChange }: PersonalArtCultureProps) => {
@@ -38,6 +39,7 @@ export const PersonalArtCulture = ({ entries, isEditable, onDataChange }: Person
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
   const [addCategory, setAddCategory] = useState<CategoryType | null>(null);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const handleCategoryClick = (category: CategoryType) => {
     setSelectedCategory(prev => prev === category ? null : category);
@@ -65,11 +67,11 @@ export const PersonalArtCulture = ({ entries, isEditable, onDataChange }: Person
         .eq("id", id);
 
       if (error) throw error;
-      toast({ title: "Entrée supprimée" });
+      toast({ title: t('personalEntryDeleted') });
       onDataChange();
     } catch (error) {
       console.error("Delete error:", error);
-      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+      toast({ title: t('personalErrorDeletingEntry'), variant: "destructive" });
     }
   };
 
@@ -83,12 +85,30 @@ export const PersonalArtCulture = ({ entries, isEditable, onDataChange }: Person
       onDataChange();
     } catch (error) {
       console.error("Update error:", error);
-      toast({ title: "Erreur lors de la sauvegarde", variant: "destructive" });
+      toast({ title: t('personalErrorSavingEntry'), variant: "destructive" });
     }
   };
 
   const getItemsByCategory = (category: CategoryType) => {
     return entries.filter(item => (item.category || 'autre') === category);
+  };
+
+  const getCategoryLabel = (category: CategoryType) => {
+    switch (category) {
+      case 'peinture':
+        return t('personalArtPainting');
+      case 'sculpture':
+        return t('personalArtSculpture');
+      case 'musique':
+        return t('personalArtMusic');
+      case 'theatre':
+        return t('personalArtTheatre');
+      case 'litterature':
+        return t('personalArtLiterature');
+      case 'autre':
+      default:
+        return t('personalArtOther');
+    }
   };
 
   const renderCategory = (category: CategoryType) => {
@@ -106,7 +126,7 @@ export const PersonalArtCulture = ({ entries, isEditable, onDataChange }: Person
           ) : (
             <ChevronRight className="w-3.5 h-3.5" />
           )}
-          <span className="text-sm">{CATEGORY_LABELS[category]}</span>
+          <span className="text-sm">{getCategoryLabel(category)}</span>
           {items.length > 0 && (
             <span className="text-xs text-muted-foreground">({items.length})</span>
           )}
@@ -120,7 +140,7 @@ export const PersonalArtCulture = ({ entries, isEditable, onDataChange }: Person
                     <InlineEditableField
                       value={item.title}
                       onSave={(value) => handleInlineUpdate(item.id, "title", value)}
-                      placeholder="Titre"
+                      placeholder={t('personalTitlePlaceholder')}
                       disabled={!isEditable}
                       className="font-medium text-sm text-foreground"
                     />
@@ -128,7 +148,7 @@ export const PersonalArtCulture = ({ entries, isEditable, onDataChange }: Person
                       <InlineEditableField
                         value={item.description || ""}
                         onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                        placeholder="Description"
+                        placeholder={t('personalDescriptionPlaceholder')}
                         multiline
                         className="text-xs text-muted-foreground"
                       />
@@ -150,7 +170,7 @@ export const PersonalArtCulture = ({ entries, isEditable, onDataChange }: Person
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Plus className="w-3 h-3" />
-                <span>Ajouter</span>
+                <span>{t('add')}</span>
               </button>
             )}
           </div>
@@ -161,7 +181,7 @@ export const PersonalArtCulture = ({ entries, isEditable, onDataChange }: Person
 
   return (
     <PersonalModule
-      title="Art & Culture"
+      title={t('personalArtCultureTitle')}
       icon={Palette}
       moduleType="art_culture"
     >

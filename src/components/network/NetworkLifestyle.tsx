@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TruncatedText } from "@/components/ui/truncated-text";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface LifestyleItem {
   id: string;
@@ -36,6 +37,7 @@ const CATEGORY_LABELS: Record<CategoryType, string> = {
 };
 
 export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyleProps) => {
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LifestyleItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -97,7 +99,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/lifestyle/${Date.now()}.${fileExt}`;
@@ -113,10 +115,10 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
         .getPublicUrl(fileName);
 
       setFormData(prev => ({ ...prev, image_url: publicUrl }));
-      toast.success("Image téléchargée");
+      toast.success(t('imageUploaded'));
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error("Erreur lors du téléchargement");
+      toast.error(t('uploadError'));
     }
   };
 
@@ -129,10 +131,10 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
       if (error) throw error;
       if (data?.suggestion) {
         setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success("Suggestion générée");
+        toast.success(t('suggestionGenerated'));
       }
     } catch (error) {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('generationError'));
     } finally {
       setIsGenerating(false);
     }
@@ -140,14 +142,14 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      toast.error("Le titre est requis");
+      toast.error(t('titleRequired'));
       return;
     }
 
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       if (editingItem) {
         const { error } = await supabase
@@ -163,7 +165,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
           })
           .eq('id', editingItem.id);
         if (error) throw error;
-        toast.success("Élément mis à jour");
+        toast.success(t('lifestyleItemUpdated'));
       } else {
         const { error } = await supabase
           .from('network_philanthropy')
@@ -177,7 +179,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
             image_url: formData.image_url
           });
         if (error) throw error;
-        toast.success("Élément ajouté");
+        toast.success(t('lifestyleItemAdded'));
       }
 
       setIsDialogOpen(false);
@@ -185,7 +187,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
       onUpdate();
     } catch (error) {
       console.error('Error saving lifestyle:', error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('saveError'));
     } finally {
       setIsLoading(false);
     }
@@ -195,19 +197,30 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
     try {
       const { error } = await supabase.from('network_philanthropy').delete().eq('id', id);
       if (error) throw error;
-      toast.success("Élément supprimé");
+      toast.success(t('lifestyleItemDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('lifestyleItemDeleteError'));
     }
   };
 
   const getCategoryLabel = (category: string) => {
-    return CATEGORY_LABELS[category as CategoryType] || category;
+    switch (category as CategoryType) {
+      case 'gastronomie':
+        return t('gastronomy');
+      case 'oenologie':
+        return t('oenology');
+      case 'mode':
+        return t('fashionJewelryWatchmaking');
+      case 'automobiles':
+        return t('automobiles');
+      default:
+        return CATEGORY_LABELS[category as CategoryType] || category;
+    }
   };
 
   return (
-    <NetworkModule title="Style de vie & luxe" icon={Utensils} moduleType="lifestyle" isEditable={isEditable}>
+    <NetworkModule title={t('lifestyleLuxury')} icon={Utensils} moduleType="lifestyle" isEditable={isEditable}>
       <div className="space-y-2">
         {/* Category: Gastronomie */}
         <div>
@@ -220,7 +233,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
             ) : (
               <ChevronRight className="w-3.5 h-3.5" />
             )}
-            <span className="text-sm">Gastronomie</span>
+            <span className="text-sm">{t('gastronomy')}</span>
             {data.filter(item => item.cause === 'gastronomie').length > 0 && (
               <span className="text-xs text-muted-foreground">({data.filter(item => item.cause === 'gastronomie').length})</span>
             )}
@@ -254,7 +267,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                   className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Plus className="w-3 h-3" />
-                  <span>Ajouter</span>
+                  <span>{t('add')}</span>
                 </button>
               )}
             </div>
@@ -272,7 +285,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
             ) : (
               <ChevronRight className="w-3.5 h-3.5" />
             )}
-            <span className="text-sm">Œnologie</span>
+            <span className="text-sm">{t('oenology')}</span>
             {data.filter(item => item.cause === 'oenologie').length > 0 && (
               <span className="text-xs text-muted-foreground">({data.filter(item => item.cause === 'oenologie').length})</span>
             )}
@@ -306,7 +319,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                   className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Plus className="w-3 h-3" />
-                  <span>Ajouter</span>
+                  <span>{t('add')}</span>
                 </button>
               )}
             </div>
@@ -324,7 +337,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
             ) : (
               <ChevronRight className="w-3.5 h-3.5" />
             )}
-            <span className="text-sm">Mode, bijouterie, horlogerie</span>
+            <span className="text-sm">{t('fashionJewelryWatchmaking')}</span>
             {data.filter(item => item.cause === 'mode').length > 0 && (
               <span className="text-xs text-muted-foreground">({data.filter(item => item.cause === 'mode').length})</span>
             )}
@@ -358,7 +371,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                   className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Plus className="w-3 h-3" />
-                  <span>Ajouter</span>
+                  <span>{t('add')}</span>
                 </button>
               )}
             </div>
@@ -376,7 +389,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
             ) : (
               <ChevronRight className="w-3.5 h-3.5" />
             )}
-            <span className="text-sm">Automobiles</span>
+            <span className="text-sm">{t('automobiles')}</span>
             {data.filter(item => item.cause === 'automobiles').length > 0 && (
               <span className="text-xs text-muted-foreground">({data.filter(item => item.cause === 'automobiles').length})</span>
             )}
@@ -410,7 +423,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                   className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Plus className="w-3 h-3" />
-                  <span>Ajouter</span>
+                  <span>{t('add')}</span>
                 </button>
               )}
             </div>
@@ -422,17 +435,17 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editingItem ? "Modifier" : "Ajouter"} - {getCategoryLabel(formData.cause)}
+              {editingItem ? t('edit') : t('add')} - {getCategoryLabel(formData.cause)}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Image upload */}
             <div>
-              <Label>Photo</Label>
+              <Label>{t('photo')}</Label>
               <div className="flex items-center gap-3 mt-1">
                 {formData.image_url ? (
                   <div className="relative w-24 h-24 rounded-lg overflow-hidden">
-                    <img src={formData.image_url} alt="Preview" className="w-full h-full object-cover" />
+                    <img src={formData.image_url} alt={t('preview')} className="w-full h-full object-cover" />
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -445,7 +458,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                 ) : (
                   <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
                     <Image className="w-6 h-6 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground mt-1">Ajouter</span>
+                    <span className="text-xs text-muted-foreground mt-1">{t('add')}</span>
                     <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
                   </label>
                 )}
@@ -453,48 +466,48 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
             </div>
 
             <div>
-              <Label>Titre *</Label>
+              <Label>{t('title')} *</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder={
-                  formData.cause === 'gastronomie' ? "Ex: Restaurant L'Ambroisie" :
-                  formData.cause === 'oenologie' ? "Ex: Collection Bordeaux Grands Crus" :
-                  "Ex: Atelier sur mesure Cifonelli"
+                  formData.cause === 'gastronomie' ? t('lifestyleTitlePlaceholder_gastronomie') :
+                  formData.cause === 'oenologie' ? t('lifestyleTitlePlaceholder_oenologie') :
+                  t('lifestyleTitlePlaceholder_mode')
                 }
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Lieu / Maison</Label>
+                <Label>{t('locationHouse')}</Label>
                 <Input
                   value={formData.organization}
                   onChange={(e) => setFormData(prev => ({ ...prev, organization: e.target.value }))}
-                  placeholder="Ex: Paris, France"
+                  placeholder={t('locationPlaceholder')}
                 />
               </div>
               <div>
-                <Label>Catégorie</Label>
+                <Label>{t('category')}</Label>
                 <select
                   value={formData.cause}
                   onChange={(e) => setFormData(prev => ({ ...prev, cause: e.target.value }))}
                   className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                 >
-                  <option value="gastronomie">Gastronomie</option>
-                  <option value="oenologie">Œnologie</option>
-                  <option value="mode">Mode, bijouterie, horlogerie</option>
-                  <option value="automobiles">Automobiles</option>
+                  <option value="gastronomie">{t('gastronomy')}</option>
+                  <option value="oenologie">{t('oenology')}</option>
+                  <option value="mode">{t('fashionJewelryWatchmaking')}</option>
+                  <option value="automobiles">{t('automobiles')}</option>
                 </select>
               </div>
             </div>
 
             <div>
-              <Label>Description</Label>
+              <Label>{t('description')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Décrivez votre expérience ou préférence..."
+                placeholder={t('describeExperiencePreference')}
                 rows={3}
               />
             </div>
@@ -502,12 +515,12 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                Suggestion Aurora
+                {t('auroraSuggestion')}
               </Button>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('cancel')}</Button>
                 <Button onClick={handleSave} disabled={isLoading} className="bg-gold text-black hover:bg-gold/90">
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Valider"}
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>
             </div>

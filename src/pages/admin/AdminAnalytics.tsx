@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { supabase } from '@/integrations/supabase/client';
 import { Users, Link2, Briefcase, Globe, TrendingUp, Calendar } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { format } from 'date-fns';
+import { fr, enUS, es, de, it, ptBR, ar, zhCN, ja, ru, type Locale } from 'date-fns/locale';
 
 interface AnalyticsData {
   membersByMonth: { month: string; count: number }[];
@@ -13,7 +15,20 @@ interface AnalyticsData {
 }
 
 const AdminAnalytics = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  
+  const localeMap: Record<string, Locale> = {
+    'fr': fr,
+    'en': enUS,
+    'es': es,
+    'de': de,
+    'it': it,
+    'pt': ptBR,
+    'ar': ar,
+    'zh': zhCN,
+    'ja': ja,
+    'ru': ru
+  };
   const [data, setData] = useState<AnalyticsData>({
     membersByMonth: [],
     membersByCountry: [],
@@ -43,7 +58,7 @@ const AdminAnalytics = () => {
         const monthCounts: Record<string, number> = {};
         profiles.forEach(p => {
           if (p.created_at) {
-            const month = new Date(p.created_at).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+            const month = format(new Date(p.created_at), 'MMM yy', { locale: localeMap[language] || fr });
             monthCounts[month] = (monthCounts[month] || 0) + 1;
           }
         });

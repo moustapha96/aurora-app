@@ -10,6 +10,7 @@ import { WealthBadge } from "@/components/WealthBadge";
 import { Header } from "@/components/Header";
 import { PageNavigation } from "@/components/BackButton";
 import { IdentityVerifiedBadge } from "@/components/VerificationBadge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -227,12 +228,49 @@ const Profile = () => {
     );
   }
 
+ 
+
   if (!profile) {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-black text-gold p-6 pt-32 sm:pt-36 flex items-center justify-center">
-          <p>{t('profileNotFound')}</p>
+        <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-32 sm:pt-36 pb-8 safe-area-all">
+          <div className="max-w-4xl mx-auto">
+            {/* Language Selector Skeleton */}
+            <div className="flex justify-end mb-6">
+              <Skeleton className="h-10 w-[140px] bg-gold/10" />
+            </div>
+
+            {/* Profile Header Skeleton */}
+            <div className="text-center mb-8 sm:mb-12">
+              <div className="relative w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4">
+                <Skeleton className="w-full h-full rounded-full bg-gold/10" />
+              </div>
+              <Skeleton className="h-4 w-20 mx-auto mb-2 bg-gold/10" />
+              <Skeleton className="h-8 w-48 mx-auto mb-1 bg-gold/10" />
+              <Skeleton className="h-8 w-40 mx-auto mb-2 bg-gold/10" />
+              <Skeleton className="h-4 w-32 mx-auto mb-1 bg-gold/10" />
+              <Skeleton className="h-4 w-24 mx-auto bg-gold/10" />
+            </div>
+
+            {/* Sections Grid Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="bg-black/50 border border-gold/20 rounded-lg p-4 sm:p-6">
+                  <div className="flex items-center mb-4">
+                    <Skeleton className="w-6 h-6 rounded bg-gold/10 mr-3" />
+                    <Skeleton className="h-5 w-32 bg-gold/10" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-full bg-gold/10" />
+                    <Skeleton className="h-3 w-4/5 bg-gold/10" />
+                    <Skeleton className="h-3 w-3/4 bg-gold/10" />
+                    <Skeleton className="h-3 w-2/3 bg-gold/10" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </>
     );
@@ -274,7 +312,7 @@ const Profile = () => {
           )}
           <h1 className="text-2xl sm:text-3xl font-serif text-gold mb-1">{profile.first_name?.toUpperCase() || ''}</h1>
           <h2 className="text-2xl sm:text-3xl font-serif text-gold mb-2">{profile.last_name?.toUpperCase() || ''}</h2>
-          {profile.account_number && (
+          {/* {profile.account_number && (
             <button
               onClick={() => {
                 navigator.clipboard.writeText(profile.account_number);
@@ -296,7 +334,7 @@ const Profile = () => {
               <Globe className="w-4 h-4" />
               {profile.country}
             </p>
-          )}
+          )} */}
           
           {profile.personal_quote && (
             <p className="text-gold/70 italic text-xs sm:text-sm max-w-md mx-auto">

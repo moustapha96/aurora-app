@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, MoreVertical, Eye, Edit, Shield, Trash2, UserX, UserCheck, Loader2, FlaskConical, RotateCcw, Mail } from 'lucide-react';
+import { Search, MoreVertical, Eye, Edit, Shield, Trash2, UserX, UserCheck, Loader2, FlaskConical, RotateCcw, Mail, RefreshCw } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
@@ -64,7 +64,9 @@ const AdminMembers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [testModeEnabled, setTestModeEnabled] = useState(false);
 
@@ -169,7 +171,9 @@ const AdminMembers = () => {
       member.first_name?.toLowerCase().includes(query) ||
       member.last_name?.toLowerCase().includes(query) ||
       member.job_function?.toLowerCase().includes(query) ||
-      member.country?.toLowerCase().includes(query)
+      member.country?.toLowerCase().includes(query) ||
+      member.account_number?.toLowerCase().includes(query) ||
+      member.email?.toLowerCase().includes(query)
     );
   }, [members, searchQuery]);
 
@@ -335,6 +339,24 @@ const AdminMembers = () => {
     }
   };
 
+  const regenerateAccountNumbers = async () => {
+    setIsRegenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('regenerate-account-numbers');
+
+      if (error) throw error;
+
+      toast.success(`${data.updated} ${t('accountNumbersRegenerated')}`);
+      setRegenerateDialogOpen(false);
+      loadMembers();
+    } catch (error: any) {
+      console.error('Error regenerating account numbers:', error);
+      toast.error(error?.message || t('accountNumbersRegenerationError'));
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -363,16 +385,27 @@ const AdminMembers = () => {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <CardTitle>{t('adminMembersList')} ({filteredMembers.length})</CardTitle>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={t('search')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRegenerateDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  {t('regenerateAccountNumbers')}
+                </Button>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={t('search')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -564,6 +597,34 @@ const AdminMembers = () => {
                 className="bg-destructive text-destructive-foreground"
               >
                 {isDeleting ? t('deleting') : t('delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Regenerate Account Numbers Confirmation Dialog */}
+        <AlertDialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('regenerateAccountNumbersConfirm')}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t('regenerateAccountNumbersWarning')}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isRegenerating}>{t('cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={regenerateAccountNumbers}
+                disabled={isRegenerating}
+              >
+                {isRegenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {t('regenerating')}
+                  </>
+                ) : (
+                  t('regenerate')
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -13,7 +13,7 @@ import {
   NetworkPortfolio,
   NetworkAmbitions
 } from "@/components/network";
-import { PageNavigation } from "@/components/BackButton";
+import { PageHeaderBackButton } from "@/components/BackButton";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const Network = () => {
@@ -104,7 +104,7 @@ const Network = () => {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-background flex items-center justify-center pt-32 sm:pt-36">
+        <div className="min-h-screen  bg-background flex items-center justify-center pt-32 sm:pt-36">
           <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
         </div>
       </>
@@ -129,17 +129,22 @@ const Network = () => {
   return (
     <div className="min-h-screen bg-background safe-area-all">
       <Header />
-      <PageNavigation to="/profile" />
       
       {/* Sticky Sub-Header */}
       <div className="sticky top-16 z-40 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 sm:px-6 py-3">
-          <h2 className="text-base sm:text-lg font-serif text-primary">{t('networkPage')}</h2>
-          <p className="text-muted-foreground/70 text-xs hidden sm:block">{t('networkSubtitle')}</p>
+        <div className="container mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center">
+            {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
+            <PageHeaderBackButton to={"/member-card"} />
+            <div>
+              <h2 className="text-base sm:text-lg font-serif text-primary">{t('networkPage')}</h2>
+              <p className="text-muted-foreground/70 text-xs hidden sm:block">{t('networkSubtitle')}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <main className="container mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-16">
+      <main className="container mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <NetworkMedia
             data={mediaData}

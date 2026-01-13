@@ -60,7 +60,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     {
       id: "concierge" as OnboardingMode,
       icon: Phone,
-      title: t('businessConciergeRequest'),
+      title: t('assistant'),
       description: t('businessConciergeDescription'),
     },
     {
@@ -483,7 +483,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">{t('businessConciergeBusiness')}</h2>
+          <h2 className="text-2xl font-serif text-gold mb-4">{t('assistant')}</h2>
           <p className="text-gold/70">
             {t('businessConciergeDescription')}
           </p>

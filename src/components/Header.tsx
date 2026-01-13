@@ -47,34 +47,13 @@ export const Header = () => {
   const { isAdmin } = useAdminCheck();
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    loadAccountNumber();
-  }, []);
 
-  const loadAccountNumber = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from('profiles')
-        .select('account_number')
-        .eq('id', user.id)
-        .single();
-
-      if (data?.account_number) {
-        setAccountNumber(data.account_number);
-      }
-    } catch (error) {
-      console.error('Error loading account number:', error);
-    }
-  };
 
   const navigationItems = [
     { label: t('home'), icon: Home, path: "/member-card" },
     { label: t('business'), icon: Briefcase, path: "/business" },
-    { label: t('family'), icon: Heart, path: "/family" },
-    { label: t('personal'), icon: User, path: "/personal" },
+    { label: t('lineage'), icon: Heart, path: "/family" },
+    { label: t('passions'), icon: User, path: "/personal" },
     { label: t('network'), icon: Users, path: "/network" },
     { label: t('members'), icon: Compass, path: "/members" },
     { label: t('referrals'), icon: Gift, path: "/referrals" },
@@ -286,11 +265,11 @@ export const Header = () => {
                 </Badge>
 
                 {/* Account Number */}
-                {accountNumber && (
+                {/* {accountNumber && (
                   <div className="text-xs sm:text-sm font-mono text-muted-foreground px-2 sm:px-3 py-1 border border-border rounded-md">
                     {accountNumber}
                   </div>
-                )}
+                )} */}
 
                 {/* User Notifications */}
                 <UserNotifications />

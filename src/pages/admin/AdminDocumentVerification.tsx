@@ -57,6 +57,8 @@ import {
 } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AdminPagination } from "@/components/ui/admin-pagination";
+import { format, type Locale } from 'date-fns';
+import { fr, enUS, es, de, it, ptBR, ar, zhCN, ja, ru } from 'date-fns/locale';
 
 interface DocumentToVerify {
   id: string;
@@ -121,7 +123,21 @@ interface AIVerificationResult {
 
 const AdminDocumentVerification = () => {
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  
+  const localeMap: Record<string, Locale> = {
+    'fr': fr,
+    'en': enUS,
+    'es': es,
+    'de': de,
+    'it': it,
+    'pt': ptBR,
+    'ar': ar,
+    'zh': zhCN,
+    'ja': ja,
+    'ru': ru
+  };
+  
   const [documents, setDocuments] = useState<DocumentToVerify[]>([]);
   const [verifications, setVerifications] = useState<VerificationRecord[]>([]);
   const [identityVerifications, setIdentityVerifications] = useState<IdentityVerificationRecord[]>([]);
@@ -290,7 +306,7 @@ const AdminDocumentVerification = () => {
       if (error) throw error;
 
       toast({
-        title: "Vérification Veriff terminée",
+        title: t('adminVeriffVerificationCompleted'),
         description: data.message
       });
 
@@ -322,7 +338,7 @@ const AdminDocumentVerification = () => {
       setShowAIResultsDialog(true);
       
       toast({
-        title: "Vérification IA terminée",
+        title: t('adminAIVerificationCompleted'),
         description: data.message
       });
 
@@ -368,7 +384,7 @@ const AdminDocumentVerification = () => {
 
   // Delete a family document
   const handleDeleteDocument = async (documentId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) return;
+    if (!confirm(t('adminAreYouSureDeleteDocument'))) return;
 
     try {
       const { error } = await supabase.functions.invoke('verify-family-documents-ai', {
@@ -379,7 +395,7 @@ const AdminDocumentVerification = () => {
 
       toast({
         title: t('adminDocumentDeleted'),
-        description: "Le document a été supprimé avec succès"
+        description: t('adminDocumentDeletedSuccessfully')
       });
 
       loadDocuments();
@@ -408,8 +424,8 @@ const AdminDocumentVerification = () => {
       if (error) throw error;
 
       toast({
-        title: "Statut mis à jour",
-        description: `Document ${status === 'verified' ? 'vérifié' : status === 'rejected' ? 'rejeté' : 'en révision'}`
+        title: t('adminStatusUpdated'),
+        description: status === 'verified' ? t('adminDocumentVerified') : status === 'rejected' ? t('adminDocumentRejected') : t('adminDocumentInReview')
       });
 
       setShowRejectDialog(false);
@@ -463,7 +479,7 @@ const AdminDocumentVerification = () => {
 
       toast({
         title: newStatus === 'verified' ? t('adminIdentityVerified') : t('adminIdentityRejected'),
-        description: `Le statut de vérification de ${verif.user?.first_name} ${verif.user?.last_name} a été mis à jour.`
+        description: t('adminVerificationStatusUpdated').replace('{name}', `${verif.user?.first_name} ${verif.user?.last_name}`)
       });
 
       // Refresh data
@@ -508,19 +524,19 @@ const AdminDocumentVerification = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'verified':
-        return <Badge className="bg-green-500/20 text-green-500"><CheckCircle className="w-3 h-3 mr-1" />Vérifié</Badge>;
+        return <Badge className="bg-green-500/20 text-green-500"><CheckCircle className="w-3 h-3 mr-1" />{t('adminVerified')}</Badge>;
       case 'rejected':
-        return <Badge className="bg-red-500/20 text-red-500"><XCircle className="w-3 h-3 mr-1" />Rejeté</Badge>;
+        return <Badge className="bg-red-500/20 text-red-500"><XCircle className="w-3 h-3 mr-1" />{t('adminRejected')}</Badge>;
       case 'review_needed':
-        return <Badge className="bg-orange-500/20 text-orange-500"><AlertCircle className="w-3 h-3 mr-1" />À revoir</Badge>;
+        return <Badge className="bg-orange-500/20 text-orange-500"><AlertCircle className="w-3 h-3 mr-1" />{t('adminReviewNeeded')}</Badge>;
       case 'pending':
-        return <Badge className="bg-yellow-500/20 text-yellow-500"><Loader2 className="w-3 h-3 mr-1" />En attente</Badge>;
+        return <Badge className="bg-yellow-500/20 text-yellow-500"><Loader2 className="w-3 h-3 mr-1" />{t('adminPending')}</Badge>;
       case 'initiated':
-        return <Badge className="bg-blue-500/20 text-blue-500"><Clock className="w-3 h-3 mr-1" />Initié</Badge>;
+        return <Badge className="bg-blue-500/20 text-blue-500"><Clock className="w-3 h-3 mr-1" />{t('adminInitiated')}</Badge>;
       case 'in_progress':
-        return <Badge className="bg-blue-500/20 text-blue-500"><Loader2 className="w-3 h-3 mr-1 animate-spin" />En cours</Badge>;
+        return <Badge className="bg-blue-500/20 text-blue-500"><Loader2 className="w-3 h-3 mr-1 animate-spin" />{t('adminInProgress')}</Badge>;
       default:
-        return <Badge variant="outline">Non vérifié</Badge>;
+        return <Badge variant="outline">{t('adminNonVerifiedStatus')}</Badge>;
     }
   };
 
@@ -528,13 +544,13 @@ const AdminDocumentVerification = () => {
   const getVeriffCodeLabel = (code: number | undefined) => {
     if (!code) return null;
     const codes: Record<number, { label: string; color: string }> = {
-      9001: { label: 'Approuvé', color: 'text-green-500' },
-      9102: { label: 'Refusé', color: 'text-red-500' },
-      9103: { label: 'Resoumission requise', color: 'text-orange-500' },
-      9104: { label: 'Expiré', color: 'text-gray-500' },
-      9121: { label: 'Abandonné', color: 'text-gray-500' },
+      9001: { label: t('adminApprovedLabel'), color: 'text-green-500' },
+      9102: { label: t('adminRefusedLabel'), color: 'text-red-500' },
+      9103: { label: t('adminResubmissionRequired'), color: 'text-orange-500' },
+      9104: { label: t('adminExpired'), color: 'text-gray-500' },
+      9121: { label: t('adminAbandoned'), color: 'text-gray-500' },
     };
-    return codes[code] || { label: `Code ${code}`, color: 'text-muted-foreground' };
+    return codes[code] || { label: `${t('adminCode')} ${code}`, color: 'text-muted-foreground' };
   };
 
   // Extract Veriff session details
@@ -605,8 +621,8 @@ const AdminDocumentVerification = () => {
       <div className="p-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Vérification des Documents</h1>
-            <p className="text-muted-foreground">Gérez la vérification des documents utilisateurs</p>
+            <h1 className="text-3xl font-bold text-foreground">{t('adminDocumentVerification')}</h1>
+            <p className="text-muted-foreground">{t('adminDocumentVerificationDescription')}</p>
           </div>
           <div className="flex gap-2">
             <Button 
@@ -615,7 +631,7 @@ const AdminDocumentVerification = () => {
               disabled={isLoading}
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Actualiser
+              {t('adminRefresh')}
             </Button>
             <Button 
               onClick={handleRefreshVeriff}
@@ -627,7 +643,7 @@ const AdminDocumentVerification = () => {
               ) : (
                 <Fingerprint className="w-4 h-4 mr-2" />
               )}
-              Vérifier Veriff
+              {t('adminVerifyVeriff')}
             </Button>
             <Button 
               onClick={handleVerifyFamilyDocsAI}
@@ -639,7 +655,7 @@ const AdminDocumentVerification = () => {
               ) : (
                 <Sparkles className="w-4 h-4 mr-2" />
               )}
-              Vérifier Docs IA
+              {t('adminVerifyAIDocs')}
             </Button>
             <Button 
               variant="outline"
@@ -651,7 +667,7 @@ const AdminDocumentVerification = () => {
               ) : (
                 <Play className="w-4 h-4 mr-2" />
               )}
-              Batch Documents
+              {t('adminBatchDocuments')}
             </Button>
           </div>
         </div>
@@ -661,30 +677,30 @@ const AdminDocumentVerification = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Fingerprint className="h-5 w-5 text-primary" />
-              Vérifications d'identité (Veriff)
+              {t('adminIdentityVerificationsVeriff')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="text-center p-3 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold">{identityStats.total}</p>
-                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-xs text-muted-foreground">{t('adminTotal')}</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-green-500/10">
                 <p className="text-2xl font-bold text-green-500">{identityStats.verified}</p>
-                <p className="text-xs text-muted-foreground">Vérifiés</p>
+                <p className="text-xs text-muted-foreground">{t('adminVerified')}</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-yellow-500/10">
                 <p className="text-2xl font-bold text-yellow-500">{identityStats.pending}</p>
-                <p className="text-xs text-muted-foreground">En attente</p>
+                <p className="text-xs text-muted-foreground">{t('adminPending')}</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-blue-500/10">
                 <p className="text-2xl font-bold text-blue-500">{identityStats.initiated}</p>
-                <p className="text-xs text-muted-foreground">Initiés</p>
+                <p className="text-xs text-muted-foreground">{t('adminInitiated')}</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-red-500/10">
                 <p className="text-2xl font-bold text-red-500">{identityStats.rejected}</p>
-                <p className="text-xs text-muted-foreground">Rejetés</p>
+                <p className="text-xs text-muted-foreground">{t('adminRejected')}</p>
               </div>
             </div>
           </CardContent>
@@ -695,11 +711,11 @@ const AdminDocumentVerification = () => {
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="veriff-history" className="flex items-center gap-2">
               <Fingerprint className="w-4 h-4" />
-              Historique Veriff
+              {t('adminVeriffHistory')}
             </TabsTrigger>
             <TabsTrigger value="documents" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Documents Famille
+              {t('adminFamilyDocuments')}
             </TabsTrigger>
           </TabsList>
 
@@ -712,7 +728,7 @@ const AdminDocumentVerification = () => {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder="Rechercher par nom d'utilisateur..."
+                      placeholder={t('adminSearchByUsername')}
                       value={identitySearchTerm}
                       onChange={(e) => setIdentitySearchTerm(e.target.value)}
                       className="pl-10"
@@ -724,12 +740,12 @@ const AdminDocumentVerification = () => {
                       <SelectValue placeholder="Filtrer par statut" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tous les statuts</SelectItem>
-                      <SelectItem value="initiated">Initiés</SelectItem>
-                      <SelectItem value="pending">En attente</SelectItem>
-                      <SelectItem value="verified">Vérifiés</SelectItem>
-                      <SelectItem value="rejected">Rejetés</SelectItem>
-                      <SelectItem value="review_needed">À revoir</SelectItem>
+                      <SelectItem value="all">{t('adminAllStatuses')}</SelectItem>
+                      <SelectItem value="initiated">{t('adminInitiated')}</SelectItem>
+                      <SelectItem value="pending">{t('adminPending')}</SelectItem>
+                      <SelectItem value="verified">{t('adminVerified')}</SelectItem>
+                      <SelectItem value="rejected">{t('adminRejected')}</SelectItem>
+                      <SelectItem value="review_needed">{t('adminReviewNeeded')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -741,7 +757,7 @@ const AdminDocumentVerification = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Fingerprint className="w-5 h-5 text-primary" />
-                  Historique des vérifications Veriff
+                  {t('adminVeriffVerificationsHistory')}
                 </CardTitle>
                 <CardDescription>
                   {identityVerifications.filter(v => {
@@ -750,7 +766,7 @@ const AdminDocumentVerification = () => {
                       v.user?.last_name?.toLowerCase().includes(identitySearchTerm.toLowerCase());
                     const matchesStatus = identityStatusFilter === 'all' || v.status === identityStatusFilter;
                     return matchesSearch && matchesStatus;
-                  }).length} vérification(s) trouvée(s)
+                  }).length} {t('adminVerificationsFound')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -760,21 +776,21 @@ const AdminDocumentVerification = () => {
                   </div>
                 ) : identityVerifications.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
-                    Aucune vérification Veriff trouvée
+                    {t('adminNoVeriffVerificationFound')}
                   </p>
                 ) : (
                   <>
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Utilisateur</TableHead>
-                          <TableHead>Nom extrait</TableHead>
-                          <TableHead>Type de document</TableHead>
-                          <TableHead>Pays</TableHead>
-                          <TableHead>Date de création</TableHead>
-                          <TableHead>Dernière MAJ</TableHead>
-                          <TableHead>Statut</TableHead>
-                          <TableHead>Actions</TableHead>
+                          <TableHead>{t('adminUser')}</TableHead>
+                          <TableHead>{t('adminExtractedName')}</TableHead>
+                          <TableHead>{t('adminDocumentType')}</TableHead>
+                          <TableHead>{t('adminCountry')}</TableHead>
+                          <TableHead>{t('adminCreationDate')}</TableHead>
+                          <TableHead>{t('adminLastUpdate')}</TableHead>
+                          <TableHead>{t('adminStatus')}</TableHead>
+                          <TableHead>{t('adminActions')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -806,32 +822,32 @@ const AdminDocumentVerification = () => {
                                   {verif.first_name_extracted} {verif.last_name_extracted}
                                 </span>
                               ) : (
-                                <span className="text-muted-foreground text-xs">Non extrait</span>
+                                <span className="text-muted-foreground text-xs">{t('adminNotExtracted')}</span>
                               )}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline" className="text-xs">
-                                {verif.document_type || 'N/A'}
+                                {verif.document_type || t('adminNA')}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <span className="text-sm">{verif.document_country || 'N/A'}</span>
+                              <span className="text-sm">{verif.document_country || t('adminNA')}</span>
                             </TableCell>
                             <TableCell>
                               <div className="text-sm">
-                                {new Date(verif.created_at).toLocaleDateString('fr-FR')}
+                                {format(new Date(verif.created_at), 'dd/MM/yyyy', { locale: localeMap[language] })}
                                 <br />
                                 <span className="text-xs text-muted-foreground">
-                                  {new Date(verif.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                  {format(new Date(verif.created_at), 'HH:mm', { locale: localeMap[language] })}
                                 </span>
                               </div>
                             </TableCell>
                             <TableCell>
                               <div className="text-sm">
-                                {new Date(verif.updated_at).toLocaleDateString('fr-FR')}
+                                {format(new Date(verif.updated_at), 'dd/MM/yyyy', { locale: localeMap[language] })}
                                 <br />
                                 <span className="text-xs text-muted-foreground">
-                                  {new Date(verif.updated_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                  {format(new Date(verif.updated_at), 'HH:mm', { locale: localeMap[language] })}
                                 </span>
                               </div>
                             </TableCell>
@@ -845,7 +861,7 @@ const AdminDocumentVerification = () => {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => setSelectedIdentityDoc(verif)}
-                                    title="Voir le document"
+                                    title={t('adminViewDocument')}
                                   >
                                     <Eye className="w-4 h-4" />
                                   </Button>
@@ -857,11 +873,11 @@ const AdminDocumentVerification = () => {
                                     onClick={() => {
                                       console.log('Verification result:', verif.verification_result);
                                       toast({
-                                        title: "Résultat Veriff",
+                                        title: t('adminVeriffResult'),
                                         description: JSON.stringify(verif.verification_result, null, 2).slice(0, 200) + '...'
                                       });
                                     }}
-                                    title="Voir le résultat"
+                                    title={t('adminViewResult')}
                                   >
                                     <FileText className="w-4 h-4" />
                                   </Button>
@@ -871,7 +887,7 @@ const AdminDocumentVerification = () => {
                                   size="icon"
                                   onClick={() => handleManualIdentityVerification(verif, 'verified')}
                                   className="text-green-500 hover:text-green-600 hover:bg-green-500/10"
-                                  title="Approuver manuellement"
+                                  title={t('adminApproveManually')}
                                   disabled={isProcessing || verif.status === 'verified'}
                                 >
                                   <CheckCircle className="w-4 h-4" />
@@ -881,7 +897,7 @@ const AdminDocumentVerification = () => {
                                   size="icon"
                                   onClick={() => handleManualIdentityVerification(verif, 'rejected')}
                                   className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                  title="Rejeter manuellement"
+                                  title={t('adminRejectManually')}
                                   disabled={isProcessing || verif.status === 'rejected'}
                                 >
                                   <XCircle className="w-4 h-4" />
@@ -916,13 +932,13 @@ const AdminDocumentVerification = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
                     <div className="p-3 rounded-lg bg-blue-500/10">
                       <FileText className="h-6 w-6 text-blue-500" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{stats.total}</p>
-                      <p className="text-xs text-muted-foreground">Total documents</p>
+                      <p className="text-xs text-muted-foreground">{t('adminTotalDocuments')}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -935,7 +951,7 @@ const AdminDocumentVerification = () => {
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{stats.verified}</p>
-                      <p className="text-xs text-muted-foreground">Vérifiés</p>
+                      <p className="text-xs text-muted-foreground">{t('adminVerified')}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -948,7 +964,7 @@ const AdminDocumentVerification = () => {
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{stats.rejected}</p>
-                      <p className="text-xs text-muted-foreground">Rejetés</p>
+                      <p className="text-xs text-muted-foreground">{t('adminRejected')}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -961,7 +977,7 @@ const AdminDocumentVerification = () => {
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{stats.pending}</p>
-                      <p className="text-xs text-muted-foreground">En attente</p>
+                      <p className="text-xs text-muted-foreground">{t('adminPending')}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -975,7 +991,7 @@ const AdminDocumentVerification = () => {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder="Rechercher par nom de fichier ou utilisateur..."
+                      placeholder={t('adminSearchByFileNameOrUser')}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
@@ -984,15 +1000,15 @@ const AdminDocumentVerification = () => {
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-48">
                       <Filter className="w-4 h-4 mr-2" />
-                      <SelectValue placeholder="Filtrer par statut" />
+                      <SelectValue placeholder={t('adminFilterByStatus')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tous les statuts</SelectItem>
-                      <SelectItem value="not_verified">Non vérifiés</SelectItem>
-                      <SelectItem value="pending">En attente</SelectItem>
-                      <SelectItem value="verified">Vérifiés</SelectItem>
-                      <SelectItem value="rejected">Rejetés</SelectItem>
-                      <SelectItem value="review_needed">À revoir</SelectItem>
+                      <SelectItem value="all">{t('adminAllStatuses')}</SelectItem>
+                      <SelectItem value="not_verified">{t('adminNonVerified')}</SelectItem>
+                      <SelectItem value="pending">{t('adminPending')}</SelectItem>
+                      <SelectItem value="verified">{t('adminVerified')}</SelectItem>
+                      <SelectItem value="rejected">{t('adminRejected')}</SelectItem>
+                      <SelectItem value="review_needed">{t('adminReviewNeeded')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1002,9 +1018,9 @@ const AdminDocumentVerification = () => {
             {/* Documents Table */}
             <Card>
               <CardHeader>
-                <CardTitle>Documents à vérifier</CardTitle>
+                <CardTitle>{t('adminDocumentsToVerify')}</CardTitle>
                 <CardDescription>
-                  {filteredDocuments.length} document(s) trouvé(s)
+                  {filteredDocuments.length} {t('adminDocumentsFound')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1014,19 +1030,19 @@ const AdminDocumentVerification = () => {
                   </div>
                 ) : filteredDocuments.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
-                    Aucun document trouvé
+                    {t('adminNoDocumentFound')}
                   </p>
                 ) : (
                   <>
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Utilisateur</TableHead>
-                          <TableHead>Document</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Statut</TableHead>
-                          <TableHead>Actions</TableHead>
+                          <TableHead>{t('adminUser')}</TableHead>
+                          <TableHead>{t('adminDocument')}</TableHead>
+                          <TableHead>{t('adminType')}</TableHead>
+                          <TableHead>{t('adminDate')}</TableHead>
+                          <TableHead>{t('adminStatus')}</TableHead>
+                          <TableHead>{t('adminActions')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1053,11 +1069,11 @@ const AdminDocumentVerification = () => {
                               </TableCell>
                               <TableCell>
                                 <Badge variant="outline">
-                                  {doc.document_type === 'family_document' ? 'Document Famille' : 'Identité'}
+                                  {doc.document_type === 'family_document' ? t('adminFamilyDocument') : t('adminIdentity')}
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                {new Date(doc.created_at).toLocaleDateString('fr-FR')}
+                                {format(new Date(doc.created_at), 'dd/MM/yyyy', { locale: localeMap[language] })}
                               </TableCell>
                               <TableCell>
                                 {getStatusBadge(verification?.status || doc.verification_status)}
@@ -1068,7 +1084,7 @@ const AdminDocumentVerification = () => {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => handlePreviewDocument(doc)}
-                                    title="Visualiser"
+                                    title={t('adminPreview')}
                                   >
                                     <Eye className="w-4 h-4" />
                                   </Button>
@@ -1079,7 +1095,7 @@ const AdminDocumentVerification = () => {
                                         size="icon"
                                         onClick={() => handleRetryAIVerification(doc.id)}
                                         className="text-purple-500 hover:text-purple-600 hover:bg-purple-500/10"
-                                        title="Réessayer vérification IA"
+                                        title={t('adminRetryAIVerification')}
                                       >
                                         <RotateCcw className="w-4 h-4" />
                                       </Button>
@@ -1088,7 +1104,7 @@ const AdminDocumentVerification = () => {
                                         size="icon"
                                         onClick={() => handleDeleteDocument(doc.id)}
                                         className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                        title="Supprimer le document"
+                                        title={t('adminDeleteDocument')}
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </Button>
@@ -1101,7 +1117,7 @@ const AdminDocumentVerification = () => {
                                         size="icon"
                                         onClick={() => handleVerifyDocument(verification.id, 'verified')}
                                         className="text-green-500 hover:text-green-600"
-                                        title="Valider"
+                                        title={t('adminValidate')}
                                       >
                                         <CheckCircle className="w-4 h-4" />
                                       </Button>
@@ -1113,7 +1129,7 @@ const AdminDocumentVerification = () => {
                                           setShowRejectDialog(true);
                                         }}
                                         className="text-red-500 hover:text-red-600"
-                                        title="Rejeter"
+                                        title={t('adminReject')}
                                       >
                                         <XCircle className="w-4 h-4" />
                                       </Button>
@@ -1122,7 +1138,7 @@ const AdminDocumentVerification = () => {
                                         size="icon"
                                         onClick={() => handleVerifyDocument(verification.id, 'review_needed')}
                                         className="text-orange-500 hover:text-orange-600"
-                                        title="À revoir"
+                                        title={t('adminReviewNeeded')}
                                       >
                                         <AlertCircle className="w-4 h-4" />
                                       </Button>
@@ -1160,7 +1176,7 @@ const AdminDocumentVerification = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Fingerprint className="w-5 h-5 text-primary" />
-                Document d'identité - {selectedIdentityDoc?.user?.first_name} {selectedIdentityDoc?.user?.last_name}
+                {t('adminIdentityDocument')} - {selectedIdentityDoc?.user?.first_name} {selectedIdentityDoc?.user?.last_name}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -1186,13 +1202,13 @@ const AdminDocumentVerification = () => {
               {/* Extracted info */}
               {(selectedIdentityDoc?.first_name_extracted || selectedIdentityDoc?.last_name_extracted) && (
                 <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <p className="font-medium text-green-500 mb-2">Informations extraites du document</p>
+                  <p className="font-medium text-green-500 mb-2">{t('adminExtractedInfo')}</p>
                   <p className="text-sm">
-                    Nom: {selectedIdentityDoc.first_name_extracted} {selectedIdentityDoc.last_name_extracted}
+                    {t('adminName')}: {selectedIdentityDoc.first_name_extracted} {selectedIdentityDoc.last_name_extracted}
                   </p>
                   {selectedIdentityDoc.document_type && (
                     <p className="text-sm text-muted-foreground">
-                      Type: {selectedIdentityDoc.document_type} 
+                      {t('adminType')}: {selectedIdentityDoc.document_type} 
                       {selectedIdentityDoc.document_country && ` (${selectedIdentityDoc.document_country})`}
                     </p>
                   )}
@@ -1208,24 +1224,24 @@ const AdminDocumentVerification = () => {
             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
               <p className="font-medium mb-3 flex items-center gap-2">
                 <Fingerprint className="w-4 h-4 text-primary" />
-                Informations Session Veriff
+                {t('adminVeriffSessionInfo')}
               </p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {veriffInfo.sessionId && (
                   <>
-                    <span className="text-muted-foreground">Session ID:</span>
+                    <span className="text-muted-foreground">{t('adminSessionId')}:</span>
                     <span className="font-mono text-xs break-all">{veriffInfo.sessionId}</span>
                   </>
                 )}
                 {veriffInfo.status && (
                   <>
-                    <span className="text-muted-foreground">Statut Veriff:</span>
+                    <span className="text-muted-foreground">{t('adminVeriffStatus')}:</span>
                     <span className="capitalize">{veriffInfo.status}</span>
                   </>
                 )}
                 {veriffInfo.code && (
                   <>
-                    <span className="text-muted-foreground">Code décision:</span>
+                    <span className="text-muted-foreground">{t('adminDecisionCode')}:</span>
                     <span className={getVeriffCodeLabel(veriffInfo.code)?.color}>
                       {veriffInfo.code} - {getVeriffCodeLabel(veriffInfo.code)?.label}
                     </span>
@@ -1233,20 +1249,20 @@ const AdminDocumentVerification = () => {
                 )}
                 {veriffInfo.reason && (
                   <>
-                    <span className="text-muted-foreground">Raison:</span>
+                    <span className="text-muted-foreground">{t('adminReason')}:</span>
                     <span className="text-orange-500">{veriffInfo.reason}</span>
                   </>
                 )}
                 {veriffInfo.decisionTime && (
                   <>
-                    <span className="text-muted-foreground">Décision:</span>
-                    <span>{new Date(veriffInfo.decisionTime).toLocaleString('fr-FR')}</span>
+                    <span className="text-muted-foreground">{t('adminDecision')}:</span>
+                    <span>{format(new Date(veriffInfo.decisionTime), 'dd/MM/yyyy HH:mm', { locale: localeMap[language] })}</span>
                   </>
                 )}
                 {veriffInfo.submittedAt && (
                   <>
-                    <span className="text-muted-foreground">Soumis:</span>
-                    <span>{new Date(veriffInfo.submittedAt).toLocaleString('fr-FR')}</span>
+                    <span className="text-muted-foreground">{t('adminSubmitted')}:</span>
+                    <span>{format(new Date(veriffInfo.submittedAt), 'dd/MM/yyyy HH:mm', { locale: localeMap[language] })}</span>
                   </>
                 )}
               </div>
@@ -1259,7 +1275,7 @@ const AdminDocumentVerification = () => {
           <div className="flex-1 overflow-auto border rounded-lg">
             <img 
               src={selectedIdentityDoc.document_url} 
-              alt="Document d'identité"
+              alt={t('adminIdentityDocumentAlt')}
               className="max-w-full h-auto mx-auto"
             />
           </div>
@@ -1268,7 +1284,7 @@ const AdminDocumentVerification = () => {
         {/* Person data from Veriff */}
         {selectedIdentityDoc?.verification_result?.veriff_decision?.verification?.person && (
           <div className="p-4 rounded-lg bg-green-500/5 border border-green-500/20">
-            <p className="font-medium mb-2 text-green-500">Données extraites par Veriff</p>
+            <p className="font-medium mb-2 text-green-500">{t('adminVeriffExtractedData')}</p>
             <div className="grid grid-cols-2 gap-2 text-sm">
               {Object.entries(selectedIdentityDoc.verification_result.veriff_decision.verification.person).map(([key, value]) => (
                 <React.Fragment key={key}>
@@ -1283,7 +1299,7 @@ const AdminDocumentVerification = () => {
         {/* Document data from Veriff */}
         {selectedIdentityDoc?.verification_result?.veriff_decision?.verification?.document && (
           <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
-            <p className="font-medium mb-2 text-blue-500">Données du document</p>
+            <p className="font-medium mb-2 text-blue-500">{t('adminDocumentData')}</p>
             <div className="grid grid-cols-2 gap-2 text-sm">
               {Object.entries(selectedIdentityDoc.verification_result.veriff_decision.verification.document).map(([key, value]) => (
                 <React.Fragment key={key}>
@@ -1298,7 +1314,7 @@ const AdminDocumentVerification = () => {
         {/* Raw verification result (collapsible) */}
         {selectedIdentityDoc?.verification_result && (
           <details className="p-4 rounded-lg bg-muted/50">
-            <summary className="font-medium cursor-pointer mb-2">Données brutes Veriff (JSON)</summary>
+            <summary className="font-medium cursor-pointer mb-2">{t('adminRawVeriffData')}</summary>
             <pre className="text-xs overflow-auto max-h-60 p-2 bg-background rounded">
               {JSON.stringify(selectedIdentityDoc.verification_result, null, 2)}
             </pre>
@@ -1330,13 +1346,13 @@ const AdminDocumentVerification = () => {
               ) : (
                 <div className="text-center py-8">
                   <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <p>Aperçu non disponible pour ce type de fichier</p>
+                  <p>{t('adminPreviewNotAvailable')}</p>
                   <Button 
                     variant="outline" 
                     className="mt-4"
                     onClick={() => window.open(previewUrl || '', '_blank')}
                   >
-                    Télécharger
+                    {t('adminDownload')}
                   </Button>
                 </div>
               )}
@@ -1348,14 +1364,14 @@ const AdminDocumentVerification = () => {
         <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Rejeter le document</DialogTitle>
+              <DialogTitle>{t('adminRejectDocument')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Veuillez indiquer la raison du rejet. Cette information sera envoyée à l'utilisateur.
+                {t('adminRejectReason')}
               </p>
               <Textarea
-                placeholder="Raison du rejet..."
+                placeholder={t('adminRejectReasonPlaceholder')}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 rows={4}
@@ -1363,14 +1379,14 @@ const AdminDocumentVerification = () => {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-                Annuler
+                {t('adminCancel')}
               </Button>
               <Button 
                 variant="destructive"
                 onClick={() => docToReject && handleVerifyDocument(docToReject, 'rejected')}
                 disabled={!rejectionReason.trim()}
               >
-                Confirmer le rejet
+                {t('adminConfirmReject')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1382,13 +1398,13 @@ const AdminDocumentVerification = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-purple-500" />
-                Résultats de la vérification IA
+                {t('adminAIVerificationResults')}
               </DialogTitle>
             </DialogHeader>
             <div className="overflow-y-auto max-h-[60vh]">
               {aiResults.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  Aucun résultat à afficher
+                  {t('adminNoResultToDisplay')}
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -1412,13 +1428,13 @@ const AdminDocumentVerification = () => {
                               result.status === 'suspicious' ? 'bg-orange-500/20 text-orange-500' :
                               'bg-muted text-muted-foreground'
                             }>
-                              {result.status === 'valid' ? 'Valide' :
-                               result.status === 'invalid' ? 'Invalide' :
-                               result.status === 'suspicious' ? 'Suspect' : 'Erreur'}
+                              {result.status === 'valid' ? t('adminValid') :
+                               result.status === 'invalid' ? t('adminInvalid') :
+                               result.status === 'suspicious' ? t('adminSuspicious') : t('adminError')}
                             </Badge>
                             {result.confidence && (
                               <span className="text-xs text-muted-foreground">
-                                ({result.confidence}% confiance)
+                                ({result.confidence}% {t('adminConfidence')})
                               </span>
                             )}
                           </div>
@@ -1434,7 +1450,7 @@ const AdminDocumentVerification = () => {
                             size="icon"
                             onClick={() => handleRetryAIVerification(result.documentId)}
                             className="text-purple-500 hover:text-purple-600"
-                            title="Réessayer"
+                            title={t('adminRetry')}
                           >
                             <RotateCcw className="w-4 h-4" />
                           </Button>
@@ -1444,7 +1460,7 @@ const AdminDocumentVerification = () => {
                               size="icon"
                               onClick={() => handleDeleteDocument(result.documentId)}
                               className="text-red-500 hover:text-red-600"
-                              title="Supprimer"
+                              title={t('adminDelete')}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -1458,7 +1474,7 @@ const AdminDocumentVerification = () => {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowAIResultsDialog(false)}>
-                Fermer
+                {t('adminClose')}
               </Button>
             </DialogFooter>
           </DialogContent>

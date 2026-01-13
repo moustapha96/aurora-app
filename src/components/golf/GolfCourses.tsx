@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Edit2, Trash2, MapPin, Star, Loader2, Flag, Sparkles, FileText } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { GolfCourse } from './GolfProfileModule';
 import {
   Dialog,
@@ -25,6 +26,7 @@ interface GolfCoursesProps {
 }
 
 const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, onUpdate }) => {
+  const { t } = useLanguage();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -76,7 +78,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
 
   const handleAIGenerate = async () => {
     if (!formData.course_name) {
-      toast.error("Veuillez d'abord saisir un nom de parcours");
+      toast.error(t('golfCoursePleaseEnterName'));
       return;
     }
     setIsGenerating(true);
@@ -87,10 +89,10 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
       if (error) throw error;
       if (data?.suggestion) {
         setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success("Suggestion générée");
+        toast.success(t('poloAchievementSuggestionGenerated'));
       }
     } catch {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('poloAchievementGenerationError'));
     } finally {
       setIsGenerating(false);
     }
@@ -102,14 +104,14 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
 
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error("Fichier trop volumineux (max 10MB)");
+      toast.error(t('poloHorseFileTooLarge'));
       return;
     }
 
     setIsImportingDoc(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       const fileExt = file.name.split('.').pop();
       const fileName = `golf-course-${user.id}-${Date.now()}.${fileExt}`;
@@ -120,10 +122,10 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
-      toast.success("Document importé avec succès");
+      toast.success(t('poloHorseDocumentImported'));
     } catch (error) {
       console.error(error);
-      toast.error("Erreur lors de l'import du document");
+      toast.error(t('poloHorseImportError'));
     } finally {
       setIsImportingDoc(false);
       if (docInputRef.current) docInputRef.current.value = '';
@@ -132,7 +134,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
 
   const handleSubmit = async () => {
     if (!formData.course_name?.trim()) {
-      toast.error('Le nom du parcours est requis');
+      toast.error(t('golfCourseNameRequired'));
       return;
     }
 
@@ -144,7 +146,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
           .update(formData)
           .eq('id', editingCourse.id);
         if (error) throw error;
-        toast.success('Parcours mis à jour');
+        toast.success(t('golfCourseUpdated'));
       } else {
         const { error } = await supabase
           .from('golf_courses')
@@ -162,21 +164,21 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
             display_order: courses.length,
           }]);
         if (error) throw error;
-        toast.success('Parcours ajouté');
+        toast.success(t('golfCourseAdded'));
       }
       onUpdate();
       setDialogOpen(false);
       resetForm();
     } catch (error) {
       console.error('Error saving course:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(t('poloErrorSaving'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer ce parcours ?')) return;
+    if (!confirm(t('golfCourseDeleteConfirm'))) return;
     
     try {
       const { error } = await supabase
@@ -184,11 +186,11 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
         .delete()
         .eq('id', id);
       if (error) throw error;
-      toast.success('Parcours supprimé');
+      toast.success(t('golfCourseDeleted'));
       onUpdate();
     } catch (error) {
       console.error('Error deleting course:', error);
-      toast.error('Erreur lors de la suppression');
+      toast.error(t('golfCourseDeleteError'));
     }
   };
 
@@ -209,7 +211,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Flag className="h-5 w-5" />
-          🏌️ MES PARCOURS FAVORIS
+          🏌️ {t('golfCourseMyFavoriteCourses')}
         </h3>
         {isEditable && (
           <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -219,21 +221,21 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Plus className="h-4 w-4" />
-                Ajouter
+                {t('add')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
-                  {editingCourse ? 'Modifier le parcours' : 'Ajouter un parcours'}
+                  {editingCourse ? t('golfCourseEditCourse') : t('golfCourseAddCourse')}
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="course-name">Nom du parcours *</Label>
+                  <Label htmlFor="course-name">{t('golfCourseName')} *</Label>
                   <Input
                     id="course-name"
-                    placeholder="Ex: Golf National, Augusta..."
+                    placeholder={t('golfCourseNamePlaceholder')}
                     value={formData.course_name || ''}
                     onChange={(e) => setFormData({ ...formData, course_name: e.target.value })}
                   />
@@ -241,19 +243,19 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="course-location">Lieu</Label>
+                    <Label htmlFor="course-location">{t('golfCourseLocation')}</Label>
                     <Input
                       id="course-location"
-                      placeholder="Ville"
+                      placeholder={t('golfCourseCityPlaceholder')}
                       value={formData.location || ''}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="course-country">Pays</Label>
+                    <Label htmlFor="course-country">{t('golfCourseCountry')}</Label>
                     <Input
                       id="course-country"
-                      placeholder="Pays"
+                      placeholder={t('golfCourseCountryPlaceholder')}
                       value={formData.country || ''}
                       onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                     />
@@ -262,7 +264,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="course-par">Par</Label>
+                    <Label htmlFor="course-par">{t('golfCoursePar')}</Label>
                     <Input
                       id="course-par"
                       type="number"
@@ -272,7 +274,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="course-best">Meilleur score</Label>
+                    <Label htmlFor="course-best">{t('golfCourseBestScore')}</Label>
                     <Input
                       id="course-best"
                       type="number"
@@ -282,7 +284,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="course-times">Parties jouées</Label>
+                    <Label htmlFor="course-times">{t('golfCourseTimesPlayed')}</Label>
                     <Input
                       id="course-times"
                       type="number"
@@ -294,20 +296,20 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="course-rating">Note personnelle</Label>
+                  <Label htmlFor="course-rating">{t('golfCoursePersonalRating')}</Label>
                   <Input
                     id="course-rating"
-                    placeholder="⭐⭐⭐⭐⭐ ou 9/10"
+                    placeholder={t('golfCourseRatingPlaceholder')}
                     value={formData.rating || ''}
                     onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="course-description">Description / Souvenirs</Label>
+                  <Label htmlFor="course-description">{t('golfCourseDescriptionMemories')}</Label>
                   <Textarea
                     id="course-description"
-                    placeholder="Vos impressions, moments mémorables..."
+                    placeholder={t('golfCourseDescriptionPlaceholder')}
                     value={formData.description || ''}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
@@ -320,7 +322,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
                     checked={formData.is_favorite || false}
                     onCheckedChange={(checked) => setFormData({ ...formData, is_favorite: checked })}
                   />
-                  <Label htmlFor="course-favorite">Parcours favori</Label>
+                  <Label htmlFor="course-favorite">{t('golfCourseFavorite')}</Label>
                 </div>
 
                 {/* IA Aurora + Import buttons */}
@@ -333,7 +335,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
                     className="border-primary/30 text-primary hover:bg-primary/10"
                   >
                     {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
-                    IA Aurora
+                    {t('aiAurora')}
                   </Button>
                   <Button
                     variant="outline"
@@ -343,7 +345,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
                     className="border-primary/30 text-primary hover:bg-primary/10"
                   >
                     {isImportingDoc ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />}
-                    Importer
+                    {t('import')}
                   </Button>
                 </div>
 
@@ -353,7 +355,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
                   className="w-full"
                 >
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {editingCourse ? 'Mettre à jour' : 'Ajouter'}
+                  {editingCourse ? t('update') : t('add')}
                 </Button>
               </div>
             </DialogContent>
@@ -364,9 +366,9 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
       {courses.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-lg">
           <Flag className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>Aucun parcours enregistré</p>
+          <p>{t('golfCourseNoCourses')}</p>
           {isEditable && (
-            <p className="text-sm mt-2">Ajoutez vos parcours favoris</p>
+            <p className="text-sm mt-2">{t('golfCourseAddYourFavoriteCourses')}</p>
           )}
         </div>
       ) : (
@@ -374,7 +376,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
           {favoriteCourses.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Star className="h-4 w-4 text-primary" /> Favoris
+                <Star className="h-4 w-4 text-primary" /> {t('golfCourseFavorites')}
               </p>
               <div className="grid gap-3">
                 {favoriteCourses.map((course) => (
@@ -394,16 +396,16 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
                           )}
                           <div className="flex flex-wrap gap-4 mt-2 text-sm">
                             {course.par && (
-                              <span className="text-muted-foreground">Par {course.par}</span>
+                              <span className="text-muted-foreground">{t('golfCoursePar')} {course.par}</span>
                             )}
                             {course.best_score && (
                               <span className="text-primary font-medium">
-                                Meilleur: {course.best_score}
+                                {t('golfCourseBest')}: {course.best_score}
                               </span>
                             )}
                             {course.times_played && (
                               <span className="text-muted-foreground">
-                                {course.times_played} parties
+                                {course.times_played} {t('golfCourseGames')}
                               </span>
                             )}
                             {course.rating && (
@@ -445,7 +447,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
           {otherCourses.length > 0 && (
             <div className="space-y-3">
               {favoriteCourses.length > 0 && (
-                <p className="text-sm text-muted-foreground">Autres parcours</p>
+                <p className="text-sm text-muted-foreground">{t('golfCourseOtherCourses')}</p>
               )}
               <div className="grid gap-3">
                 {otherCourses.map((course) => (

@@ -12,7 +12,7 @@ import {
   PersonalPhilosophie,
   PersonalProjets
 } from "@/components/personal";
-import { PageNavigation } from "@/components/BackButton";
+import { PageHeaderBackButton } from "@/components/BackButton";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const Personal = () => {
@@ -131,11 +131,14 @@ const Personal = () => {
   return (
     <>
       <Header />
-      <PageNavigation to={id ? `/profile/${id}` : "/profile"} />
-      <div className="min-h-screen bg-background pt-32 sm:pt-36 safe-area-all">
+      <div className="min-h-screen bg-background pt-20 sm:pt-24 safe-area-all">
         <div className="border-b border-border p-4 sm:p-6 bg-card">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-2xl sm:text-4xl font-serif text-primary mb-2">{t('passions')}</h1>
+            <div className="flex items-center mb-2">
+              {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
+              <PageHeaderBackButton to={"/member-card"} />
+              <h1 className="text-2xl sm:text-4xl font-serif text-primary">{t('passions')}</h1>
+            </div>
             <p className="text-muted-foreground text-sm sm:text-base">{t('shareWhatMatters')}</p>
             <p className="text-muted-foreground/70 text-xs sm:text-sm mt-1 hidden sm:block">{t('passionsDescription')}</p>
           </div>

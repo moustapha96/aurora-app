@@ -19,7 +19,8 @@ import {
   Loader2,
   AlertTriangle,
   Trash2,
-  Plus
+  Plus,
+  Mail
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/Header";
@@ -27,6 +28,7 @@ import { PageNavigation } from "@/components/BackButton";
 import { usePlatformContext } from "@/contexts/PlatformContext";
 import { useWebAuthn } from "@/hooks/useWebAuthn";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
+import { TwoFactorVerification } from "@/components/TwoFactorVerification";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -98,6 +100,100 @@ const SecuritySettingsContent: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [enablingNative, setEnablingNative] = useState(false);
+  
+  // 2FA state
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [pending2FAActivation, setPending2FAActivation] = useState(false);
+
+  // Load 2FA status
+  useEffect(() => {
+    const load2FAStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        setUserEmail(user.email || null);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('two_factor_enabled')
+          .eq('id', user.id)
+          .single();
+        setTwoFactorEnabled(profile?.two_factor_enabled || false);
+      }
+    };
+    load2FAStatus();
+  }, []);
+
+  // Handle 2FA toggle - if enabling, require verification first
+  const handleToggle2FA = async (enabled: boolean) => {
+    if (!userId || !userEmail) return;
+    
+    if (enabled) {
+      // Start 2FA activation flow - send test code
+      setPending2FAActivation(true);
+    } else {
+      // Disable 2FA directly
+      setTwoFactorLoading(true);
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ two_factor_enabled: false })
+          .eq('id', userId);
+
+        if (error) throw error;
+
+        setTwoFactorEnabled(false);
+        toast({
+          title: t('twoFactorDisabledTitle'),
+          description: t('twoFactorDisabledDesc'),
+        });
+      } catch (error: any) {
+        console.error('Error disabling 2FA:', error);
+        toast({
+          title: t('errorTitle'),
+          description: t('twoFactorToggleError'),
+          variant: "destructive",
+        });
+      } finally {
+        setTwoFactorLoading(false);
+      }
+    }
+  };
+
+  // Called when 2FA verification succeeds during activation
+  const handle2FAVerified = async () => {
+    if (!userId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ two_factor_enabled: true })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setTwoFactorEnabled(true);
+      setPending2FAActivation(false);
+      toast({
+        title: t('twoFactorEnabledTitle'),
+        description: t('twoFactorEnabledDesc'),
+      });
+    } catch (error: any) {
+      console.error('Error enabling 2FA:', error);
+      toast({
+        title: t('errorTitle'),
+        description: t('twoFactorToggleError'),
+        variant: "destructive",
+      });
+      setPending2FAActivation(false);
+    }
+  };
+
+  const handle2FACancel = () => {
+    setPending2FAActivation(false);
+  };
 
   const detectDevice = (): DeviceInfo => {
     const ua = navigator.userAgent.toLowerCase();
@@ -357,6 +453,73 @@ const SecuritySettingsContent: React.FC = () => {
                     {t('biometricType')}: {nativeBiometryType === 'face' ? t('biometricFaceID') : nativeBiometryType === 'fingerprint' ? t('biometricFingerprint') : t('biometricNone')}
                   </p>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Two-Factor Authentication by Email */}
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg">
+                <Mail className="w-5 h-5 text-primary shrink-0" />
+                <span>{t('twoFactorAuthTitle')}</span>
+                {twoFactorEnabled && (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
+                    {t('webAuthEnabled')}
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                {t('twoFactorAuthDescription')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
+              {pending2FAActivation && userId && userEmail ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-primary/10 rounded-lg">
+                    <p className="text-sm font-medium text-primary mb-2">
+                      {t('twoFactorVerifyToEnable')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('twoFactorVerifyToEnableDesc')}
+                    </p>
+                  </div>
+                  <TwoFactorVerification
+                    userId={userId}
+                    email={userEmail}
+                    onVerified={handle2FAVerified}
+                    onCancel={handle2FACancel}
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {twoFactorEnabled ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="font-medium text-sm sm:text-base">
+                          {twoFactorEnabled ? t('twoFactorEnabledStatus') : t('twoFactorDisabledStatus')}
+                        </p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          {t('twoFactorEmailMethod')}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={twoFactorEnabled}
+                      onCheckedChange={handleToggle2FA}
+                      disabled={twoFactorLoading}
+                    />
+                  </div>
+                  
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {t('twoFactorExplanation')}
+                  </p>
+                </>
               )}
             </CardContent>
           </Card>

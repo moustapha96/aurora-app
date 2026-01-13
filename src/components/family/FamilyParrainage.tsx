@@ -47,7 +47,7 @@ interface FamilyParrainageProps {
 }
 
 export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: FamilyParrainageProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [referredMembers, setReferredMembers] = useState<ReferredMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,11 +127,15 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
       // Pour chaque referral, charger le profil du membre parrainé
       const transformed = await Promise.all(
         (referralsData || []).map(async (ref: any) => {
-          const { data: refProfile } = await supabase
+          const { data: refProfile, error: profileError } = await supabase
             .from('profiles')
             .select('id, first_name, last_name, avatar_url, created_at')
             .eq('id', ref.referred_id)
-            .single();
+            .maybeSingle();
+
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('Error loading profile:', profileError);
+          }
 
           return {
             id: ref.id,
@@ -531,7 +535,12 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
-    return new Date(dateString).toLocaleDateString("fr-FR", {
+    const localeMap: Record<string, string> = {
+      'fr': 'fr-FR', 'en': 'en-US', 'es': 'es-ES', 'de': 'de-DE', 
+      'it': 'it-IT', 'pt': 'pt-BR', 'ar': 'ar-SA', 'zh': 'zh-CN', 
+      'ja': 'ja-JP', 'ru': 'ru-RU'
+    };
+    return new Date(dateString).toLocaleDateString(localeMap[language] || 'fr-FR', {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -564,7 +573,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
 
   return (
     <div className="space-y-6">
-      {/* Statistiques */}
+      {/* Statistiques - Full Width */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-gradient-to-br from-gold/10 to-transparent border-gold/20">
           <CardContent className="pt-6">
@@ -609,89 +618,94 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
         </Card>
       </div>
 
-      {/* Code de parrainage */}
-      {referralCode && (
-        <Card className="bg-gradient-to-br from-gold/5 to-transparent border-gold/20">
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">{t('yourShareableReferralCode')}</p>
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-background/50 border border-gold/20">
-                  <p className="text-xl font-mono font-bold text-gold flex-1">{referralCode}</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={copyToClipboard}
-                    className="h-8 w-8 p-0 border-gold/30 text-gold hover:bg-gold/10"
-                  >
-                    {copied ? (
-                      <Check className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+
+        {/* Colonne gauche : Code de parrainage et Liens */}
+        <div className="space-y-4 sm:space-y-6">
+          {/* Code de parrainage */}
+          {referralCode && (
+            <Card className="bg-gradient-to-br from-gold/5 to-transparent border-gold/20">
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">{t('yourShareableReferralCode')}</p>
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-background/50 border border-gold/20">
+                      <p className="text-lg sm:text-xl font-mono font-bold text-gold flex-1 break-all">{referralCode}</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={copyToClipboard}
+                        className="h-8 w-8 p-0 border-gold/30 text-gold hover:bg-gold/10 flex-shrink-0"
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={copyToClipboard}
+                      className="flex-1 border-gold/30 text-gold hover:bg-gold/10"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          {t('copied')}
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">{t('copyCode')}</span>
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={shareReferralLink}
+                      className="flex-1 bg-gold hover:bg-gold/90 text-primary-foreground h-9 sm:h-10 px-2 sm:px-4"
+                    >
+                      <Share2 className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">{t('share')}</span>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t('shareCodeHint')}
+                  </p>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copyToClipboard}
-                  className="flex-1 border-gold/30 text-gold hover:bg-gold/10"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      {t('copied')}
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">{t('copyCode')}</span>
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={shareReferralLink}
-                  className="flex-1 bg-gold hover:bg-gold/90 text-primary-foreground h-9 sm:h-10 px-2 sm:px-4"
-                >
-                  <Share2 className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">{t('share')}</span>
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t('shareCodeHint')}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Bouton ajouter */}
+          {isEditable && remaining > 0 && (
+            <Button
+              onClick={() => setNewDialogOpen(true)}
+              variant="outline"
+              size="sm"
+              className="w-full border-gold/30 text-gold hover:bg-gold/10"
+            >
+              <Plus className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">{t('sponsorNewMember')}</span>
+            </Button>
+          )}
+
+          {isEditable && remaining === 0 && (
+            <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+              <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                {t('limitReached').replace('{maxReferrals}', maxReferrals.toString())}
               </p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      {/* Bouton ajouter */}
-      {isEditable && remaining > 0 && (
-        <Button
-          onClick={() => setNewDialogOpen(true)}
-          variant="outline"
-          size="sm"
-          className="border-gold/30 text-gold hover:bg-gold/10"
-        >
-          <Plus className="w-4 h-4 sm:mr-2" />
-          <span className="hidden sm:inline">{t('sponsorNewMember')}</span>
-        </Button>
-      )}
-
-      {isEditable && remaining === 0 && (
-        <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-          <p className="text-sm text-yellow-600 dark:text-yellow-400">
-            {t('limitReached').replace('{maxReferrals}', maxReferrals.toString())}
-          </p>
-        </div>
-      )}
-
-      {/* Section Liens de Partage */}
-      <div className="space-y-4">
+          {/* Section Liens de Partage */}
+          <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -833,10 +847,12 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               {t('referralLinksLimitReached').replace('{maxReferralLinks}', maxReferralLinks.toString())}
             </p>
           </div>
-        )}
-      </div>
+          )}
+          </div>
+        </div>
 
-      {/* Liste des membres parrainés */}
+        {/* Colonne droite : Liste des membres parrainés */}
+        <div className="space-y-4 sm:space-y-6">
       {referredMembers.length === 0 ? (
         <div className="text-center py-8">
           <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -878,8 +894,10 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               </CardContent>
             </Card>
           ))}
+          </div>
+        )}
         </div>
-      )}
+      </div>
 
       {/* Dialog pour ajouter un parrainage */}
       <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
@@ -1026,3 +1044,4 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
     </div>
   );
 };
+

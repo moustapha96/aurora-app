@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface InfluenceItem {
   id: string;
@@ -28,6 +29,7 @@ interface NetworkInfluenceProps {
 type CategoryType = 'metric' | 'clubs' | 'associations';
 
 export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenceProps) => {
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InfluenceItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -222,7 +224,7 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Plus className="w-3 h-3" />
-                <span>Ajouter</span>
+                <span>{t('add')}</span>
               </button>
             )}
           </div>
@@ -232,11 +234,11 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
   };
 
   return (
-    <NetworkModule title="Influence & Communautés" icon={TrendingUp} moduleType="influence" isEditable={isEditable}>
+    <NetworkModule title={t('influenceCommunities')} icon={TrendingUp} moduleType="influence" isEditable={isEditable}>
       <div className="space-y-2">
-        {renderCategorySection('metric', "Métrique d'influence")}
-        {renderCategorySection('clubs', 'Clubs membres')}
-        {renderCategorySection('associations', 'Associations')}
+        {renderCategorySection('metric', t('influenceMetric'))}
+        {renderCategorySection('clubs', t('memberClubs'))}
+        {renderCategorySection('associations', t('associations'))}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

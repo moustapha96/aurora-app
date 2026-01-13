@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendEmail, getSmtpConfig, validateSmtpConfig } from "../_shared/smtp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +12,6 @@ interface TestEmailRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -28,83 +26,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create Supabase client to fetch settings
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const smtpConfig = await getSmtpConfig();
+    const validation = validateSmtpConfig(smtpConfig);
 
-    // Fetch email configuration from admin_settings
-    const { data: settings, error: settingsError } = await supabase
-      .from("admin_settings")
-      .select("setting_key, setting_value")
-      .in("setting_key", [
-        "email_mode",
-        "smtp_host",
-        "smtp_port",
-        "smtp_user",
-        "smtp_password",
-        "sender_email",
-        "sender_name"
-      ]);
-
-    if (settingsError) {
-      console.error("Error fetching settings:", settingsError);
+    if (!validation.valid) {
       return new Response(
-        JSON.stringify({ error: "Erreur lors de la récupération des paramètres" }),
+        JSON.stringify({ 
+          error: "SMTP non configuré",
+          details: validation.error
+        }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
-    }
-
-    const configMap = (settings || []).reduce((acc, item) => {
-      acc[item.setting_key] = item.setting_value;
-      return acc;
-    }, {} as Record<string, string | null>);
-
-    const emailMode = configMap["email_mode"] || "test";
-    
-    let smtpHost: string;
-    let smtpPort: number;
-    let smtpUser: string;
-    let smtpPassword: string;
-    let senderEmail: string;
-    let senderName: string;
-
-    if (emailMode === "production") {
-      // Use custom SMTP configuration
-      smtpHost = configMap["smtp_host"] || "";
-      smtpPort = parseInt(configMap["smtp_port"] || "587", 10);
-      smtpUser = configMap["smtp_user"] || "";
-      smtpPassword = configMap["smtp_password"] || "";
-      senderEmail = configMap["sender_email"] || "";
-      senderName = configMap["sender_name"] || "Aurora Society";
-
-      if (!smtpHost || !smtpUser || !smtpPassword || !senderEmail) {
-        return new Response(
-          JSON.stringify({ 
-            error: "Configuration SMTP production incomplète",
-            details: "Veuillez configurer tous les champs SMTP en mode production"
-          }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
-    } else {
-      // Use default Infomaniak SMTP (test mode)
-      smtpHost = "mail.infomaniak.com";
-      smtpPort = 587;
-      smtpUser = Deno.env.get("SMTP_USER") || "";
-      smtpPassword = Deno.env.get("SMTP_PASSWORD") || "";
-      senderEmail = smtpUser;
-      senderName = "Aurora Society";
-
-      if (!smtpUser || !smtpPassword) {
-        return new Response(
-          JSON.stringify({ 
-            error: "Credentials SMTP non configurés",
-            details: "Les variables SMTP_USER et SMTP_PASSWORD ne sont pas définies"
-          }),
-          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
     }
 
     const htmlContent = `
@@ -140,10 +72,9 @@ const handler = async (req: Request): Promise<Response> => {
             <div class="info-box">
               <div class="info-title">✓ Configuration validée</div>
               <div class="info-text">
-                <strong>Mode:</strong> ${emailMode === "production" ? "Production" : "Test (Infomaniak)"}<br>
-                <strong>Serveur SMTP:</strong> ${smtpHost}<br>
-                <strong>Port:</strong> ${smtpPort}<br>
-                <strong>Expéditeur:</strong> ${senderName} &lt;${senderEmail}&gt;<br>
+                <strong>Serveur SMTP:</strong> ${smtpConfig.host}<br>
+                <strong>Port:</strong> ${smtpConfig.port}<br>
+                <strong>Expéditeur:</strong> ${smtpConfig.fromName} &lt;${smtpConfig.fromEmail}&gt;<br>
                 <strong>Date:</strong> ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}
               </div>
             </div>
@@ -153,38 +84,30 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           <div class="footer">
             <p>© ${new Date().getFullYear()} Aurora Society. Tous droits réservés.</p>
-            <p>Email de test envoyé depuis le panneau d'administration.</p>
           </div>
         </div>
       </body>
       </html>
     `;
 
-    console.log(`Testing email with config: mode=${emailMode}, host=${smtpHost}, port=${smtpPort}, user=${smtpUser}`);
+    console.log(`Testing email with config: host=${smtpConfig.host}, port=${smtpConfig.port}, user=${smtpConfig.user.substring(0, 3)}***`);
 
-    // Create SMTP client
-    const client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: true,
-        auth: {
-          username: smtpUser,
-          password: smtpPassword,
-        },
-      },
-    });
-
-    // Send the test email
-    await client.send({
-      from: `${senderName} <${senderEmail}>`,
+    const emailResult = await sendEmail({
       to: recipientEmail,
-      subject: `🧪 Test Email - Aurora Society (${emailMode === "production" ? "Production" : "Test"})`,
-      content: "auto",
+      subject: `🧪 Test Email - Aurora Society`,
       html: htmlContent,
+      config: smtpConfig
     });
 
-    await client.close();
+    if (!emailResult.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: emailResult.error,
+          details: "Vérifiez les paramètres SMTP (host, port, credentials)"
+        }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     console.log(`Test email sent successfully to ${recipientEmail}`);
 
@@ -193,28 +116,21 @@ const handler = async (req: Request): Promise<Response> => {
         success: true, 
         message: `Email de test envoyé à ${recipientEmail}`,
         config: {
-          mode: emailMode,
-          host: smtpHost,
-          port: smtpPort,
-          sender: `${senderName} <${senderEmail}>`
+          host: smtpConfig.host,
+          port: smtpConfig.port,
+          sender: `${smtpConfig.fromName} <${smtpConfig.fromEmail}>`
         }
       }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
     console.error("Error in test-email function:", error);
     return new Response(
       JSON.stringify({ 
         error: error.message,
-        details: "Vérifiez les paramètres SMTP (host, port, credentials)"
+        details: "Vérifiez les paramètres SMTP"
       }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 };

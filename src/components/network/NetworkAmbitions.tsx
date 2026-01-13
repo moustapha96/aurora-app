@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface AmbitionItem {
   id: string;
@@ -33,6 +34,7 @@ const CATEGORY_LABELS: Record<CategoryType, string> = {
 };
 
 export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbitionsProps) => {
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AmbitionItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -69,10 +71,10 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
       if (error) throw error;
       if (data?.suggestion) {
         setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success("Suggestion générée");
+        toast.success(t('poloAchievementSuggestionGenerated'));
       }
     } catch (error) {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('poloAchievementGenerationError'));
     } finally {
       setIsGenerating(false);
     }
@@ -80,14 +82,14 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      toast.error("Le titre est requis");
+      toast.error(t('titleRequired'));
       return;
     }
 
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       if (editingItem) {
         const { error } = await supabase
@@ -101,7 +103,7 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
           })
           .eq('id', editingItem.id);
         if (error) throw error;
-        toast.success("Ambition mise à jour");
+        toast.success(t('networkAmbitionUpdated'));
       } else {
         const { error } = await supabase
           .from('network_ambitions')
@@ -113,7 +115,7 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
             description: formData.description
           });
         if (error) throw error;
-        toast.success("Ambition ajoutée");
+        toast.success(t('networkAmbitionAdded'));
       }
 
       setIsDialogOpen(false);
@@ -121,7 +123,7 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
       onUpdate();
     } catch (error) {
       console.error('Error saving ambition:', error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('poloErrorSaving'));
     } finally {
       setIsLoading(false);
     }
@@ -131,10 +133,10 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
     try {
       const { error } = await supabase.from('network_ambitions').delete().eq('id', id);
       if (error) throw error;
-      toast.success("Ambition supprimée");
+      toast.success(t('networkAmbitionDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('networkAmbitionDeleteError'));
     }
   };
 
@@ -148,7 +150,7 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
       onUpdate();
     } catch (error) {
       console.error("Update error:", error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('poloErrorSaving'));
     }
   };
 
@@ -158,9 +160,22 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
     return data.filter(item => item.category?.toLowerCase().includes(label) || item.category?.toLowerCase() === label);
   };
 
+  const getDisplayLabel = (cat: CategoryType) => {
+    switch (cat) {
+      case 'collaborations':
+        return t('collaborations');
+      case 'rencontres':
+        return t('intellectualMeetings');
+      case 'opportunites':
+        return t('culturalOpportunities');
+      default:
+        return CATEGORY_LABELS[cat];
+    }
+  };
+
   const renderCategorySection = (category: CategoryType) => {
     const items = getItemsByCategory(category);
-    const label = CATEGORY_LABELS[category];
+    const label = getDisplayLabel(category);
     
     return (
       <div>
@@ -187,18 +202,18 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
                     <InlineEditableField
                       value={item.title}
                       onSave={(value) => handleInlineUpdate(item.id, "title", value)}
-                      placeholder="Titre"
+                      placeholder={t('title')}
                       disabled={!isEditable}
                       className="font-medium text-sm text-foreground"
                     />
                     {item.timeline && (
-                      <span className="text-xs text-muted-foreground">Horizon: {item.timeline}</span>
+                      <span className="text-xs text-muted-foreground">{t('networkAmbitionTimeline')}: {item.timeline}</span>
                     )}
                     {isEditable ? (
                       <InlineEditableField
                         value={item.description || ""}
                         onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                        placeholder="Description"
+                        placeholder={t('description')}
                         multiline
                         className="text-xs text-muted-foreground"
                       />
@@ -220,7 +235,7 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Plus className="w-3 h-3" />
-                <span>Ajouter</span>
+                <span>{t('add')}</span>
               </button>
             )}
           </div>
@@ -230,7 +245,7 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
   };
 
   return (
-    <NetworkModule title="Ambitions Sociales" icon={Target} moduleType="ambitions" isEditable={isEditable}>
+    <NetworkModule title={t('socialAmbitions')} icon={Target} moduleType="ambitions" isEditable={isEditable}>
       <div className="space-y-2">
         {renderCategorySection('collaborations')}
         {renderCategorySection('rencontres')}
@@ -240,52 +255,52 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingItem ? "Modifier" : "Ajouter"} une ambition</DialogTitle>
+            <DialogTitle>{editingItem ? t('edit') : t('add')} {t('networkAmbitionAnAmbition')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Titre *</Label>
+              <Label>{t('title')} *</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Ex: Créer une fondation caritative"
+                placeholder={t('networkAmbitionTitlePlaceholder')}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Catégorie</Label>
+                <Label>{t('category')}</Label>
                 <Input
                   value={formData.category}
                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  placeholder="Ex: Impact social"
+                  placeholder={t('networkAmbitionCategoryPlaceholder')}
                 />
               </div>
               <div>
-                <Label>Horizon</Label>
+                <Label>{t('networkAmbitionTimeline')}</Label>
                 <Input
                   value={formData.timeline}
                   onChange={(e) => setFormData(prev => ({ ...prev, timeline: e.target.value }))}
-                  placeholder="Ex: 2025, 5 ans"
+                  placeholder={t('networkAmbitionTimelinePlaceholder')}
                 />
               </div>
             </div>
             <div>
-              <Label>Description</Label>
+              <Label>{t('description')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Décrivez votre ambition sociale..."
+                placeholder={t('networkAmbitionDescriptionPlaceholder')}
               />
             </div>
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                Suggestion Aurora
+                {t('aiAurora')}
               </Button>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('cancel')}</Button>
                 <Button onClick={handleSave} disabled={isLoading}>
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Valider"}
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>
             </div>

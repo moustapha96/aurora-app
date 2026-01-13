@@ -1,5 +1,6 @@
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminRoute } from '@/components/AdminRoute';
+import { Header } from '@/components/Header';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -8,9 +9,10 @@ interface AdminLayoutProps {
 export const AdminLayout = ({ children }: AdminLayoutProps) => {
   return (
     <AdminRoute>
-      <div className="flex min-h-screen bg-background">
+      <Header />
+      <div className="flex min-h-screen bg-background pt-16">
         <AdminSidebar />
-        <main className="flex-1 overflow-auto pt-16 lg:pt-0">
+        <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>

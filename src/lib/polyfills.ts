@@ -18,31 +18,56 @@ export function setupDocumentPictureInPicturePolyfill() {
     requestWindow: (options?: any) => Promise.reject(new Error('Document Picture-in-Picture API is not supported')),
   };
 
-  // Vérifier si l'API est déjà disponible sur window (peut avoir été défini dans index.html)
-  if (!('documentPictureInPicture' in window)) {
-    try {
+  // Toujours définir le polyfill, même s'il existe déjà, pour s'assurer qu'il est disponible
+  try {
+    // Essayer d'abord avec Object.defineProperty pour une définition propre
+    if (!('documentPictureInPicture' in window)) {
       Object.defineProperty(window, 'documentPictureInPicture', {
         value: polyfill,
         writable: true,
         configurable: true,
         enumerable: false,
       });
-    } catch (e) {
+    } else {
+      // Si l'API existe déjà, s'assurer qu'elle a au moins la méthode requestWindow
+      const existing = (window as any).documentPictureInPicture;
+      if (!existing || typeof existing.requestWindow !== 'function') {
+        Object.defineProperty(window, 'documentPictureInPicture', {
+          value: polyfill,
+          writable: true,
+          configurable: true,
+          enumerable: false,
+        });
+      }
+    }
+  } catch (e) {
       // Si Object.defineProperty échoue, utiliser l'assignation directe
       (window as any).documentPictureInPicture = polyfill;
-    }
   }
 
   // Vérifier aussi sur document au cas où (bien que normalement ce soit sur window)
-  if (typeof document !== 'undefined' && !('documentPictureInPicture' in document)) {
+  if (typeof document !== 'undefined') {
     const documentPolyfill = (window as any).documentPictureInPicture || polyfill;
     try {
-      Object.defineProperty(document, 'documentPictureInPicture', {
-        value: documentPolyfill,
-        writable: true,
-        configurable: true,
-        enumerable: false,
-      });
+      if (!('documentPictureInPicture' in document)) {
+        Object.defineProperty(document, 'documentPictureInPicture', {
+          value: documentPolyfill,
+          writable: true,
+          configurable: true,
+          enumerable: false,
+        });
+      } else {
+        // Si l'API existe déjà, s'assurer qu'elle a au moins la méthode requestWindow
+        const existing = (document as any).documentPictureInPicture;
+        if (!existing || typeof existing.requestWindow !== 'function') {
+          Object.defineProperty(document, 'documentPictureInPicture', {
+            value: documentPolyfill,
+            writable: true,
+            configurable: true,
+            enumerable: false,
+          });
+        }
+      }
     } catch (e) {
       // Si Object.defineProperty échoue, utiliser l'assignation directe
       (document as any).documentPictureInPicture = documentPolyfill;

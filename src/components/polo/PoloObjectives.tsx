@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Edit2, Trash2, Target, Calendar, Compass, Loader2, Check, Sparkles, FileText } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { PoloObjective } from './PoloProfileModule';
 
 interface PoloObjectivesProps {
@@ -17,6 +18,7 @@ interface PoloObjectivesProps {
 }
 
 const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isEditable, onUpdate }) => {
+  const { t } = useLanguage();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingObjective, setEditingObjective] = useState<PoloObjective | null>(null);
   const [saving, setSaving] = useState(false);
@@ -61,10 +63,10 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
       if (error) throw error;
       if (data?.suggestion) {
         setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success("Suggestion générée");
+        toast.success(t('poloAchievementSuggestionGenerated'));
       }
     } catch {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('poloAchievementGenerationError'));
     } finally {
       setIsGenerating(false);
     }
@@ -76,14 +78,14 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
 
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error("Fichier trop volumineux (max 10MB)");
+      toast.error(t('poloHorseFileTooLarge'));
       return;
     }
 
     setIsImportingDoc(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       const fileExt = file.name.split('.').pop();
       const fileName = `polo-objective-${user.id}-${Date.now()}.${fileExt}`;
@@ -94,10 +96,10 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
-      toast.success("Document importé avec succès");
+      toast.success(t('poloHorseDocumentImported'));
     } catch (error) {
       console.error(error);
-      toast.error("Erreur lors de l'import du document");
+      toast.error(t('poloHorseImportError'));
     } finally {
       setIsImportingDoc(false);
       if (docInputRef.current) docInputRef.current.value = '';
@@ -131,7 +133,7 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
       onUpdate();
     } catch (error) {
       console.error('Error saving objective:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(t('poloErrorSaving'));
     } finally {
       setSaving(false);
     }
@@ -155,19 +157,19 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
       if (error) throw error;
       onUpdate();
     } catch (error) {
-      toast.error('Erreur lors de la mise à jour');
+      toast.error(t('poloObjectiveUpdateError'));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cet objectif ?')) return;
+    if (!confirm(t('poloObjectiveDeleteConfirm'))) return;
     try {
       const { error } = await supabase.from('polo_objectives').delete().eq('id', id);
       if (error) throw error;
-      toast.success('Objectif supprimé');
+      toast.success(t('poloObjectiveDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error('Erreur lors de la suppression');
+      toast.error(t('poloObjectiveDeleteError'));
     }
   };
 
@@ -222,7 +224,7 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Target className="h-5 w-5 text-primary" />
-          🎯 MES OBJECTIFS
+          🎯 {t('poloObjectiveMyObjectives')}
         </h3>
       </div>
 
@@ -232,7 +234,7 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
           <div className="flex items-center justify-between">
             <h4 className="flex items-center gap-2 font-medium text-foreground">
               <Calendar className="h-4 w-4 text-primary" />
-              Cette saison
+              {t('poloObjectiveThisSeason')}
             </h4>
             {isEditable && (
               <Button variant="ghost" size="sm" onClick={() => openAddDialog('season')} className="text-primary">
@@ -241,7 +243,7 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
             )}
           </div>
           {seasonObjectives.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">Aucun objectif défini</p>
+            <p className="text-sm text-muted-foreground italic">{t('poloObjectiveNoObjectives')}</p>
           ) : (
             <div className="space-y-2">
               {seasonObjectives.map((o) => (
@@ -256,7 +258,7 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
           <div className="flex items-center justify-between">
             <h4 className="flex items-center gap-2 font-medium text-foreground">
               <Compass className="h-4 w-4 text-primary" />
-              À long terme
+              {t('poloObjectiveLongTerm')}
             </h4>
             {isEditable && (
               <Button variant="ghost" size="sm" onClick={() => openAddDialog('long_term')} className="text-primary">
@@ -265,7 +267,7 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
             )}
           </div>
           {longTermObjectives.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">Aucun objectif défini</p>
+            <p className="text-sm text-muted-foreground italic">{t('poloObjectiveNoObjectives')}</p>
           ) : (
             <div className="space-y-2">
               {longTermObjectives.map((o) => (
@@ -280,23 +282,23 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground">
-              {editingObjective ? 'Modifier l\'objectif' : formData.objective_type === 'season' ? 'Objectif de saison' : 'Objectif à long terme'}
+              {editingObjective ? t('poloObjectiveEditObjective') : formData.objective_type === 'season' ? t('poloObjectiveSeasonObjective') : t('poloObjectiveLongTermObjective')}
               {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </DialogTitle>
             <DialogDescription>
-              Définissez vos objectifs polo
+              {t('poloObjectiveDefineYourObjectives')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="obj-desc">Description *</Label>
+              <Label htmlFor="obj-desc">{t('poloObjectiveDescription')} *</Label>
               <Input
                 id="obj-desc"
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder={formData.objective_type === 'season' 
-                  ? "Ex: Améliorer mon handicap, Participer au tournoi X" 
-                  : "Ex: Jouer à Deauville, Atteindre le handicap 4"}
+                  ? t('poloObjectiveSeasonPlaceholder')
+                  : t('poloObjectiveLongTermPlaceholder')}
               />
             </div>
             {editingObjective && (
@@ -310,7 +312,7 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
                     saveData(newData);
                   }}
                 />
-                <Label htmlFor="completed" className="cursor-pointer font-normal">Objectif atteint</Label>
+                <Label htmlFor="completed" className="cursor-pointer font-normal">{t('poloObjectiveAchieved')}</Label>
               </div>
             )}
 
@@ -324,7 +326,7 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
                 className="border-primary/30 text-primary hover:bg-primary/10"
               >
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
-                IA Aurora
+                {t('aiAurora')}
               </Button>
               <Button
                 variant="outline"
@@ -334,7 +336,7 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
                 className="border-primary/30 text-primary hover:bg-primary/10"
               >
                 {isImportingDoc ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />}
-                Importer
+                {t('import')}
               </Button>
             </div>
           </div>

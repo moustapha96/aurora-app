@@ -6,6 +6,7 @@ import { GastronomieEditor } from "./editors/GastronomieEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface GastronomieEntry {
   id: string;
@@ -24,11 +25,11 @@ interface PersonalGastronomieProps {
 type CategoryType = 'restaurants' | 'oenologie' | 'cuisine' | 'patisserie' | 'autre';
 
 const CATEGORY_LABELS: Record<CategoryType, string> = {
-  restaurants: 'Restaurants & Tables',
-  oenologie: 'Œnologie & Vins',
-  cuisine: 'Cuisine & Gastronomie',
-  patisserie: 'Pâtisserie & Douceurs',
-  autre: 'Autres'
+  restaurants: 'restaurants',
+  oenologie: 'oenologie',
+  cuisine: 'cuisine',
+  patisserie: 'patisserie',
+  autre: 'autre'
 };
 
 export const PersonalGastronomie = ({ entries, isEditable, onDataChange }: PersonalGastronomieProps) => {
@@ -37,6 +38,7 @@ export const PersonalGastronomie = ({ entries, isEditable, onDataChange }: Perso
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
   const [addCategory, setAddCategory] = useState<CategoryType | null>(null);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const handleCategoryClick = (category: CategoryType) => {
     setSelectedCategory(prev => prev === category ? null : category);
@@ -64,11 +66,11 @@ export const PersonalGastronomie = ({ entries, isEditable, onDataChange }: Perso
         .eq("id", id);
 
       if (error) throw error;
-      toast({ title: "Entrée supprimée" });
+      toast({ title: t('personalEntryDeleted') });
       onDataChange();
     } catch (error) {
       console.error("Delete error:", error);
-      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+      toast({ title: t('personalErrorDeletingEntry'), variant: "destructive" });
     }
   };
 
@@ -82,12 +84,28 @@ export const PersonalGastronomie = ({ entries, isEditable, onDataChange }: Perso
       onDataChange();
     } catch (error) {
       console.error("Update error:", error);
-      toast({ title: "Erreur lors de la sauvegarde", variant: "destructive" });
+      toast({ title: t('personalErrorSavingEntry'), variant: "destructive" });
     }
   };
 
   const getItemsByCategory = (category: CategoryType) => {
     return entries.filter(item => (item.category || 'autre') === category);
+  };
+
+  const getCategoryLabel = (category: CategoryType) => {
+    switch (category) {
+      case 'restaurants':
+        return t('personalGastronomyRestaurants');
+      case 'oenologie':
+        return t('personalGastronomyOenology');
+      case 'cuisine':
+        return t('personalGastronomyCuisine');
+      case 'patisserie':
+        return t('personalGastronomyPatisserie');
+      case 'autre':
+      default:
+        return t('personalGastronomyOther');
+    }
   };
 
   const renderCategory = (category: CategoryType) => {
@@ -105,7 +123,7 @@ export const PersonalGastronomie = ({ entries, isEditable, onDataChange }: Perso
           ) : (
             <ChevronRight className="w-3.5 h-3.5" />
           )}
-          <span className="text-sm">{CATEGORY_LABELS[category]}</span>
+          <span className="text-sm">{getCategoryLabel(category)}</span>
           {items.length > 0 && (
             <span className="text-xs text-muted-foreground">({items.length})</span>
           )}
@@ -119,7 +137,7 @@ export const PersonalGastronomie = ({ entries, isEditable, onDataChange }: Perso
                     <InlineEditableField
                       value={item.title}
                       onSave={(value) => handleInlineUpdate(item.id, "title", value)}
-                      placeholder="Titre"
+                      placeholder={t('personalTitlePlaceholder')}
                       disabled={!isEditable}
                       className="font-medium text-sm text-foreground"
                     />
@@ -127,7 +145,7 @@ export const PersonalGastronomie = ({ entries, isEditable, onDataChange }: Perso
                       <InlineEditableField
                         value={item.description || ""}
                         onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                        placeholder="Description"
+                        placeholder={t('personalDescriptionPlaceholder')}
                         multiline
                         className="text-xs text-muted-foreground"
                       />
@@ -149,7 +167,7 @@ export const PersonalGastronomie = ({ entries, isEditable, onDataChange }: Perso
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Plus className="w-3 h-3" />
-                <span>Ajouter</span>
+                <span>{t('add')}</span>
               </button>
             )}
           </div>
@@ -160,7 +178,7 @@ export const PersonalGastronomie = ({ entries, isEditable, onDataChange }: Perso
 
   return (
     <PersonalModule
-      title="Gastronomie"
+      title={t('gastronomy')}
       icon={UtensilsCrossed}
       moduleType="gastronomie"
     >

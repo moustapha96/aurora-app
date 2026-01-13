@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { AuroraLogo } from './AuroraLogo';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard,
   Users,
@@ -24,31 +25,32 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const menuItems = [
-  { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/admin/members', label: 'Membres', icon: Users },
-  { path: '/admin/referrals', label: 'Parrainages', icon: UserPlus },
-  { path: '/admin/users-security', label: 'Sécurité Utilisateurs', icon: Shield },
-  { path: '/admin/roles', label: 'Rôles', icon: Shield },
-  { path: '/admin/document-verification', label: 'Vérification Documents', icon: FileText },
-  { path: '/admin/moderation', label: 'Modération', icon: AlertTriangle },
-  { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { path: '/admin/connections', label: 'Connexions', icon: Link2 },
-  { path: '/admin/content', label: 'Contenu', icon: FileText },
-  { path: '/admin/api-config', label: 'APIs & Webhooks', icon: Link2 },
-  { path: '/admin/cron', label: 'Tâches Cron', icon: Clock },
-  { path: '/admin/logs', label: 'Logs', icon: ScrollText },
-  { path: '/admin/reports', label: 'Rapports', icon: ClipboardList },
-  { path: '/admin/settings', label: 'Paramètres', icon: Settings },
+const getMenuItems = (t: (key: string) => string) => [
+  { path: '/admin/dashboard', label: t('adminMenuDashboard'), icon: LayoutDashboard },
+  { path: '/admin/members', label: t('adminMenuMembers'), icon: Users },
+  { path: '/admin/referrals', label: t('adminMenuReferrals'), icon: UserPlus },
+  { path: '/admin/users-security', label: t('adminMenuUsersSecurity'), icon: Shield },
+  { path: '/admin/roles', label: t('adminMenuRoles'), icon: Shield },
+  { path: '/admin/document-verification', label: t('adminMenuDocumentVerification'), icon: FileText },
+  { path: '/admin/moderation', label: t('adminMenuModeration'), icon: AlertTriangle },
+  { path: '/admin/analytics', label: t('adminMenuAnalytics'), icon: BarChart3 },
+  { path: '/admin/connections', label: t('adminMenuConnections'), icon: Link2 },
+  { path: '/admin/content', label: t('adminMenuContent'), icon: FileText },
+  { path: '/admin/api-config', label: t('adminMenuApiConfig'), icon: Link2 },
+  { path: '/admin/cron', label: t('adminMenuCron'), icon: Clock },
+  { path: '/admin/logs', label: t('adminMenuLogs'), icon: ScrollText },
+  { path: '/admin/reports', label: t('adminMenuReports'), icon: ClipboardList },
+  { path: '/admin/settings', label: t('adminMenuSettings'), icon: Settings },
 ];
 
 const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toast.success('Déconnexion réussie');
+    toast.success(t('logoutSuccess'));
     navigate('/login');
   };
 
@@ -56,6 +58,8 @@ const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => {
     navigate(path);
     onItemClick?.();
   };
+
+  const menuItems = getMenuItems(t);
 
   return (
     <div className="flex flex-col h-full">
@@ -99,7 +103,7 @@ const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => {
           onClick={() => handleNavigate('/member-card')}
         >
           <ArrowLeft className="h-4 w-4 mr-2 shrink-0" />
-          <span className="truncate">Retour au site</span>
+          <span className="truncate">{t('adminMenuBackToSite')}</span>
         </Button>
         <Button
           variant="ghost"
@@ -108,7 +112,7 @@ const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => {
           onClick={handleLogout}
         >
           <LogOut className="h-4 w-4 mr-2 shrink-0" />
-          <span className="truncate">Déconnexion</span>
+          <span className="truncate">{t('adminMenuLogout')}</span>
         </Button>
       </div>
     </div>

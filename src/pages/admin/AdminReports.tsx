@@ -18,39 +18,41 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-const reportTypes = [
-  {
-    id: 'members',
-    title: 'Rapport Membres',
-    description: 'Liste complète des membres avec leurs informations',
-    icon: Users,
-    format: 'CSV'
-  },
-  {
-    id: 'verifications',
-    title: 'Rapport Vérifications',
-    description: 'Statut des vérifications d\'identité',
-    icon: Shield,
-    format: 'CSV'
-  },
-  {
-    id: 'connections',
-    title: 'Rapport Connexions',
-    description: 'Analyse du réseau et des connexions entre membres',
-    icon: Users,
-    format: 'CSV'
-  },
-  {
-    id: 'activity',
-    title: 'Rapport d\'Activité',
-    description: 'Analyse des connexions et interactions des membres',
-    icon: Activity,
-    format: 'CSV'
-  },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function AdminReports() {
+  const { t } = useLanguage();
+
+  const reportTypes = [
+    {
+      id: 'members',
+      title: t('adminReportsMembersTitle'),
+      description: t('adminReportsMembersDescription'),
+      icon: Users,
+      format: t('adminReportsFormatCSV')
+    },
+    {
+      id: 'verifications',
+      title: t('adminReportsVerificationsTitle'),
+      description: t('adminReportsVerificationsDescription'),
+      icon: Shield,
+      format: t('adminReportsFormatCSV')
+    },
+    {
+      id: 'connections',
+      title: t('adminReportsConnectionsTitle'),
+      description: t('adminReportsConnectionsDescription'),
+      icon: Users,
+      format: t('adminReportsFormatCSV')
+    },
+    {
+      id: 'activity',
+      title: t('adminReportsActivityTitle'),
+      description: t('adminReportsActivityDescription'),
+      icon: Activity,
+      format: t('adminReportsFormatCSV')
+    },
+  ];
   const [period, setPeriod] = useState('month');
   const [generatingReport, setGeneratingReport] = useState<string | null>(null);
   const [generatedReports, setGeneratedReports] = useState<Array<{
@@ -102,7 +104,7 @@ export default function AdminReports() {
         p.job_function || '',
         p.activity_domain || '',
         `${priv?.wealth_amount || ''} ${priv?.wealth_unit || ''} ${priv?.wealth_currency || ''}`.trim(),
-        p.identity_verified ? 'Oui' : 'Non',
+        p.identity_verified ? t('adminReportsYes') : t('adminReportsNo'),
         p.created_at ? new Date(p.created_at).toLocaleDateString('fr-FR') : ''
       ];
     }) || [];
@@ -149,10 +151,10 @@ export default function AdminReports() {
       f.id,
       f.user_id,
       f.friend_id,
-      f.business_access ? 'Oui' : 'Non',
-      f.family_access ? 'Oui' : 'Non',
-      f.personal_access ? 'Oui' : 'Non',
-      f.influence_access ? 'Oui' : 'Non',
+      f.business_access ? t('adminReportsYes') : t('adminReportsNo'),
+      f.family_access ? t('adminReportsYes') : t('adminReportsNo'),
+      f.personal_access ? t('adminReportsYes') : t('adminReportsNo'),
+      f.influence_access ? t('adminReportsYes') : t('adminReportsNo'),
       f.created_at ? new Date(f.created_at).toLocaleDateString('fr-FR') : ''
     ]) || [];
 
@@ -208,7 +210,7 @@ export default function AdminReports() {
           filename = `Activite_${date}.csv`;
           break;
         default:
-          throw new Error('Type de rapport inconnu');
+          throw new Error(t('adminReportsUnknownType'));
       }
 
       // Download the file
@@ -224,11 +226,11 @@ export default function AdminReports() {
       };
 
       setGeneratedReports(prev => [newReport, ...prev.slice(0, 9)]);
-      toast.success(`Rapport généré avec succès (${result.count} entrées)`);
+      toast.success(t('adminReportsSuccess').replace('{count}', result.count.toString()));
 
     } catch (error: any) {
       console.error('Error generating report:', error);
-      toast.error(`Erreur: ${error.message}`);
+      toast.error(t('adminReportsError').replace('{message}', error.message));
     } finally {
       setGeneratingReport(null);
     }
@@ -236,7 +238,7 @@ export default function AdminReports() {
 
   const handleDownloadReport = (report: typeof generatedReports[0]) => {
     downloadCSV(report.data, report.name);
-    toast.success('Téléchargement lancé');
+    toast.success(t('adminReportsDownloadStarted'));
   };
 
   return (
@@ -245,21 +247,21 @@ export default function AdminReports() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-serif text-gold">Rapports</h1>
-            <p className="text-gold/60">Générer et télécharger des rapports détaillés</p>
+            <h1 className="text-2xl font-serif text-gold">{t('adminReportsTitle')}</h1>
+            <p className="text-gold/60">{t('adminReportsDescription')}</p>
           </div>
           
           <div className="flex items-center gap-3">
             <Select value={period} onValueChange={setPeriod}>
               <SelectTrigger className="w-[180px] border-gold/30 bg-black text-gold">
                 <Calendar className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Période" />
+                <SelectValue placeholder={t('adminReportsPeriod')} />
               </SelectTrigger>
               <SelectContent className="bg-black border-gold/30">
-                <SelectItem value="week" className="text-gold">Cette semaine</SelectItem>
-                <SelectItem value="month" className="text-gold">Ce mois</SelectItem>
-                <SelectItem value="quarter" className="text-gold">Ce trimestre</SelectItem>
-                <SelectItem value="year" className="text-gold">Cette année</SelectItem>
+                <SelectItem value="week" className="text-gold">{t('adminReportsThisWeek')}</SelectItem>
+                <SelectItem value="month" className="text-gold">{t('adminReportsThisMonth')}</SelectItem>
+                <SelectItem value="quarter" className="text-gold">{t('adminReportsThisQuarter')}</SelectItem>
+                <SelectItem value="year" className="text-gold">{t('adminReportsThisYear')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -295,12 +297,12 @@ export default function AdminReports() {
                   {generatingReport === report.id ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Génération...
+                      {t('adminReportsGenerating')}
                     </>
                   ) : (
                     <>
                       <FileText className="w-4 h-4 mr-1" />
-                      Générer & Télécharger
+                      {t('adminReportsGenerateAndDownload')}
                     </>
                   )}
                 </Button>
@@ -312,17 +314,17 @@ export default function AdminReports() {
         {/* Recent Reports */}
         <Card className="bg-black/40 border-gold/20">
           <CardHeader>
-            <CardTitle className="text-gold font-serif">Rapports Générés</CardTitle>
+            <CardTitle className="text-gold font-serif">{t('adminReportsGeneratedTitle')}</CardTitle>
             <CardDescription className="text-gold/60">
-              Télécharger les rapports générés durant cette session
+              {t('adminReportsGeneratedDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {generatedReports.length === 0 ? (
               <div className="text-center py-8 text-gold/40">
                 <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Aucun rapport généré</p>
-                <p className="text-sm mt-1">Cliquez sur "Générer" pour créer un rapport</p>
+                <p>{t('adminReportsNoReports')}</p>
+                <p className="text-sm mt-1">{t('adminReportsNoReportsHint')}</p>
               </div>
             ) : (
               <div className="space-y-3">

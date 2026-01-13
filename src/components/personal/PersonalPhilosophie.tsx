@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { PersonalModule } from "./PersonalModule";
 import { PhilosophieEditor } from "./editors/PhilosophieEditor";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface PhilosophieEntry {
   id: string;
@@ -24,16 +25,17 @@ interface PersonalPhilosophieProps {
 type CategoryType = 'mentors' | 'philosophie' | 'citations' | 'lectures';
 
 const CATEGORY_LABELS: Record<CategoryType, string> = {
-  mentors: "Mentors & Modèles",
-  philosophie: "Philosophie de vie",
-  citations: "Citations inspirantes",
-  lectures: "Lectures marquantes"
+  mentors: "mentors",
+  philosophie: "philosophie",
+  citations: "citations",
+  lectures: "lectures"
 };
 
 export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: PersonalPhilosophieProps) => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PhilosophieEntry | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
+  const { t } = useLanguage();
 
   const handleCategoryClick = (category: CategoryType) => {
     setSelectedCategory(selectedCategory === category ? null : category);
@@ -52,10 +54,10 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
         .eq('id', id);
 
       if (error) throw error;
-      toast.success("Élément supprimé");
+      toast.success(t('personalEntryDeleted'));
       onDataChange();
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('personalErrorDeletingEntry'));
     }
   };
 
@@ -69,13 +71,27 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
       onDataChange();
     } catch (error) {
       console.error("Update error:", error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('personalErrorSavingEntry'));
     }
   };
 
   const renderCategory = (category: CategoryType) => {
     const categoryEntries = entries.filter(e => e.category === category);
     const isExpanded = selectedCategory === category;
+
+    const label = (() => {
+      switch (category) {
+        case 'mentors':
+          return t('personalPhilosophyMentors');
+        case 'philosophie':
+          return t('personalPhilosophyLife');
+        case 'citations':
+          return t('personalPhilosophyQuotes');
+        case 'lectures':
+        default:
+          return t('personalPhilosophyReadings');
+      }
+    })();
 
     return (
       <div key={category}>
@@ -88,7 +104,7 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
           ) : (
             <ChevronRight className="w-3.5 h-3.5" />
           )}
-          <span className="text-sm">{CATEGORY_LABELS[category]}</span>
+          <span className="text-sm">{label}</span>
           {categoryEntries.length > 0 && (
             <span className="text-xs text-muted-foreground">({categoryEntries.length})</span>
           )}
@@ -106,7 +122,7 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
                       <InlineEditableField
                         value={entry.title}
                         onSave={(value) => handleInlineUpdate(entry.id, "title", value)}
-                        placeholder="Titre"
+                        placeholder={t('personalTitlePlaceholder')}
                         disabled={!isEditable}
                         className="font-medium text-sm text-foreground"
                       />
@@ -114,7 +130,7 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
                         <InlineEditableField
                           value={entry.description || ""}
                           onSave={(value) => handleInlineUpdate(entry.id, "description", value)}
-                          placeholder="Description"
+                          placeholder={t('personalDescriptionPlaceholder')}
                           multiline
                           className="text-xs text-muted-foreground"
                         />
@@ -139,7 +155,7 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Plus className="w-3 h-3" />
-                <span>Ajouter</span>
+                <span>{t('add')}</span>
               </button>
             )}
           </div>
@@ -150,7 +166,7 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
 
   return (
     <PersonalModule
-      title="Philosophie & Inspirations"
+      title={t('personalPhilosophyTitle')}
       icon={Lightbulb}
       moduleType="philosophie"
     >

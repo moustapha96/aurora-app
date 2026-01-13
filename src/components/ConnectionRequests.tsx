@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserPlus, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { AccessPermissionsDialog } from "./AccessPermissionsDialog";
 
 interface ConnectionRequest {
@@ -20,6 +21,7 @@ interface ConnectionRequest {
 }
 
 export const ConnectionRequests = () => {
+  const { t } = useLanguage();
   const [requests, setRequests] = useState<ConnectionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
@@ -197,7 +199,7 @@ export const ConnectionRequests = () => {
       <Card className="bg-black/30 border-gold/20 p-6">
         <div className="text-center">
           <UserPlus className="w-12 h-12 text-gold/40 mx-auto mb-3" />
-          <p className="text-gold/60">Aucune demande de connexion en attente</p>
+          <p className="text-gold/60">{t('noPendingConnectionRequests')}</p>
         </div>
       </Card>
     );

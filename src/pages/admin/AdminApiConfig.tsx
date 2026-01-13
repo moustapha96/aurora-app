@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ApiStatus {
   name: string;
@@ -35,6 +36,7 @@ interface WebhookConfig {
 }
 
 const AdminApiConfig = () => {
+  const { t } = useLanguage();
   const [apiStatuses, setApiStatuses] = useState<ApiStatus[]>([]);
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
   const [secrets, setSecrets] = useState<{ name: string; configured: boolean }[]>([]);
@@ -81,7 +83,7 @@ const AdminApiConfig = () => {
         {
           name: 'OpenAI (Lovable AI)',
           configured: true,
-          endpoint: 'Via Lovable AI Gateway'
+          endpoint: t('adminApiConfigViaLovableGateway')
         },
         {
           name: 'Supabase Database',
@@ -106,20 +108,20 @@ const AdminApiConfig = () => {
         {
           name: 'Veriff Webhook',
           url: `${baseUrl}/veriff-webhook`,
-          description: 'Reçoit les notifications de vérification Veriff',
+          description: t('adminApiConfigVeriffWebhookDesc'),
           status: 'active'
         },
         {
           name: 'Analyze ID Card',
           url: `${baseUrl}/analyze-id-card`,
-          description: 'Analyse les documents d\'identité via IA',
+          description: t('adminApiConfigAnalyzeIDCardDesc'),
           status: 'active'
         }
       ]);
 
     } catch (error) {
       console.error('Error loading configuration:', error);
-      toast.error('Erreur lors du chargement de la configuration');
+      toast.error(t('adminApiConfigLoadingError'));
     } finally {
       setLoading(false);
     }
@@ -127,11 +129,11 @@ const AdminApiConfig = () => {
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast.success(`${label} copié dans le presse-papier`);
+    toast.success(t('adminApiConfigCopied').replace('{label}', label));
   };
 
   const testWebhook = async (webhook: WebhookConfig) => {
-    toast.info(`Test du webhook ${webhook.name}...`);
+    toast.info(t('adminApiConfigTestWebhook').replace('{name}', webhook.name));
 
     // Map webhook names to actual function names
     const functionNameMap: Record<string, string> = {
@@ -158,11 +160,11 @@ const AdminApiConfig = () => {
           // If we get a non-2xx but function is responding, it's working
           (error?.message?.includes('non-2xx') && !error?.message?.includes('404'))
         ) {
-          toast.success(`Fonction ${webhook.name} accessible et prête`);
+          toast.success(t('adminApiConfigFunctionReady').replace('{name}', webhook.name));
         } else if (error) {
-          toast.warning(`Fonction ${webhook.name} accessible: ${error.message}`);
+          toast.warning(t('adminApiConfigFunctionAccessible').replace('{name}', webhook.name).replace('{message}', error.message));
         } else {
-          toast.success(`Fonction ${webhook.name} fonctionnelle`);
+          toast.success(t('adminApiConfigFunctionWorking').replace('{name}', webhook.name));
         }
         return;
       }
@@ -173,14 +175,14 @@ const AdminApiConfig = () => {
 
       if (error) {
         toast.warning(
-          `Webhook accessible mais retourne une erreur: ${error.message}`,
+          t('adminApiConfigWebhookError').replace('{message}', error.message),
         );
       } else {
-        toast.success(`Webhook ${webhook.name} fonctionnel`);
+        toast.success(t('adminApiConfigWebhookWorking').replace('{name}', webhook.name));
       }
     } catch (err: unknown) {
       console.error('Test webhook error:', err);
-      toast.error(`Erreur lors du test du webhook ${webhook.name}`);
+      toast.error(t('adminApiConfigTestError').replace('{name}', webhook.name));
     }
   };
 
@@ -189,12 +191,12 @@ const AdminApiConfig = () => {
       <div className="p-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Configuration API</h1>
-            <p className="text-muted-foreground">APIs, Webhooks et clés de configuration</p>
+            <h1 className="text-3xl font-bold text-foreground">{t('adminApiConfigTitle')}</h1>
+            <p className="text-muted-foreground">{t('adminApiConfigDescription')}</p>
           </div>
           <Button onClick={loadConfiguration} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
+            {t('adminApiConfigRefresh')}
           </Button>
         </div>
 
@@ -204,10 +206,10 @@ const AdminApiConfig = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="h-5 w-5 text-primary" />
-                APIs Externes
+                {t('adminApiConfigExternalAPIs')}
               </CardTitle>
               <CardDescription>
-                État des connexions aux APIs tierces
+                {t('adminApiConfigExternalAPIsDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -227,13 +229,13 @@ const AdminApiConfig = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={api.configured ? 'default' : 'destructive'}>
-                        {api.configured ? 'Configuré' : 'Non configuré'}
+                        {api.configured ? t('adminApiConfigConfigured') : t('adminApiConfigNotConfigured')}
                       </Badge>
                       {api.endpoint && (
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => copyToClipboard(api.endpoint!, 'Endpoint')}
+                          onClick={() => copyToClipboard(api.endpoint!, t('adminApiConfigEndpoint'))}
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
@@ -250,10 +252,10 @@ const AdminApiConfig = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Webhook className="h-5 w-5 text-primary" />
-                Webhooks
+                {t('adminApiConfigWebhooks')}
               </CardTitle>
               <CardDescription>
-                Endpoints pour recevoir les notifications externes
+                {t('adminApiConfigWebhooksDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -269,8 +271,8 @@ const AdminApiConfig = () => {
                             webhook.status === 'inactive' ? 'destructive' : 'secondary'
                           }
                         >
-                          {webhook.status === 'active' ? 'Actif' : 
-                           webhook.status === 'inactive' ? 'Inactif' : 'En attente'}
+                          {webhook.status === 'active' ? t('adminApiConfigActive') : 
+                           webhook.status === 'inactive' ? t('adminApiConfigInactive') : t('adminApiConfigPending')}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2">
@@ -279,12 +281,12 @@ const AdminApiConfig = () => {
                           size="sm"
                           onClick={() => testWebhook(webhook)}
                         >
-                          Tester
+                          {t('adminApiConfigTest')}
                         </Button>
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => copyToClipboard(webhook.url, 'URL du webhook')}
+                          onClick={() => copyToClipboard(webhook.url, t('adminApiConfigWebhookURL'))}
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
@@ -301,12 +303,12 @@ const AdminApiConfig = () => {
               <Separator className="my-6" />
 
               <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-4">
-                <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-2">
                   <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-amber-500">Configuration Veriff Webhook</h4>
+                    <h4 className="font-medium text-amber-500">{t('adminApiConfigVeriffWebhookConfig')}</h4>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Pour que Veriff envoie les résultats de vérification, configurez l'URL du webhook dans votre dashboard Veriff:
+                      {t('adminApiConfigVeriffWebhookConfigDesc')}
                     </p>
                     <code className="text-xs bg-muted px-2 py-1 rounded mt-2 block break-all">
                       https://{projectId}.supabase.co/functions/v1/veriff-webhook
@@ -322,10 +324,10 @@ const AdminApiConfig = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Key className="h-5 w-5 text-primary" />
-                Secrets & Variables d'Environnement
+                {t('adminApiConfigSecrets')}
               </CardTitle>
               <CardDescription>
-                Clés API et secrets configurés pour les Edge Functions
+                {t('adminApiConfigSecretsDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -352,19 +354,19 @@ const AdminApiConfig = () => {
               <div className="space-y-4">
                 <h4 className="font-medium flex items-center gap-2">
                   <Shield className="h-4 w-4" />
-                  Informations de Connexion
+                  {t('adminApiConfigConnectionInfo')}
                 </h4>
                 
                 <div className="grid gap-4">
                   <div className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-sm font-medium mb-1">Project ID</p>
+                    <p className="text-sm font-medium mb-1">{t('adminApiConfigProjectID')}</p>
                     <div className="flex items-center gap-2">
                       <code className="text-xs bg-muted px-2 py-1 rounded">{projectId}</code>
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         className="h-6 w-6"
-                        onClick={() => copyToClipboard(projectId, 'Project ID')}
+                        onClick={() => copyToClipboard(projectId, t('adminApiConfigProjectID'))}
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
@@ -372,7 +374,7 @@ const AdminApiConfig = () => {
                   </div>
 
                   <div className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-sm font-medium mb-1">Supabase URL</p>
+                    <p className="text-sm font-medium mb-1">{t('adminApiConfigSupabaseURL')}</p>
                     <div className="flex items-center gap-2">
                       <code className="text-xs bg-muted px-2 py-1 rounded">
                         https://{projectId}.supabase.co
@@ -381,7 +383,7 @@ const AdminApiConfig = () => {
                         variant="ghost" 
                         size="icon" 
                         className="h-6 w-6"
-                        onClick={() => copyToClipboard(`https://${projectId}.supabase.co`, 'Supabase URL')}
+                        onClick={() => copyToClipboard(`https://${projectId}.supabase.co`, t('adminApiConfigSupabaseURL'))}
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
@@ -389,7 +391,7 @@ const AdminApiConfig = () => {
                   </div>
 
                   <div className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-sm font-medium mb-1">Edge Functions Base URL</p>
+                    <p className="text-sm font-medium mb-1">{t('adminApiConfigEdgeFunctionsBaseURL')}</p>
                     <div className="flex items-center gap-2">
                       <code className="text-xs bg-muted px-2 py-1 rounded">
                         https://{projectId}.supabase.co/functions/v1
@@ -398,7 +400,7 @@ const AdminApiConfig = () => {
                         variant="ghost" 
                         size="icon" 
                         className="h-6 w-6"
-                        onClick={() => copyToClipboard(`https://${projectId}.supabase.co/functions/v1`, 'Functions URL')}
+                        onClick={() => copyToClipboard(`https://${projectId}.supabase.co/functions/v1`, t('adminApiConfigFunctionsURL'))}
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
@@ -414,27 +416,27 @@ const AdminApiConfig = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
-                Edge Functions Disponibles
+                {t('adminApiConfigEdgeFunctions')}
               </CardTitle>
               <CardDescription>
-                Liste des fonctions serverless déployées
+                {t('adminApiConfigEdgeFunctionsDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
-                  { name: 'analyze-id-card', description: 'Analyse documents d\'identité via IA' },
-                  { name: 'veriff-verification', description: 'Initie vérification Veriff' },
-                  { name: 'veriff-webhook', description: 'Reçoit callbacks Veriff' },
-                  { name: 'business-ai-suggest', description: 'Suggestions IA Business' },
-                  { name: 'family-ai-suggest', description: 'Suggestions IA Family' },
-                  { name: 'network-ai-suggest', description: 'Suggestions IA Network' },
-                  { name: 'personal-ai-suggest', description: 'Suggestions IA Personal' },
-                  { name: 'parse-cv-business', description: 'Parse CV pour Business' },
-                  { name: 'parse-cv-network', description: 'Parse CV pour Network' },
-                  { name: 'create-test-members', description: 'Crée membres de test' },
-                  { name: 'migrate-base64-avatars', description: 'Migration avatars' },
-                  { name: 'verify-documents-batch', description: 'Vérification batch documents' },
+                  { name: 'analyze-id-card', description: t('adminApiConfigFuncAnalyzeIDCard') },
+                  { name: 'veriff-verification', description: t('adminApiConfigFuncVeriffVerification') },
+                  { name: 'veriff-webhook', description: t('adminApiConfigFuncVeriffWebhook') },
+                  { name: 'business-ai-suggest', description: t('adminApiConfigFuncBusinessAISuggest') },
+                  { name: 'family-ai-suggest', description: t('adminApiConfigFuncFamilyAISuggest') },
+                  { name: 'network-ai-suggest', description: t('adminApiConfigFuncNetworkAISuggest') },
+                  { name: 'personal-ai-suggest', description: t('adminApiConfigFuncPersonalAISuggest') },
+                  { name: 'parse-cv-business', description: t('adminApiConfigFuncParseCVBusiness') },
+                  { name: 'parse-cv-network', description: t('adminApiConfigFuncParseCVNetwork') },
+                  { name: 'create-test-members', description: t('adminApiConfigFuncCreateTestMembers') },
+                  { name: 'migrate-base64-avatars', description: t('adminApiConfigFuncMigrateAvatars') },
+                  { name: 'verify-documents-batch', description: t('adminApiConfigFuncVerifyDocumentsBatch') },
                 ].map((func, index) => (
                   <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div>
@@ -446,7 +448,7 @@ const AdminApiConfig = () => {
                       size="icon"
                       onClick={() => copyToClipboard(
                         `https://${projectId}.supabase.co/functions/v1/${func.name}`,
-                        'URL'
+                        t('adminApiConfigURL')
                       )}
                     >
                       <Copy className="h-4 w-4" />
@@ -460,8 +462,8 @@ const AdminApiConfig = () => {
           {/* Documentation Links */}
           <Card>
             <CardHeader>
-              <CardTitle>Documentation</CardTitle>
-              <CardDescription>Liens vers les documentations des APIs</CardDescription>
+              <CardTitle>{t('adminApiConfigDocumentation')}</CardTitle>
+              <CardDescription>{t('adminApiConfigDocumentationDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -472,7 +474,7 @@ const AdminApiConfig = () => {
                   className="flex items-center gap-2 p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                 >
                   <ExternalLink className="h-4 w-4 text-primary" />
-                  <span>Documentation Veriff</span>
+                  <span>{t('adminApiConfigDocVeriff')}</span>
                 </a>
                 <a 
                   href="https://supabase.com/docs" 
@@ -481,7 +483,7 @@ const AdminApiConfig = () => {
                   className="flex items-center gap-2 p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                 >
                   <ExternalLink className="h-4 w-4 text-primary" />
-                  <span>Documentation Supabase</span>
+                  <span>{t('adminApiConfigDocSupabase')}</span>
                 </a>
               </div>
             </CardContent>

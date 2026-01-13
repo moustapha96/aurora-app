@@ -6,6 +6,7 @@ import { VoyagesEditor } from "./editors/VoyagesEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface VoyageEntry {
   id: string;
@@ -25,12 +26,12 @@ interface PersonalVoyagesProps {
 type CategoryType = 'europe' | 'asie' | 'amerique' | 'afrique' | 'oceanie' | 'autre';
 
 const CATEGORY_LABELS: Record<CategoryType, string> = {
-  europe: 'Europe',
-  asie: 'Asie & Moyen-Orient',
-  amerique: 'Amériques',
-  afrique: 'Afrique',
-  oceanie: 'Océanie & Pacifique',
-  autre: 'Autres destinations'
+  europe: 'europe',
+  asie: 'asie',
+  amerique: 'amerique',
+  afrique: 'afrique',
+  oceanie: 'oceanie',
+  autre: 'autre'
 };
 
 export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalVoyagesProps) => {
@@ -39,6 +40,7 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
   const [addCategory, setAddCategory] = useState<CategoryType | null>(null);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const handleCategoryClick = (category: CategoryType) => {
     setSelectedCategory(prev => prev === category ? null : category);
@@ -66,11 +68,11 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
         .eq("id", id);
 
       if (error) throw error;
-      toast({ title: "Voyage supprimé" });
+      toast({ title: t('personalTripDeleted') });
       onDataChange();
     } catch (error) {
       console.error("Delete error:", error);
-      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+      toast({ title: t('personalErrorDeletingEntry'), variant: "destructive" });
     }
   };
 
@@ -84,12 +86,30 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
       onDataChange();
     } catch (error) {
       console.error("Update error:", error);
-      toast({ title: "Erreur lors de la sauvegarde", variant: "destructive" });
+      toast({ title: t('personalErrorSavingEntry'), variant: "destructive" });
     }
   };
 
   const getItemsByCategory = (category: CategoryType) => {
     return entries.filter(item => (item.category || 'autre') === category);
+  };
+
+  const getCategoryLabel = (category: CategoryType) => {
+    switch (category) {
+      case 'europe':
+        return t('personalTripsEurope');
+      case 'asie':
+        return t('personalTripsAsia');
+      case 'amerique':
+        return t('personalTripsAmericas');
+      case 'afrique':
+        return t('personalTripsAfrica');
+      case 'oceanie':
+        return t('personalTripsOceania');
+      case 'autre':
+      default:
+        return t('personalTripsOther');
+    }
   };
 
   const renderCategory = (category: CategoryType) => {
@@ -107,7 +127,7 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
           ) : (
             <ChevronRight className="w-3.5 h-3.5" />
           )}
-          <span className="text-sm">{CATEGORY_LABELS[category]}</span>
+          <span className="text-sm">{getCategoryLabel(category)}</span>
           {items.length > 0 && (
             <span className="text-xs text-muted-foreground">({items.length})</span>
           )}
@@ -129,7 +149,7 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
                       <InlineEditableField
                         value={item.period || ""}
                         onSave={(value) => handleInlineUpdate(item.id, "period", value)}
-                        placeholder="Période"
+                        placeholder={t('personalTripsPeriodPlaceholder')}
                         className="text-xs text-gold"
                       />
                     ) : item.period && <span className="text-xs text-gold">{item.period}</span>}
@@ -137,7 +157,7 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
                       <InlineEditableField
                         value={item.description || ""}
                         onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                        placeholder="Description"
+                        placeholder={t('personalDescriptionPlaceholder')}
                         multiline
                         className="text-xs text-muted-foreground"
                       />
@@ -159,7 +179,7 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Plus className="w-3 h-3" />
-                <span>Ajouter</span>
+                <span>{t('add')}</span>
               </button>
             )}
           </div>
@@ -170,7 +190,7 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
 
   return (
     <PersonalModule
-      title="Voyages & Destinations"
+      title={t('personalTripsTitle')}
       icon={Plane}
       moduleType="voyages"
     >

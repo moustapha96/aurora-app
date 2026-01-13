@@ -259,75 +259,75 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
       )}
 
       <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-md max-h-[85vh] overflow-y-auto bg-background border border-gold/20 p-0">
-          <DialogHeader className="sticky top-0 z-10 bg-background border-b border-gold/10 px-4 py-4 sm:px-6">
-            <DialogTitle className="text-lg sm:text-xl font-serif text-gold">
+        <DialogContent className="w-[95vw] max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-background border border-gold/20 p-0" data-scroll>
+          <DialogHeader className="sticky top-0 z-10 bg-background border-b border-gold/10 px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle className="text-base sm:text-lg md:text-xl font-serif text-gold">
               {t('addMember')}
             </DialogTitle>
           </DialogHeader>
           
-          <div className="px-4 py-4 sm:px-6 space-y-4">
+          <div className="px-4 py-3 sm:px-6 sm:py-4 space-y-3 sm:space-y-4">
             {/* Grille responsive pour les champs principaux */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">{t('name')} *</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label className="text-xs sm:text-sm font-medium text-foreground">{t('name')} *</Label>
                 <Input 
                   value={newFormData.member_name || ""} 
                   onChange={(e) => setNewFormData({ ...newFormData, member_name: e.target.value })}
                   placeholder={t('firstNameLastName')}
-                  className="bg-background/50 border-gold/20 focus:border-gold/50"
+                  className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10"
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">{t('relation')} *</Label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label className="text-xs sm:text-sm font-medium text-foreground">{t('relation')} *</Label>
                 <Input 
                   value={newFormData.relation_type || ""} 
                   onChange={(e) => setNewFormData({ ...newFormData, relation_type: e.target.value })} 
                   placeholder={t('spouseSonDaughter')}
-                  className="bg-background/50 border-gold/20 focus:border-gold/50"
+                  className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">{t('birthYear')}</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label className="text-xs sm:text-sm font-medium text-foreground">{t('birthYear')}</Label>
                 <Input 
                   value={newFormData.birth_year || ""} 
                   onChange={(e) => setNewFormData({ ...newFormData, birth_year: e.target.value })}
                   placeholder="1990"
-                  className="bg-background/50 border-gold/20 focus:border-gold/50"
+                  className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10"
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">{t('occupation')}</Label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label className="text-xs sm:text-sm font-medium text-foreground">{t('occupation')}</Label>
                 <Input 
                   value={newFormData.occupation || ""} 
                   onChange={(e) => setNewFormData({ ...newFormData, occupation: e.target.value })}
                   placeholder={t('lawyerDoctor')}
-                  className="bg-background/50 border-gold/20 focus:border-gold/50"
+                  className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">{t('description')}</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label className="text-xs sm:text-sm font-medium text-foreground">{t('description')}</Label>
               <Textarea 
                 value={newFormData.description || ""} 
                 onChange={(e) => setNewFormData({ ...newFormData, description: e.target.value })}
                 placeholder={t('fewWordsAboutThisFamilyMember')}
-                className="bg-background/50 border-gold/20 focus:border-gold/50 min-h-[80px] resize-none"
+                className="bg-background/50 border-gold/20 focus:border-gold/50 min-h-[80px] sm:min-h-[100px] resize-none text-sm"
                 rows={3}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">{t('imageUrl')}</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label className="text-xs sm:text-sm font-medium text-foreground">{t('imageUrl')}</Label>
               <Input 
                 value={newFormData.image_url || ""} 
                 onChange={(e) => setNewFormData({ ...newFormData, image_url: e.target.value })}
                 placeholder="https://..."
-                className="bg-background/50 border-gold/20 focus:border-gold/50"
+                className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10"
               />
             </div>
 
@@ -342,10 +342,10 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
           </div>
 
           {/* Footer sticky avec boutons */}
-          <div className="sticky bottom-0 bg-background border-t border-gold/10 px-4 py-4 sm:px-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
+          <div className="sticky bottom-0 bg-background border-t border-gold/10 px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex flex-col gap-2 sm:gap-3">
               {/* Boutons d'action secondaires */}
-              <div className="flex gap-2 order-2 sm:order-1">
+              <div className="flex gap-2 w-full">
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -366,41 +366,41 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
                       setIsGenerating(false);
                     }
                   }}
-                  disabled={isGenerating}
-                  className="flex-1 sm:flex-none border-gold/30 text-gold hover:bg-gold/10"
+                  disabled={isGenerating || !newFormData.member_name}
+                  className="flex-1 border-gold/30 text-gold hover:bg-gold/10 text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
-                  <span className="hidden xs:inline">{t('aiAurora')}</span>
-                  <span className="xs:hidden">{t('ai')}</span>
+                  {isGenerating ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />}
+                  <span className="hidden sm:inline">{t('aiAurora')}</span>
+                  <span className="sm:hidden">{t('ai')}</span>
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => docInputRef.current?.click()}
                   disabled={isImportingDoc}
-                  className="flex-1 sm:flex-none border-gold/30 text-gold hover:bg-gold/10"
+                  className="flex-1 border-gold/30 text-gold hover:bg-gold/10 text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  {isImportingDoc ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />}
-                  <span className="hidden xs:inline">{t('import')}</span>
-                  <span className="xs:hidden">{t('doc')}</span>
+                  {isImportingDoc ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-1" /> : <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />}
+                  <span className="hidden sm:inline">{t('import')}</span>
+                  <span className="sm:hidden">{t('doc')}</span>
                 </Button>
               </div>
               
               {/* Boutons principaux */}
-              <div className="flex gap-2 order-1 sm:order-2">
+              <div className="flex gap-2 w-full">
                 <Button 
                   variant="outline" 
                   onClick={() => setNewDialogOpen(false)}
-                  className="flex-1 sm:flex-none"
+                  className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
                 >
                   {t('cancel')}
                 </Button>
                 <Button 
                   onClick={handleAddNew} 
                   disabled={saving} 
-                  className="flex-1 sm:flex-none bg-gold hover:bg-gold/90 text-primary-foreground font-medium"
+                  className="flex-1 bg-gold hover:bg-gold/90 text-primary-foreground font-medium text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                  {saving ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-1" /> : null}
                   {saving ? t('adding') : t('add')}
                 </Button>
               </div>

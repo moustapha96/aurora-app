@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { PlatformProvider } from "@/contexts/PlatformContext";
 import { SessionProvider } from "@/contexts/SessionContext";
 import { GlobalMessageNotifications } from "@/components/GlobalMessageNotifications";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { ProgressProvider } from "@/components/ui/progress-bar";
 import createOptimizedQueryClient from "@/lib/queryConfig";
 import Index from "./pages/Index";
@@ -56,6 +57,7 @@ import AdminDocumentVerification from "./pages/admin/AdminDocumentVerification";
 import AdminApiConfig from "./pages/admin/AdminApiConfig";
 import AdminCron from "./pages/admin/AdminCron";
 import AdminReferrals from "./pages/admin/AdminReferrals";
+import AdminMarketplace from "./pages/admin/AdminMarketplace";
 
 // Optimized QueryClient with caching
 const queryClient = createOptimizedQueryClient();
@@ -71,6 +73,7 @@ const App = () => (
         <ProgressProvider>
         <SessionProvider>
         <GlobalMessageNotifications />
+        <InstallPrompt />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/register" element={<Register />} />
@@ -78,6 +81,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/member-card" element={<MemberCard />} />
+          {/* <Route path="/member-card" element={<Profile />} /> */}
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:id" element={<Profile />} />
           <Route path="/edit-profile" element={<EditProfile />} />
@@ -122,6 +126,7 @@ const App = () => (
           <Route path="/admin/api-config" element={<AdminApiConfig />} />
           <Route path="/admin/cron" element={<AdminCron />} />
           <Route path="/admin/referrals" element={<AdminReferrals />} />
+          <Route path="/admin/marketplace" element={<AdminMarketplace />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

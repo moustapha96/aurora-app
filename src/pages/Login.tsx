@@ -21,6 +21,7 @@ import {
   BiometricType 
 } from "@/services/webAuthnService";
 import { Captcha, useCaptchaConfig } from "@/components/Captcha";
+import { TwoFactorVerification } from "@/components/TwoFactorVerification";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +65,10 @@ const Login = () => {
     message: ''
   });
   const [refreshingStatus, setRefreshingStatus] = useState(false);
+  // State for 2FA verification
+  const [pending2FA, setPending2FA] = useState(false);
+  const [pending2FAUserId, setPending2FAUserId] = useState<string | null>(null);
+  const [pending2FAEmail, setPending2FAEmail] = useState<string>("");
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
   const { siteKey, isEnabled } = useCaptchaConfig('login');
@@ -632,6 +637,22 @@ const Login = () => {
         return;
       }
 
+      // Check if 2FA is enabled for this user
+      const { data: profileFor2FA } = await supabase
+        .from('profiles')
+        .select('two_factor_enabled')
+        .eq('id', userId)
+        .single();
+
+      if (profileFor2FA?.two_factor_enabled) {
+        // 2FA is required - show 2FA verification step
+        setPending2FAUserId(userId);
+        setPending2FAEmail(username);
+        setPending2FA(true);
+        setLoading(false);
+        return;
+      }
+
       // Check if user has WebAuthn enabled (web) or native biometric
       if (isNative && biometricEnabled) {
         // Native biometric is required
@@ -868,7 +889,25 @@ const Login = () => {
         <h2 className="text-2xl md:text-3xl font-serif text-gold mb-8 tracking-widest">
           SOCIETY
         </h2>
-        {pendingBiometricAuth ? (
+        {pending2FA && pending2FAUserId ? (
+          <TwoFactorVerification
+            userId={pending2FAUserId}
+            email={pending2FAEmail}
+            onVerified={async () => {
+              setPending2FA(false);
+              setPending2FAUserId(null);
+              setPending2FAEmail("");
+              await completeLogin();
+            }}
+            onCancel={async () => {
+              await supabase.auth.signOut();
+              setPending2FA(false);
+              setPending2FAUserId(null);
+              setPending2FAEmail("");
+              toast.info(t('connectionCancelled'));
+            }}
+          />
+        ) : pendingBiometricAuth ? (
           <>
             <p className="text-gold/60 text-sm mb-8 tracking-widest">{t('biometricVerification')}</p>
             

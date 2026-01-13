@@ -62,42 +62,81 @@
           }
         };
         
-        // Définir sur window de manière synchrone
+        // Fonction pour définir le polyfill de manière robuste
+        function definePolyfill(obj, name, value) {
+          try {
+            if (!(name in obj)) {
+              Object.defineProperty(obj, name, {
+                value: value,
+                writable: true,
+                configurable: true,
+                enumerable: false
+              });
+            } else {
+              // Si l'API existe déjà mais n'a pas la méthode requestWindow, la remplacer
+              var existing = obj[name];
+              if (!existing || typeof existing.requestWindow !== 'function') {
+                Object.defineProperty(obj, name, {
+                  value: value,
+                  writable: true,
+                  configurable: true,
+                  enumerable: false
+                });
+              }
+            }
+          } catch (e) {
+            // Fallback si Object.defineProperty échoue
+            try {
+              obj[name] = value;
+            } catch (e2) {
+              // Si même l'assignation directe échoue, ignorer silencieusement
+            }
+          }
+        }
+        
+        // Attendre que window soit disponible (peut être undefined dans certains contextes)
+        function initPolyfill() {
+          // Définir sur window de manière synchrone
+          if (typeof window !== 'undefined') {
+            definePolyfill(window, 'documentPictureInPicture', polyfill);
+          }
+          
+          // Définir aussi sur document
+          if (typeof document !== 'undefined') {
+            var docPolyfill = (typeof window !== 'undefined' && window.documentPictureInPicture) || polyfill;
+            definePolyfill(document, 'documentPictureInPicture', docPolyfill);
+          }
+          
+          // S'assurer que l'API est disponible globalement même si elle est accédée de manière asynchrone
+          if (typeof window !== 'undefined' && typeof window.self !== 'undefined') {
+            try {
+              if (!('documentPictureInPicture' in window.self)) {
+                Object.defineProperty(window.self, 'documentPictureInPicture', {
+                  get: function() {
+                    return (typeof window !== 'undefined' && window.documentPictureInPicture) || polyfill;
+                  },
+                  configurable: true,
+                  enumerable: false
+                });
+              }
+            } catch (e) {
+              // Ignorer si cela échoue
+            }
+          }
+        }
+        
+        // Initialiser immédiatement
+        initPolyfill();
+        
+        // Réinitialiser aussi quand le DOM est prêt (au cas où window/document ne sont pas encore disponibles)
+        if (typeof document !== 'undefined' && document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initPolyfill, { once: true });
+        }
+        
+        // Réinitialiser aussi après le chargement complet (pour les scripts chargés dynamiquement)
         if (typeof window !== 'undefined') {
-          try {
-            if (!('documentPictureInPicture' in window)) {
-              Object.defineProperty(window, 'documentPictureInPicture', {
-                value: polyfill,
-                writable: true,
-                configurable: true,
-                enumerable: false
-              });
-            }
-          } catch (e) {
-            // Fallback si Object.defineProperty échoue
-            window.documentPictureInPicture = polyfill;
-          }
+          window.addEventListener('load', initPolyfill, { once: true });
         }
-        
-        // Définir aussi sur document
-        if (typeof document !== 'undefined') {
-          try {
-            if (!('documentPictureInPicture' in document)) {
-              var docPolyfill = window.documentPictureInPicture || polyfill;
-              Object.defineProperty(document, 'documentPictureInPicture', {
-                value: docPolyfill,
-                writable: true,
-                configurable: true,
-                enumerable: false
-              });
-            }
-          } catch (e) {
-            // Fallback si Object.defineProperty échoue
-            document.documentPictureInPicture = window.documentPictureInPicture || polyfill;
-          }
-        }
-        
-        // S'assurer que l'API est disponible globalement même si elle est accédée de manière asynchrone
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>

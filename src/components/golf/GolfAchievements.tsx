@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Edit2, Trash2, Trophy, Loader2, Sparkles, FileText } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { GolfAchievement } from './GolfProfileModule';
 import {
   Dialog,
@@ -30,23 +31,24 @@ interface GolfAchievementsProps {
   onUpdate: () => void;
 }
 
-const ACHIEVEMENT_TYPES = [
-  { value: 'tournament', label: 'Tournoi / Compétition' },
-  { value: 'personal', label: 'Accomplissement personnel' },
-  { value: 'hole_in_one', label: 'Hole in One' },
-  { value: 'albatross', label: 'Albatross' },
-  { value: 'eagle', label: 'Eagle' },
-  { value: 'handicap', label: 'Évolution handicap' },
-  { value: 'other', label: 'Autre' },
-];
-
 const GolfAchievements: React.FC<GolfAchievementsProps> = ({ 
   userId, 
   achievements, 
   isEditable, 
   onUpdate 
 }) => {
+  const { t } = useLanguage();
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  const ACHIEVEMENT_TYPES = [
+    { value: 'tournament', label: t('golfAchievementType_tournament') },
+    { value: 'personal', label: t('golfAchievementType_personal') },
+    { value: 'hole_in_one', label: t('golfAchievementType_hole_in_one') },
+    { value: 'albatross', label: t('golfAchievementType_albatross') },
+    { value: 'eagle', label: t('golfAchievementType_eagle') },
+    { value: 'handicap', label: t('golfAchievementType_handicap') },
+    { value: 'other', label: t('other') },
+  ];
   const [saving, setSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isImportingDoc, setIsImportingDoc] = useState(false);
@@ -86,7 +88,7 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
   const handleAIGenerate = async () => {
     const context = formData.tournament_name || formData.description || '';
     if (!context) {
-      toast.error("Veuillez d'abord saisir un nom d'événement ou une description");
+      toast.error(t('golfAchievementPleaseEnterEventOrDescription'));
       return;
     }
     setIsGenerating(true);
@@ -97,10 +99,10 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
       if (error) throw error;
       if (data?.suggestion) {
         setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success("Suggestion générée");
+        toast.success(t('poloAchievementSuggestionGenerated'));
       }
     } catch {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('poloAchievementGenerationError'));
     } finally {
       setIsGenerating(false);
     }
@@ -112,14 +114,14 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
 
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error("Fichier trop volumineux (max 10MB)");
+      toast.error(t('poloHorseFileTooLarge'));
       return;
     }
 
     setIsImportingDoc(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       const fileExt = file.name.split('.').pop();
       const fileName = `golf-achievement-${user.id}-${Date.now()}.${fileExt}`;
@@ -130,10 +132,10 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
-      toast.success("Document importé avec succès");
+      toast.success(t('poloHorseDocumentImported'));
     } catch (error) {
       console.error(error);
-      toast.error("Erreur lors de l'import du document");
+      toast.error(t('poloHorseImportError'));
     } finally {
       setIsImportingDoc(false);
       if (docInputRef.current) docInputRef.current.value = '';
@@ -149,7 +151,7 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
           .update(formData)
           .eq('id', editingAchievement.id);
         if (error) throw error;
-        toast.success('Accomplissement mis à jour');
+        toast.success(t('golfAchievementUpdated'));
       } else {
         const { error } = await supabase
           .from('golf_achievements')
@@ -159,21 +161,21 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
             display_order: achievements.length,
           });
         if (error) throw error;
-        toast.success('Accomplissement ajouté');
+        toast.success(t('golfAchievementAdded'));
       }
       onUpdate();
       setDialogOpen(false);
       resetForm();
     } catch (error) {
       console.error('Error saving achievement:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(t('poloErrorSaving'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cet accomplissement ?')) return;
+    if (!confirm(t('golfAchievementDeleteConfirm'))) return;
     
     try {
       const { error } = await supabase
@@ -181,16 +183,16 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
         .delete()
         .eq('id', id);
       if (error) throw error;
-      toast.success('Accomplissement supprimé');
+      toast.success(t('golfAchievementDeleted'));
       onUpdate();
     } catch (error) {
       console.error('Error deleting achievement:', error);
-      toast.error('Erreur lors de la suppression');
+      toast.error(t('golfAchievementDeleteError'));
     }
   };
 
   const getTypeLabel = (type: string | null) => {
-    return ACHIEVEMENT_TYPES.find(t => t.value === type)?.label || type || 'Autre';
+    return ACHIEVEMENT_TYPES.find(t => t.value === type)?.label || type || t('other');
   };
 
   const getTypeIcon = (type: string | null) => {
@@ -224,7 +226,7 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Trophy className="h-5 w-5" />
-          🏆 MES ACCOMPLISSEMENTS
+          🏆 {t('golfAchievementMyAchievements')}
         </h3>
         {isEditable && (
           <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -234,18 +236,18 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Plus className="h-4 w-4" />
-                Ajouter
+                {t('add')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>
-                  {editingAchievement ? 'Modifier l\'accomplissement' : 'Ajouter un accomplissement'}
+                  {editingAchievement ? t('golfAchievementEditAchievement') : t('golfAchievementAddAchievement')}
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Type d'accomplissement</Label>
+                  <Label>{t('golfAchievementType')}</Label>
                   <Select
                     value={formData.achievement_type || 'tournament'}
                     onValueChange={(value) => setFormData({ ...formData, achievement_type: value })}
@@ -265,7 +267,7 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="achievement-year">Année</Label>
+                    <Label htmlFor="achievement-year">{t('poloAchievementYear')}</Label>
                     <Input
                       id="achievement-year"
                       placeholder="2024"
@@ -274,10 +276,10 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="achievement-result">Résultat</Label>
+                    <Label htmlFor="achievement-result">{t('poloAchievementResult')}</Label>
                     <Input
                       id="achievement-result"
-                      placeholder="1ère place, -5..."
+                      placeholder={t('golfAchievementResultPlaceholder')}
                       value={formData.result || ''}
                       onChange={(e) => setFormData({ ...formData, result: e.target.value })}
                     />
@@ -285,20 +287,20 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="achievement-name">Nom de l'événement / Parcours</Label>
+                  <Label htmlFor="achievement-name">{t('golfAchievementEventName')}</Label>
                   <Input
                     id="achievement-name"
-                    placeholder="Championnat du club, Golf National..."
+                    placeholder={t('golfAchievementEventNamePlaceholder')}
                     value={formData.tournament_name || ''}
                     onChange={(e) => setFormData({ ...formData, tournament_name: e.target.value })}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="achievement-description">Description</Label>
+                  <Label htmlFor="achievement-description">{t('description')}</Label>
                   <Textarea
                     id="achievement-description"
-                    placeholder="Détails de votre accomplissement..."
+                    placeholder={t('golfAchievementDescriptionPlaceholder')}
                     value={formData.description || ''}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
@@ -315,7 +317,7 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
                     className="border-primary/30 text-primary hover:bg-primary/10"
                   >
                     {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
-                    IA Aurora
+                    {t('aiAurora')}
                   </Button>
                   <Button
                     variant="outline"
@@ -325,7 +327,7 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
                     className="border-primary/30 text-primary hover:bg-primary/10"
                   >
                     {isImportingDoc ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />}
-                    Importer
+                    {t('import')}
                   </Button>
                 </div>
 
@@ -335,7 +337,7 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
                   className="w-full"
                 >
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {editingAchievement ? 'Mettre à jour' : 'Ajouter'}
+                  {editingAchievement ? t('update') : t('add')}
                 </Button>
               </div>
             </DialogContent>
@@ -346,10 +348,10 @@ const GolfAchievements: React.FC<GolfAchievementsProps> = ({
       {achievements.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-lg">
           <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>Aucun accomplissement enregistré</p>
+          <p>{t('golfAchievementNoAchievements')}</p>
           {isEditable && (
             <p className="text-sm mt-2">
-              Ajoutez vos trophées, hole-in-one et moments mémorables
+              {t('golfAchievementAddTrophies')}
             </p>
           )}
         </div>

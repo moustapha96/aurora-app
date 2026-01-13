@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Edit2, Trash2, Heart, Star, Loader2, Sparkles, FileText } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { PoloHorse } from './PoloProfileModule';
 
 interface PoloHorsesProps {
@@ -17,6 +18,7 @@ interface PoloHorsesProps {
 }
 
 const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onUpdate }) => {
+  const { t } = useLanguage();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingHorse, setEditingHorse] = useState<PoloHorse | null>(null);
   const [saving, setSaving] = useState(false);
@@ -69,7 +71,7 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
 
   const handleAIGenerate = async () => {
     if (!formData.name) {
-      toast.error("Veuillez d'abord saisir un nom de cheval");
+      toast.error(t('poloHorsePleaseEnterName'));
       return;
     }
     setIsGenerating(true);
@@ -79,10 +81,10 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
       });
       if (error) throw error;
       if (data?.suggestion) {
-        toast.success("Suggestion générée - utilisez-la pour enrichir les détails");
+        toast.success(t('poloHorseSuggestionGenerated'));
       }
     } catch {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('poloHorseGenerationError'));
     } finally {
       setIsGenerating(false);
     }
@@ -94,14 +96,14 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
 
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error("Fichier trop volumineux (max 10MB)");
+      toast.error(t('poloHorseFileTooLarge'));
       return;
     }
 
     setIsImportingDoc(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       const fileExt = file.name.split('.').pop();
       const fileName = `polo-horse-${user.id}-${Date.now()}.${fileExt}`;
@@ -112,10 +114,10 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
-      toast.success("Document importé avec succès");
+      toast.success(t('poloHorseDocumentImported'));
     } catch (error) {
       console.error(error);
-      toast.error("Erreur lors de l'import du document");
+      toast.error(t('poloHorseImportError'));
     } finally {
       setIsImportingDoc(false);
       if (docInputRef.current) docInputRef.current.value = '';
@@ -155,7 +157,7 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
       onUpdate();
     } catch (error) {
       console.error('Error saving horse:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(t('poloErrorSaving'));
     } finally {
       setSaving(false);
     }
@@ -180,14 +182,14 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer ce cheval ?')) return;
+    if (!confirm(t('poloHorseDeleteConfirm'))) return;
     try {
       const { error } = await supabase.from('polo_horses').delete().eq('id', id);
       if (error) throw error;
-      toast.success('Cheval supprimé');
+      toast.success(t('poloHorseDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error('Erreur lors de la suppression');
+      toast.error(t('poloHorseDeleteError'));
     }
   };
 
@@ -216,22 +218,22 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Heart className="h-5 w-5 text-primary" />
-          🤝 MES PARTENAIRES ÉQUINS
+          🤝 {t('poloHorseMyEquinePartners')}
         </h3>
         {isEditable && (
           <Button variant="outline" size="sm" onClick={openAddDialog} className="border-primary/30 text-primary">
             <Plus className="h-4 w-4 mr-1" />
-            Ajouter un cheval
+            {t('poloHorseAddHorse')}
           </Button>
         )}
       </div>
 
       {horses.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-lg">
-          <p>Aucun partenaire équin enregistré</p>
+          <p>{t('poloHorseNoPartners')}</p>
           {isEditable && (
             <Button variant="link" onClick={openAddDialog} className="text-primary">
-              Ajouter votre premier cheval
+              {t('poloHorseAddFirstHorse')}
             </Button>
           )}
         </div>
@@ -243,19 +245,19 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
-                    <span className="text-sm font-medium text-primary">Mon cheval principal</span>
+                    <span className="text-sm font-medium text-primary">{t('poloHorseMyPrimaryHorse')}</span>
                   </div>
                   <h4 className="text-xl font-serif text-foreground">{primaryHorse.name}</h4>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                    {primaryHorse.age && <p><span className="text-muted-foreground">Âge :</span> {primaryHorse.age} ans</p>}
-                    {primaryHorse.breed && <p><span className="text-muted-foreground">Race :</span> {primaryHorse.breed}</p>}
-                    {primaryHorse.together_since && <p><span className="text-muted-foreground">Ensemble depuis :</span> {primaryHorse.together_since}</p>}
+                    {primaryHorse.age && <p><span className="text-muted-foreground">{t('poloHorseAge')} :</span> {primaryHorse.age} {t('poloYears')}</p>}
+                    {primaryHorse.breed && <p><span className="text-muted-foreground">{t('poloHorseBreed')} :</span> {primaryHorse.breed}</p>}
+                    {primaryHorse.together_since && <p><span className="text-muted-foreground">{t('poloHorseTogetherSince')} :</span> {primaryHorse.together_since}</p>}
                   </div>
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {primaryHorse.is_own_horse && <span className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-full">Mon propre cheval</span>}
-                    {primaryHorse.exclusive_rider && <span className="text-xs px-2 py-1 bg-muted/40 text-foreground rounded-full">Je le monte exclusivement</span>}
-                    {primaryHorse.tournament_wins && <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-700 rounded-full">Victoires en tournoi</span>}
-                    {primaryHorse.in_training && <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-700 rounded-full">En formation</span>}
+                    {primaryHorse.is_own_horse && <span className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-full">{t('poloHorseMyOwnHorse')}</span>}
+                    {primaryHorse.exclusive_rider && <span className="text-xs px-2 py-1 bg-muted/40 text-foreground rounded-full">{t('poloHorseExclusiveRider')}</span>}
+                    {primaryHorse.tournament_wins && <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-700 rounded-full">{t('poloHorseTournamentWins')}</span>}
+                    {primaryHorse.in_training && <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-700 rounded-full">{t('poloHorseInTraining')}</span>}
                   </div>
                 </div>
                 {isEditable && (
@@ -281,7 +283,7 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
                       <h4 className="font-medium text-foreground">{horse.name}</h4>
                       <div className="text-sm text-muted-foreground mt-1">
                         {horse.breed && <span>{horse.breed}</span>}
-                        {horse.age && <span> • {horse.age} ans</span>}
+                        {horse.age && <span> • {horse.age} {t('poloYears')}</span>}
                       </div>
                     </div>
                     {isEditable && (
@@ -306,55 +308,55 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground">
-              {editingHorse ? 'Modifier le cheval' : 'Ajouter un cheval'}
+              {editingHorse ? t('poloHorseEditHorse') : t('poloHorseAddHorse')}
               {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </DialogTitle>
             <DialogDescription>
-              Renseignez les informations de votre partenaire équin
+              {t('poloHorseFillInfo')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="horse-name">Nom *</Label>
+              <Label htmlFor="horse-name">{t('poloHorseName')} *</Label>
               <Input
                 id="horse-name"
                 value={formData.name || ''}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nom du cheval"
+                placeholder={t('poloHorseNamePlaceholder')}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="horse-age">Âge</Label>
+                <Label htmlFor="horse-age">{t('poloHorseAge')}</Label>
                 <Input
                   id="horse-age"
                   type="number"
                   value={formData.age || ''}
                   onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) || null })}
-                  placeholder="Âge en années"
+                  placeholder={t('poloHorseAgePlaceholder')}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="horse-breed">Race</Label>
+                <Label htmlFor="horse-breed">{t('poloHorseBreed')}</Label>
                 <Input
                   id="horse-breed"
                   value={formData.breed || ''}
                   onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-                  placeholder="Race du cheval"
+                  placeholder={t('poloHorseBreedPlaceholder')}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horse-since">Ensemble depuis</Label>
+              <Label htmlFor="horse-since">{t('poloHorseTogetherSince')}</Label>
               <Input
                 id="horse-since"
                 value={formData.together_since || ''}
                 onChange={(e) => setFormData({ ...formData, together_since: e.target.value })}
-                placeholder="Ex: 2 ans, 6 mois"
+                placeholder={t('poloHorseTogetherSincePlaceholder')}
               />
             </div>
             <div className="space-y-3">
-              <Label>Relation particulière</Label>
+              <Label>{t('poloHorseSpecialRelationship')}</Label>
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -362,7 +364,7 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
                     checked={formData.is_primary}
                     onCheckedChange={(checked) => handleCheckboxChange('is_primary', !!checked)}
                   />
-                  <Label htmlFor="is_primary" className="cursor-pointer font-normal">Cheval principal</Label>
+                  <Label htmlFor="is_primary" className="cursor-pointer font-normal">{t('poloHorsePrimaryHorse')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -370,7 +372,7 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
                     checked={formData.is_own_horse}
                     onCheckedChange={(checked) => handleCheckboxChange('is_own_horse', !!checked)}
                   />
-                  <Label htmlFor="is_own" className="cursor-pointer font-normal">C'est mon propre cheval</Label>
+                  <Label htmlFor="is_own" className="cursor-pointer font-normal">{t('poloHorseIsMyOwnHorse')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -378,7 +380,7 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
                     checked={formData.exclusive_rider}
                     onCheckedChange={(checked) => handleCheckboxChange('exclusive_rider', !!checked)}
                   />
-                  <Label htmlFor="exclusive" className="cursor-pointer font-normal">Je le monte exclusivement</Label>
+                  <Label htmlFor="exclusive" className="cursor-pointer font-normal">{t('poloHorseExclusiveRider')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -386,7 +388,7 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
                     checked={formData.tournament_wins}
                     onCheckedChange={(checked) => handleCheckboxChange('tournament_wins', !!checked)}
                   />
-                  <Label htmlFor="wins" className="cursor-pointer font-normal">Nous avons gagné des tournois ensemble</Label>
+                  <Label htmlFor="wins" className="cursor-pointer font-normal">{t('poloHorseWonTournamentsTogether')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -394,7 +396,7 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
                     checked={formData.in_training}
                     onCheckedChange={(checked) => handleCheckboxChange('in_training', !!checked)}
                   />
-                  <Label htmlFor="training" className="cursor-pointer font-normal">Nous sommes en formation</Label>
+                  <Label htmlFor="training" className="cursor-pointer font-normal">{t('poloHorseInTrainingTogether')}</Label>
                 </div>
               </div>
             </div>
@@ -409,7 +411,7 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
                 className="border-primary/30 text-primary hover:bg-primary/10"
               >
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
-                IA Aurora
+                {t('aiAurora')}
               </Button>
               <Button
                 variant="outline"
@@ -419,7 +421,7 @@ const PoloHorses: React.FC<PoloHorsesProps> = ({ userId, horses, isEditable, onU
                 className="border-primary/30 text-primary hover:bg-primary/10"
               >
                 {isImportingDoc ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileText className="w-4 h-4 mr-1" />}
-                Importer
+                {t('import')}
               </Button>
             </div>
           </div>

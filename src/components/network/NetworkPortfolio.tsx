@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface PortfolioItem {
   id: string;
@@ -21,6 +22,7 @@ interface NetworkPortfolioProps {
 }
 
 export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfolioProps) => {
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
@@ -168,7 +170,7 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
   };
 
   return (
-    <NetworkModule title="Portfolio Lifestyle" icon={ImageIcon} moduleType="portfolio" isEditable={isEditable}>
+    <NetworkModule title={t('portfolioLifestyle')} icon={ImageIcon} moduleType="portfolio" isEditable={isEditable}>
       <div className="space-y-4">
         {/* Clickable text to add photos - always visible when editable */}
         {isEditable && (
@@ -177,7 +179,7 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
             className="text-muted-foreground text-sm cursor-pointer hover:text-gold transition-colors bg-transparent border-none w-full text-left"
             onClick={() => setIsDialogOpen(true)}
           >
-            Ajoutez des photos pour illustrer votre style de vie
+            {t('addPhotosLifestyle')}
           </button>
         )}
 

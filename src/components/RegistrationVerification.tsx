@@ -225,7 +225,7 @@ export function RegistrationVerification({
           window.location.href = data.redirectUrl;
         }, 1500);
       } else {
-        setError(data?.error || 'Erreur inconnue');
+        setError(data?.error || t('unknownError'));
         setStep('error');
       }
     } catch (err: any) {
@@ -243,7 +243,7 @@ export function RegistrationVerification({
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (!sessionData?.session) {
-        setError('Votre session a expiré. Veuillez vous reconnecter.');
+        setError(t('sessionExpired'));
         setStep('error');
         return;
       }
@@ -305,7 +305,7 @@ export function RegistrationVerification({
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (!sessionData?.session) {
-        setError('Votre session a expiré. Veuillez vous reconnecter.');
+        setError(t('sessionExpired'));
         setStep('error');
         return;
       }
@@ -444,6 +444,13 @@ export function RegistrationVerification({
                   <strong>{t('estimatedDuration')}</strong> {t('verificationTakes')} {t('haveIdReady')}
                 </AlertDescription>
               </Alert>
+
+              <div className="bg-gold/5 border border-gold/20 rounded-lg p-4 space-y-2">
+                <h3 className="text-gold font-medium text-sm">{t('veriffCertificationsTitle')}</h3>
+                <p className="text-gold/70 text-xs leading-relaxed">
+                  {t('veriffCertificationsDescription')}
+                </p>
+              </div>
 
               <div className="space-y-3">
                 <Button

@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { sendEmail, getSmtpConfig, validateSmtpConfig } from "../_shared/smtp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +16,6 @@ interface VerificationEmailRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -31,13 +30,13 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const smtpUser = Deno.env.get("SMTP_USER");
-    const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+    const smtpConfig = await getSmtpConfig();
+    const validation = validateSmtpConfig(smtpConfig);
 
-    if (!smtpUser || !smtpPassword) {
+    if (!validation.valid) {
       console.error("SMTP credentials not configured");
       return new Response(
-        JSON.stringify({ error: "SMTP not configured" }),
+        JSON.stringify({ error: "SMTP not configured", details: validation.error }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -64,6 +63,8 @@ const handler = async (req: Request): Promise<Response> => {
       </style>
     `;
 
+    const siteUrl = Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || "https://elite-sphere-nexus.lovable.app";
+
     if (status === 'verified') {
       subject = "✓ Votre identité a été vérifiée - Aurora Society";
       htmlContent = `
@@ -88,14 +89,13 @@ const handler = async (req: Request): Promise<Response> => {
                 Vous pouvez désormais accéder à l'ensemble des privilèges et services exclusifs réservés aux membres de l'Aurora Society.
               </p>
               <div style="text-align: center; margin-top: 30px;">
-                <a href="https://elite-sphere-nexus.lovable.app/login" class="button">
+                <a href="${siteUrl}/login" class="button">
                   Accéder à mon espace
                 </a>
               </div>
             </div>
             <div class="footer">
               <p>© ${new Date().getFullYear()} Aurora Society. Tous droits réservés.</p>
-              <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
             </div>
           </div>
         </body>
@@ -121,30 +121,24 @@ const handler = async (req: Request): Promise<Response> => {
               <p class="message">
                 Nous regrettons de vous informer que votre demande de vérification d'identité n'a pas pu être approuvée.
               </p>
-              ${rejectionReason ? `
-                <p class="message">
-                  <strong>Raison :</strong> ${rejectionReason}
-                </p>
-              ` : ''}
+              ${rejectionReason ? `<p class="message"><strong>Raison :</strong> ${rejectionReason}</p>` : ''}
               <p class="message">
-                Vous pouvez soumettre une nouvelle demande en vous connectant à votre compte et en relançant la procédure de vérification.
+                Vous pouvez soumettre une nouvelle demande en vous connectant à votre compte.
               </p>
               <div style="text-align: center; margin-top: 30px;">
-                <a href="https://elite-sphere-nexus.lovable.app/register?step=verification" class="button">
+                <a href="${siteUrl}/register?step=verification" class="button">
                   Relancer la vérification
                 </a>
               </div>
             </div>
             <div class="footer">
               <p>© ${new Date().getFullYear()} Aurora Society. Tous droits réservés.</p>
-              <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
             </div>
           </div>
         </body>
         </html>
       `;
     } else {
-      // pending
       subject = "Vérification en cours - Aurora Society";
       htmlContent = `
         <!DOCTYPE html>
@@ -165,20 +159,16 @@ const handler = async (req: Request): Promise<Response> => {
                 Nous avons bien reçu votre demande de vérification d'identité.
               </p>
               <p class="message">
-                Notre équipe examine actuellement votre dossier. Ce processus peut prendre quelques heures. Vous recevrez un email dès que la vérification sera terminée.
-              </p>
-              <p class="message">
-                En attendant, vous pouvez vérifier le statut de votre demande en vous connectant à votre compte.
+                Notre équipe examine actuellement votre dossier. Ce processus peut prendre quelques heures.
               </p>
               <div style="text-align: center; margin-top: 30px;">
-                <a href="https://elite-sphere-nexus.lovable.app/login" class="button">
+                <a href="${siteUrl}/login" class="button">
                   Vérifier mon statut
                 </a>
               </div>
             </div>
             <div class="footer">
               <p>© ${new Date().getFullYear()} Aurora Society. Tous droits réservés.</p>
-              <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
             </div>
           </div>
         </body>
@@ -186,29 +176,16 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
 
-    // Create SMTP client for Infomaniak
-    const client = new SMTPClient({
-      connection: {
-        hostname: "mail.infomaniak.com",
-        port: 587,
-        tls: true,
-        auth: {
-          username: smtpUser,
-          password: smtpPassword,
-        },
-      },
-    });
-
-    // Send the email
-    await client.send({
-      from: `Aurora Society <${smtpUser}>`,
+    const emailResult = await sendEmail({
       to: email,
       subject: subject,
-      content: "auto",
       html: htmlContent,
+      config: smtpConfig
     });
 
-    await client.close();
+    if (!emailResult.success) {
+      throw new Error(emailResult.error || "Failed to send email");
+    }
 
     console.log(`Verification email sent successfully to ${email}`);
 
@@ -220,10 +197,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.error("Error in send-verification-email function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 };

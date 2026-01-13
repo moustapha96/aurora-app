@@ -18,13 +18,13 @@ import {
   Moon,
   Eye,
   Lock,
-  Trash2
+  Trash2,
+  Copy
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useLanguage, languages } from "@/contexts/LanguageContext";
-import type { Language } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Header } from "@/components/Header";
-import { PageNavigation } from "@/components/BackButton";
+import { PageHeaderBackButton } from "@/components/BackButton";
 import { IdentityVerification } from "@/components/IdentityVerification";
 import NotificationSettings from "@/components/NotificationSettings";
 import {
@@ -42,7 +42,7 @@ import {
 const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { language, setLanguage, t } = useLanguage();
+  const { t } = useLanguage();
   
   const [settings, setSettings] = useState({
     biometricEnabled: false,
@@ -56,6 +56,7 @@ const Settings = () => {
     showLocation: true,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [accountNumber, setAccountNumber] = useState<string>("");
 
   useEffect(() => {
     loadSettings();
@@ -71,7 +72,7 @@ const Settings = () => {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("biometric_enabled")
+        .select("biometric_enabled, account_number")
         .eq("id", user.id)
         .single();
 
@@ -80,6 +81,7 @@ const Settings = () => {
           ...prev,
           biometricEnabled: profile.biometric_enabled || false,
         }));
+        setAccountNumber(profile.account_number || "");
       }
 
       // Load settings from localStorage for client-side preferences
@@ -120,6 +122,51 @@ const Settings = () => {
     });
   };
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      // Check if Clipboard API is available
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        toast({
+          title: t('accountNumberCopied'),
+          description: t('clickToCopy'),
+        });
+      } else {
+        // Fallback for older browsers or non-secure contexts
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          toast({
+            title: t('accountNumberCopied'),
+            description: t('clickToCopy'),
+          });
+        } catch (err) {
+          console.error('Fallback copy failed:', err);
+          toast({
+            title: t('error'),
+            description: t('copyAccountNumberError'),
+            variant: "destructive",
+          });
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast({
+        title: t('error'),
+        description: t('copyAccountNumberError'),
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteAccount = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -156,18 +203,7 @@ const Settings = () => {
     }
   };
 
-  const languages = [
-    { code: "fr", name: "Français" },
-    { code: "en", name: "English" },
-    { code: "es", name: "Español" },
-    { code: "de", name: "Deutsch" },
-    { code: "it", name: "Italiano" },
-    { code: "pt", name: "Português" },
-    { code: "ar", name: "العربية" },
-    { code: "zh", name: "中文" },
-    { code: "ja", name: "日本語" },
-    { code: "ru", name: "Русский" },
-  ];
+
 
   if (isLoading) {
     return (
@@ -183,51 +219,40 @@ const Settings = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <PageNavigation to="/member-card" />
-      <div className="container mx-auto px-4 pt-32 sm:pt-36 pb-8 max-w-2xl safe-area-all">
+      <div className="container mx-auto px-4 pt-20 sm:pt-24 pb-8 max-w-2xl safe-area-all">
         <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
+          <PageHeaderBackButton />
+          <div className="flex-1">
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('settingsPageTitle')}</h1>
             <p className="text-sm sm:text-base text-muted-foreground">{t('managePreferences')}</p>
           </div>
         </div>
 
+        {/* Account Number Display */}
+        {accountNumber && (
+          <div className="mb-6 p-4 bg-gold/10 border border-gold/30 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">{t('accountNumber')}</p>
+                <p className="text-lg sm:text-xl font-mono font-bold text-gold tracking-wider">
+                  {accountNumber}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => copyToClipboard(accountNumber)}
+                className="text-gold hover:bg-gold/20"
+                title={t('clickToCopy')}
+              >
+                <Copy className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-6">
-          {/* Language */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                {t('language')}
-              </CardTitle>
-              <CardDescription>{t('chooseLanguage')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Globe className="h-4 w-4 mr-2" />
-                    {languages.find(l => l.code === language)?.name || t('language')}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-48">
-                  {languages.map((lang: { code: Language; name: string; flag: string }) => (
-                    <DropdownMenuItem
-                      key={lang.code}
-                      onClick={() => setLanguage(lang.code)}
-                      className={language === lang.code ? "bg-accent" : ""}
-                    >
-                      <span className="mr-2">{lang.flag}</span>
-                      {lang.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </CardContent>
-          </Card>
+         
 
           {/* Mobile Push Notifications */}
           <NotificationSettings />
@@ -306,15 +331,15 @@ const Settings = () => {
                   onCheckedChange={(checked) => updateSetting("showWealthBadge", checked)}
                 />
               </div>
-              <Separator />
-              <div className="flex items-center justify-between">
+              {/* <Separator /> */}
+              {/* <div className="flex items-center justify-between">
                 <Label htmlFor="show-location">{t('showLocation')}</Label>
                 <Switch
                   id="show-location"
                   checked={settings.showLocation}
                   onCheckedChange={(checked) => updateSetting("showLocation", checked)}
                 />
-              </div>
+              </div> */}
             </CardContent>
           </Card>
           {/* Identity Verification */}

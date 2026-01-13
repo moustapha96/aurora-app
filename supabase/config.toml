@@ -41,3 +41,6 @@ verify_jwt = true
 
 [functions.auto-verify-documents]
 verify_jwt = false
+
+[functions.regenerate-account-numbers]
+verify_jwt = true

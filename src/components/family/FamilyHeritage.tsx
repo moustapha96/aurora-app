@@ -54,53 +54,56 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
   if (isEditable) {
     return (
       <div className="space-y-6">
-        {/* Motto */}
-        <div className="relative overflow-hidden rounded-lg border border-gold/30 bg-gradient-to-r from-gold/10 via-gold/5 to-gold/10 p-6 text-center">
-          <Crown className="w-8 h-8 text-gold mx-auto mb-3" />
-          <p className="text-xl font-serif text-gold italic">
+        {/* Motto - Full Width */}
+        <div className="relative overflow-hidden rounded-lg border border-gold/30 bg-gradient-to-r from-gold/10 via-gold/5 to-gold/10 p-4 sm:p-6 text-center">
+          <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-gold mx-auto mb-2 sm:mb-3" />
+          <p className="text-lg sm:text-xl font-serif text-gold italic">
             « <InlineEditableField
               value={heritage?.motto || ""}
               onSave={(value) => handleFieldUpdate("motto", value)}
               placeholder={t('familyMotto')}
-              className="text-xl font-serif text-gold"
+              className="text-lg sm:text-xl font-serif text-gold"
             /> »
           </p>
         </div>
 
-        {/* Values */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gold flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />{t('transmittedValues')}
-          </h4>
-          <div className="pl-6">
-            <InlineEditableField
-              value={heritage?.values_text || ""}
-              onSave={(value) => handleFieldUpdate("values_text", value)}
-              placeholder={t('describeTransmittedValues')}
-              multiline
-              className="text-muted-foreground"
-            />
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {/* Values */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-gold flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />{t('transmittedValues')}
+            </h4>
+            <div className="pl-6">
+              <InlineEditableField
+                value={heritage?.values_text || ""}
+                onSave={(value) => handleFieldUpdate("values_text", value)}
+                placeholder={t('describeTransmittedValues')}
+                multiline
+                className="text-muted-foreground"
+              />
+            </div>
+          </div>
+
+          {/* Vision */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-gold flex items-center gap-2">
+              <Quote className="w-4 h-4" />{t('transmissionVision')}
+            </h4>
+            <div className="pl-6">
+              <InlineEditableField
+                value={heritage?.legacy_vision || ""}
+                onSave={(value) => handleFieldUpdate("legacy_vision", value)}
+                placeholder={t('yourVisionForFutureGenerations')}
+                multiline
+                className="text-muted-foreground italic"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Vision */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gold flex items-center gap-2">
-            <Quote className="w-4 h-4" />{t('transmissionVision')}
-          </h4>
-          <div className="pl-6">
-            <InlineEditableField
-              value={heritage?.legacy_vision || ""}
-              onSave={(value) => handleFieldUpdate("legacy_vision", value)}
-              placeholder={t('yourVisionForFutureGenerations')}
-              multiline
-              className="text-muted-foreground italic"
-            />
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="p-4 bg-gold/5 rounded-lg border border-gold/10">
+        {/* Description - Full Width */}
+        <div className="p-4 sm:p-6 bg-gold/5 rounded-lg border border-gold/10">
           <InlineEditableField
             value={heritage?.heritage_description || ""}
             onSave={(value) => handleFieldUpdate("heritage_description", value)}
@@ -121,25 +124,30 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
       ) : (
         <>
           {heritage?.motto && (
-            <div className="relative overflow-hidden rounded-lg border border-gold/30 bg-gradient-to-r from-gold/10 via-gold/5 to-gold/10 p-6 text-center">
-              <Crown className="w-8 h-8 text-gold mx-auto mb-3" />
-              <p className="text-xl font-serif text-gold italic">« {heritage.motto} »</p>
+            <div className="relative overflow-hidden rounded-lg border border-gold/30 bg-gradient-to-r from-gold/10 via-gold/5 to-gold/10 p-4 sm:p-6 text-center">
+              <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-gold mx-auto mb-2 sm:mb-3" />
+              <p className="text-lg sm:text-xl font-serif text-gold italic">« {heritage.motto} »</p>
             </div>
           )}
-          {heritage?.values_text && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gold flex items-center gap-2"><Sparkles className="w-4 h-4" />{t('transmittedValues')}</h4>
-              <p className="text-muted-foreground whitespace-pre-line pl-6">{heritage.values_text}</p>
-            </div>
-          )}
-          {heritage?.legacy_vision && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gold flex items-center gap-2"><Quote className="w-4 h-4" />{t('transmissionVision')}</h4>
-              <p className="text-muted-foreground whitespace-pre-line pl-6 italic">{heritage.legacy_vision}</p>
-            </div>
-          )}
+          
+          {/* Two Column Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            {heritage?.values_text && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gold flex items-center gap-2"><Sparkles className="w-4 h-4" />{t('transmittedValues')}</h4>
+                <p className="text-muted-foreground whitespace-pre-line pl-6">{heritage.values_text}</p>
+              </div>
+            )}
+            {heritage?.legacy_vision && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gold flex items-center gap-2"><Quote className="w-4 h-4" />{t('transmissionVision')}</h4>
+                <p className="text-muted-foreground whitespace-pre-line pl-6 italic">{heritage.legacy_vision}</p>
+              </div>
+            )}
+          </div>
+          
           {heritage?.heritage_description && (
-            <div className="p-4 bg-gold/5 rounded-lg border border-gold/10">
+            <div className="p-4 sm:p-6 bg-gold/5 rounded-lg border border-gold/10">
               <p className="text-muted-foreground whitespace-pre-line">{heritage.heritage_description}</p>
             </div>
           )}

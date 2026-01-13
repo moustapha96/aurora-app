@@ -3,20 +3,20 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Heart, Users, Trophy, Crown, Star, 
-  Network, GitBranch, Gift, UserPlus
+import {
+  Heart, Users, Trophy, Crown, Star,
+  Network, GitBranch, Gift
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { FamilyDocuments } from "@/components/FamilyDocuments";
-import { PageNavigation } from "@/components/BackButton";
-import { 
-  FamilyModule, 
-  FamilyLineage, 
-  FamilyCloseMembers, 
-  FamilyInfluential, 
-  FamilyBoard, 
-  FamilyCommitments, 
+import { PageHeaderBackButton } from "@/components/BackButton";
+import {
+  FamilyModule,
+  FamilyLineage,
+  FamilyCloseMembers,
+  FamilyInfluential,
+  FamilyBoard,
+  FamilyCommitments,
   FamilyHeritage,
   FamilyParrainage,
   FamilyLinkInvite
@@ -29,12 +29,14 @@ const FamilySocial = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { t } = useLanguage();
-  
+
   const [profile, setProfile] = useState<any>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
-  
+  const [profileId, setProfileId] = useState<string | null>(null);
+
   // Content states for each module
   const [familyContent, setFamilyContent] = useState<any>({});
   const [lineageEntries, setLineageEntries] = useState<any[]>([]);
@@ -46,30 +48,52 @@ const FamilySocial = () => {
 
   useEffect(() => {
     loadAllContent();
-  }, [id]);
+  }, [id, navigate, t]);
 
   const loadAllContent = async () => {
+    setIsCheckingAccess(true);
+    setIsLoading(true);
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        toast.error(t('errorLoadingContent'));
         navigate("/login");
         return;
       }
 
-      const profileId = id || user.id;
-      const isOwn = profileId === user.id;
+      const currentProfileId = id || user.id;
+      setProfileId(currentProfileId);
+      const isOwn = currentProfileId === user.id;
       setIsOwnProfile(isOwn);
 
       // Check access if viewing another user's profile
       if (!isOwn) {
-        const { data: friendships } = await supabase
+        // Check friendship in both directions
+        const { data: friendships, error: friendshipError } = await supabase
           .from('friendships')
           .select('family_access')
-          .or(`and(user_id.eq.${user.id},friend_id.eq.${profileId}),and(user_id.eq.${profileId},friend_id.eq.${user.id})`);
+          .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
 
-        if (!friendships || friendships.length === 0 || !friendships[0].family_access) {
+        if (friendshipError) {
+          console.error('Error checking friendship:', friendshipError);
+          toast.error(t('errorLoadingContent'));
+          setIsCheckingAccess(false);
+          setIsLoading(false);
+          return;
+        }
+
+        // Find the friendship where the other user is involved
+        const friendship = friendships?.find(
+          (f: any) =>
+            (f.user_id === user.id && f.friend_id === currentProfileId) ||
+            (f.user_id === currentProfileId && f.friend_id === user.id)
+        );
+
+        if (!friendship || !friendship.family_access) {
           setHasAccess(false);
           setIsCheckingAccess(false);
+          setIsLoading(false);
           return;
         }
         setHasAccess(true);
@@ -78,86 +102,127 @@ const FamilySocial = () => {
       }
       setIsCheckingAccess(false);
 
-      // Load profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', profileId)
-        .single();
+      // Load all data in parallel for better performance
+      const [
+        { data: profileData, error: profileError },
+        { data: content, error: contentError },
+        { data: lineage, error: lineageError },
+        { data: close, error: closeError },
+        { data: influential, error: influentialError },
+        { data: board, error: boardError },
+        { data: comms, error: commsError },
+        { data: her, error: herError }
+      ] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', currentProfileId)
+          .single(),
+        supabase
+          .from('family_content')
+          .select('*')
+          .eq('user_id', currentProfileId)
+          .maybeSingle(),
+        supabase
+          .from('family_lineage')
+          .select('*')
+          .eq('user_id', currentProfileId)
+          .order('display_order'),
+        supabase
+          .from('family_close')
+          .select('*')
+          .eq('user_id', currentProfileId)
+          .order('display_order'),
+        supabase
+          .from('family_influential')
+          .select('*')
+          .eq('user_id', currentProfileId)
+          .order('display_order'),
+        supabase
+          .from('family_board')
+          .select('*')
+          .eq('user_id', currentProfileId)
+          .order('display_order'),
+        supabase
+          .from('family_commitments')
+          .select('*')
+          .eq('user_id', currentProfileId)
+          .order('display_order'),
+        supabase
+          .from('family_heritage')
+          .select('*')
+          .eq('user_id', currentProfileId)
+          .maybeSingle()
+      ]);
 
-      if (profileData) setProfile(profileData);
+      // Handle errors
+      if (profileError) {
+        console.error('Error loading profile:', profileError);
+        toast.error(t('errorLoadingContent'));
+      } else if (profileData) {
+        setProfile(profileData);
+      }
 
-      // Load family_content
-      const { data: content } = await supabase
-        .from('family_content')
-        .select('*')
-        .eq('user_id', profileId)
-        .maybeSingle();
-
-      if (content) {
+      if (contentError) {
+        console.error('Error loading family content:', contentError);
+      } else if (content) {
         setFamilyContent(content);
       }
 
-      // Load lineage entries
-      const { data: lineage } = await supabase
-        .from('family_lineage')
-        .select('*')
-        .eq('user_id', profileId)
-        .order('display_order');
-      if (lineage) setLineageEntries(lineage);
+      if (lineageError) {
+        console.error('Error loading lineage:', lineageError);
+      } else {
+        setLineageEntries(lineage || []);
+      }
 
-      // Load close family members
-      const { data: close } = await supabase
-        .from('family_close')
-        .select('*')
-        .eq('user_id', profileId)
-        .order('display_order');
-      if (close) setCloseMembers(close);
+      if (closeError) {
+        console.error('Error loading close members:', closeError);
+      } else {
+        setCloseMembers(close || []);
+      }
 
-      // Load influential people
-      const { data: influential } = await supabase
-        .from('family_influential')
-        .select('*')
-        .eq('user_id', profileId)
-        .order('display_order');
-      if (influential) setInfluentialPeople(influential);
+      if (influentialError) {
+        console.error('Error loading influential people:', influentialError);
+      } else {
+        setInfluentialPeople(influential || []);
+      }
 
-      // Load board members
-      const { data: board } = await supabase
-        .from('family_board')
-        .select('*')
-        .eq('user_id', profileId)
-        .order('display_order');
-      if (board) setBoardMembers(board);
+      if (boardError) {
+        console.error('Error loading board members:', boardError);
+      } else {
+        setBoardMembers(board || []);
+      }
 
-      // Load commitments
-      const { data: comms } = await supabase
-        .from('family_commitments')
-        .select('*')
-        .eq('user_id', profileId)
-        .order('display_order');
-      if (comms) setCommitments(comms);
+      if (commsError) {
+        console.error('Error loading commitments:', commsError);
+      } else {
+        setCommitments(comms || []);
+      }
 
-      // Load heritage
-      const { data: her } = await supabase
-        .from('family_heritage')
-        .select('*')
-        .eq('user_id', profileId)
-        .maybeSingle();
-      if (her) setHeritage(her);
+      if (herError) {
+        console.error('Error loading heritage:', herError);
+      } else if (her) {
+        setHeritage(her);
+      }
 
     } catch (error) {
       console.error('Error loading content:', error);
       toast.error(t('errorLoadingContent'));
+      setIsCheckingAccess(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (isCheckingAccess) {
+  if (isCheckingAccess || isLoading) {
     return (
       <>
         <Header />
         <div className="min-h-screen bg-background text-foreground pt-24 flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
+            <p className="text-gold/60 text-sm">{t('loading')}</p>
+          </div>
         </div>
       </>
     );
@@ -167,12 +232,17 @@ const FamilySocial = () => {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-background text-foreground pt-24 flex items-center justify-center">
-          <div className="text-center max-w-md">
-            <p className="mb-4">{t('noAccessToSection')}</p>
-            <Button 
-              variant="outline" 
+        <div className="min-h-screen bg-background text-foreground pt-24 flex items-center justify-center safe-area-all">
+          <div className="text-center max-w-md px-4">
+            <div className="mb-6">
+              <Users className="w-16 h-16 text-gold/30 mx-auto mb-4" />
+              <h2 className="text-xl font-serif text-gold mb-2">{t('accessRestricted')}</h2>
+              <p className="text-gold/60 text-sm mb-4">{t('noAccessToSection')}</p>
+            </div>
+            <Button
+              variant="outline"
               onClick={() => navigate(id ? `/profile/${id}` : "/profile")}
+              className="border-gold/30 hover:bg-gold/10"
             >
               {t('backToGeneralProfile')}
             </Button>
@@ -185,41 +255,44 @@ const FamilySocial = () => {
   return (
     <>
       <Header />
-      <PageNavigation to={id ? `/profile/${id}` : "/profile"} />
-      <div className="min-h-screen bg-background text-foreground pt-32 sm:pt-36 safe-area-all">
+      <div className="min-h-screen bg-background text-foreground pt-20 sm:pt-24 safe-area-all">
         {/* Header */}
         <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-16 sm:top-0 z-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('lineageAlliancesHeritage')}</h1>
-              <p className="text-gold/60 text-xs sm:text-sm mt-1">{t('preserveFamilyHistory')}</p>
+            <div className="flex items-center">
+              {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
+              <PageHeaderBackButton to={"/member-card"} />
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('lineageAlliancesHeritage')}</h1>
+                <p className="text-gold/60 text-xs sm:text-sm mt-1">{t('preserveFamilyHistory')}</p>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {/* Profile Summary Card */}
-          <Card className="module-card rounded-xl mb-8 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-gold/5 via-transparent to-gold/5" />
-            <CardHeader className="relative">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-3xl font-serif mb-2">
+          <Card className="module-card rounded-xl mb-8 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-gold/5 via-transparent to-gold/5 pointer-events-none" />
+            <CardHeader className="relative z-10">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="flex-1">
+                  <CardTitle className="text-2xl sm:text-3xl font-serif mb-2 text-gold">
                     {profile ? `${profile.first_name} ${profile.last_name}` : t('member')}
                   </CardTitle>
-                  <CardDescription className="text-lg text-foreground/80">
+                  <CardDescription className="text-base sm:text-lg text-gold/80">
                     {profile?.honorific_title || profile?.job_function || t('memberAurora')}
                   </CardDescription>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0">
                   {profile?.is_founder && (
-                    <Badge className="bg-gold text-gold-foreground">
+                    <Badge className="bg-gold text-black whitespace-nowrap">
                       <Trophy className="w-3 h-3 mr-1" />
                       {t('founder')}
                     </Badge>
                   )}
                   {profile?.is_patron && (
-                    <Badge className="bg-gold text-gold-foreground">
+                    <Badge className="bg-gold text-black whitespace-nowrap">
                       <Heart className="w-3 h-3 mr-1 fill-current" />
                       {t('patron')}
                     </Badge>
@@ -231,6 +304,8 @@ const FamilySocial = () => {
 
           {/* Modules Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+
             {/* Module 1: Lignée & Origines */}
             <FamilyModule
               title={t('lineageOrigins')}
@@ -241,14 +316,11 @@ const FamilySocial = () => {
               onUpdate={loadAllContent}
               renderContent={() => (
                 <div className="space-y-6">
-                  <FamilyLineage 
-                    entries={lineageEntries} 
-                    isEditable={isOwnProfile} 
-                    onUpdate={loadAllContent} 
-                  />
+
                   {/* Section pour inviter des proches */}
-                  <FamilyLinkInvite 
+                  <FamilyLinkInvite
                     isEditable={isOwnProfile}
+
                     onUpdate={loadAllContent}
                   />
                 </div>
@@ -264,10 +336,10 @@ const FamilySocial = () => {
               isEditable={isOwnProfile}
               onUpdate={loadAllContent}
               renderContent={() => (
-                <FamilyCloseMembers 
-                  members={closeMembers} 
-                  isEditable={isOwnProfile} 
-                  onUpdate={loadAllContent} 
+                <FamilyCloseMembers
+                  members={closeMembers}
+                  isEditable={isOwnProfile}
+                  onUpdate={loadAllContent}
                 />
               )}
             />
@@ -281,10 +353,10 @@ const FamilySocial = () => {
               isEditable={isOwnProfile}
               onUpdate={loadAllContent}
               renderContent={() => (
-                <FamilyInfluential 
-                  people={influentialPeople} 
-                  isEditable={isOwnProfile} 
-                  onUpdate={loadAllContent} 
+                <FamilyInfluential
+                  people={influentialPeople}
+                  isEditable={isOwnProfile}
+                  onUpdate={loadAllContent}
                 />
               )}
             />
@@ -298,10 +370,10 @@ const FamilySocial = () => {
               isEditable={isOwnProfile}
               onUpdate={loadAllContent}
               renderContent={() => (
-                <FamilyBoard 
-                  members={boardMembers} 
-                  isEditable={isOwnProfile} 
-                  onUpdate={loadAllContent} 
+                <FamilyBoard
+                  members={boardMembers}
+                  isEditable={isOwnProfile}
+                  onUpdate={loadAllContent}
                 />
               )}
             />
@@ -315,47 +387,55 @@ const FamilySocial = () => {
               isEditable={isOwnProfile}
               onUpdate={loadAllContent}
               renderContent={() => (
-                <FamilyCommitments 
-                  commitments={commitments} 
-                  isEditable={isOwnProfile} 
-                  onUpdate={loadAllContent} 
-                />
-              )}
-            />
-
-            {/* Module 6: Héritage & Transmission */}
-            <FamilyModule
-              title={t('heritageTransmission')}
-              icon={<Crown className="w-5 h-5" />}
-              moduleType="heritage"
-              content={heritage?.heritage_description || ""}
-              isEditable={isOwnProfile}
-              onUpdate={loadAllContent}
-              renderContent={() => (
-                <FamilyHeritage 
-                  heritage={heritage} 
-                  isEditable={isOwnProfile} 
-                  onUpdate={loadAllContent} 
-                />
-              )}
-            />
-
-            {/* Module 7: Parrainage */}
-            <FamilyModule
-              title={t('sponsorship')}
-              icon={<Gift className="w-5 h-5" />}
-              moduleType="parrainage"
-              content=""
-              isEditable={isOwnProfile}
-              onUpdate={loadAllContent}
-              renderContent={() => (
-                <FamilyParrainage 
-                  isEditable={isOwnProfile} 
+                <FamilyCommitments
+                  commitments={commitments}
+                  isEditable={isOwnProfile}
                   onUpdate={loadAllContent}
-                  userId={id}
                 />
               )}
             />
+
+            {/* Module 6: Héritage & Transmission - Full Width */}
+            <div className="col-span-1 lg:col-span-2">
+              <FamilyModule
+                title={t('heritageTransmission')}
+                icon={<Crown className="w-5 h-5" />}
+                moduleType="heritage"
+                content={heritage?.heritage_description || ""}
+                isEditable={isOwnProfile}
+                onUpdate={loadAllContent}
+                renderContent={() => (
+                  <FamilyHeritage
+                    heritage={heritage}
+                    isEditable={isOwnProfile}
+                    onUpdate={loadAllContent}
+                  />
+                )}
+              />
+            </div>
+
+            {/* Module 7: Parrainage - Full Width */}
+            {isOwnProfile && profileId && (
+              <div className="col-span-1 lg:col-span-2">
+                <FamilyModule
+                  title={t('sponsorship')}
+                  icon={<Gift className="w-5 h-5" />}
+                  moduleType="parrainage"
+                  content=""
+                  isEditable={isOwnProfile}
+                  onUpdate={loadAllContent}
+                  renderContent={() => (
+                    <FamilyParrainage
+                      isEditable={isOwnProfile}
+                      onUpdate={loadAllContent}
+                      userId={profileId}
+                    />
+                  )}
+                />
+              </div>
+            )}
+
+
           </div>
 
           {/* Documents Section - Owner only */}

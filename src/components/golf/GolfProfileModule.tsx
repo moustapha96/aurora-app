@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import GolfPractice from './GolfPractice';
 import GolfCourses from './GolfCourses';
 import GolfAchievements from './GolfAchievements';
@@ -61,6 +62,7 @@ export interface GolfGalleryPhoto {
 }
 
 const GolfProfileModule: React.FC<GolfProfileModuleProps> = ({ userId, isEditable = false }) => {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<GolfProfile | null>(null);
   const [courses, setCourses] = useState<GolfCourse[]>([]);
@@ -87,7 +89,7 @@ const GolfProfileModule: React.FC<GolfProfileModuleProps> = ({ userId, isEditabl
       if (galleryRes.data) setGallery(galleryRes.data as GolfGalleryPhoto[]);
     } catch (error) {
       console.error('Error loading golf data:', error);
-      toast.error('Erreur lors du chargement des données');
+      toast.error(t('golfErrorLoadingData'));
     } finally {
       setLoading(false);
     }
@@ -107,7 +109,7 @@ const GolfProfileModule: React.FC<GolfProfileModuleProps> = ({ userId, isEditabl
         <CardHeader className="border-b border-border/10">
           <CardTitle className="flex items-center gap-3 text-2xl font-serif text-primary">
             <span className="text-3xl">⛳</span>
-            MA PASSION GOLF
+            {t('golfMyPassion')}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-8">

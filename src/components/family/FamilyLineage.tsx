@@ -265,8 +265,21 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
 
   return (
     <div className="space-y-6">
+      {isEditable && (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={openNewDialog}
+            className="bg-gold/20 text-gold border border-gold/30 hover:bg-gold/30 text-xs sm:text-sm h-8 sm:h-9"
+          >
+            <User className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            {t('addMember')}
+          </Button>
+        </div>
+      )}
+      
       {(!entries || entries.length === 0) ? (
-        <p className="text-muted-foreground text-sm italic">
+        <p className="text-muted-foreground text-sm italic text-center py-4">
           {t('noLineageEntered')}
         </p>
       ) : (
@@ -375,7 +388,7 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
       )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto" data-scroll>
+        <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto p-4 sm:p-6" data-scroll>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gold text-base sm:text-lg">
               <Crown className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />

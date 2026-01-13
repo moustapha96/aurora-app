@@ -1257,25 +1257,37 @@ export type Database = {
       }
       linked_accounts: {
         Row: {
+          business_access: boolean | null
           created_at: string
+          family_access: boolean | null
           id: string
           linked_user_id: string
+          network_access: boolean | null
+          personal_access: boolean | null
           relation_type: string
           sponsor_id: string
           updated_at: string
         }
         Insert: {
+          business_access?: boolean | null
           created_at?: string
+          family_access?: boolean | null
           id?: string
           linked_user_id: string
+          network_access?: boolean | null
+          personal_access?: boolean | null
           relation_type?: string
           sponsor_id: string
           updated_at?: string
         }
         Update: {
+          business_access?: boolean | null
           created_at?: string
+          family_access?: boolean | null
           id?: string
           linked_user_id?: string
+          network_access?: boolean | null
+          personal_access?: boolean | null
           relation_type?: string
           sponsor_id?: string
           updated_at?: string
@@ -2224,6 +2236,7 @@ export type Database = {
           linked_by_user_id: string | null
           personal_quote: string | null
           referral_code: string | null
+          two_factor_enabled: boolean | null
           updated_at: string | null
           username: string | null
           webauthn_enabled: boolean | null
@@ -2249,6 +2262,7 @@ export type Database = {
           linked_by_user_id?: string | null
           personal_quote?: string | null
           referral_code?: string | null
+          two_factor_enabled?: boolean | null
           updated_at?: string | null
           username?: string | null
           webauthn_enabled?: boolean | null
@@ -2274,6 +2288,7 @@ export type Database = {
           linked_by_user_id?: string | null
           personal_quote?: string | null
           referral_code?: string | null
+          two_factor_enabled?: boolean | null
           updated_at?: string | null
           username?: string | null
           webauthn_enabled?: boolean | null
@@ -2350,6 +2365,7 @@ export type Database = {
       }
       referral_links: {
         Row: {
+          allowed_pages: Json | null
           click_count: number | null
           created_at: string
           expires_at: string | null
@@ -2364,6 +2380,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allowed_pages?: Json | null
           click_count?: number | null
           created_at?: string
           expires_at?: string | null
@@ -2378,6 +2395,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allowed_pages?: Json | null
           click_count?: number | null
           created_at?: string
           expires_at?: string | null
@@ -2500,6 +2518,33 @@ export type Database = {
           subtitle?: string | null
           title?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      two_factor_codes: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          used: boolean
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          used?: boolean
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          used?: boolean
           user_id?: string
         }
         Relationships: []
@@ -2664,11 +2709,16 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_expired_2fa_codes: { Args: never; Returns: undefined }
       create_private_conversation: {
         Args: { other_user_id: string }
         Returns: string
       }
       generate_account_number: { Args: never; Returns: string }
+      generate_account_number_with_prefix: {
+        Args: { p_is_linked_account: boolean }
+        Returns: string
+      }
       generate_referral_code: { Args: never; Returns: string }
       generate_referral_link_code: { Args: never; Returns: string }
       get_accessible_profile: {

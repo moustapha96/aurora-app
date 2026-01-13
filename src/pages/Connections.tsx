@@ -10,7 +10,7 @@ import { ArrowLeft, Settings, Trash2, MessageCircle, Calendar, Shield, User } fr
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Header } from "@/components/Header";
-import { PageNavigation } from "@/components/BackButton";
+import { PageHeaderBackButton } from "@/components/BackButton";
 import {
   Dialog,
   DialogContent,
@@ -252,11 +252,13 @@ const Connections = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <PageNavigation to="/member-card" />
       
-      <div className="container mx-auto px-4 pt-32 sm:pt-36 pb-8 max-w-4xl safe-area-all">
+      <div className="container mx-auto px-4 pt-20 sm:pt-24 pb-8 max-w-4xl safe-area-all">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('myConnectionsTitle')}</h1>
+          <div className="flex items-center mb-2">
+            <PageHeaderBackButton />
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('myConnectionsTitle')}</h1>
+          </div>
           <p className="text-sm sm:text-base text-muted-foreground">{connections.length} {t('connectionCountLabel')}</p>
         </div>
 

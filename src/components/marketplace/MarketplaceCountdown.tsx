@@ -55,7 +55,7 @@ export const MarketplaceCountdown = ({ endDate, compact = false }: MarketplaceCo
     return (
       <div className="flex items-center gap-1.5 text-destructive text-sm">
         <AlertTriangle className="w-4 h-4" />
-        <span>{t('offerExpired')}</span>
+        <span>{t('endofOffer')}</span>
       </div>
     );
   }

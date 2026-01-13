@@ -5,6 +5,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Activity, Loader2 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { GolfProfile } from './GolfProfileModule';
 
 interface GolfPracticeProps {
@@ -14,22 +15,23 @@ interface GolfPracticeProps {
   onUpdate: () => void;
 }
 
-const LEVELS = [
-  { value: 'debutant', label: 'Débutant' },
-  { value: 'intermediaire', label: 'Intermédiaire' },
-  { value: 'avance', label: 'Avancé' },
-  { value: 'professionnel', label: 'Professionnel' },
-];
-
-const FREQUENCIES = [
-  { value: 'occasionnelle', label: 'Occasionnelle (1-2x/mois)' },
-  { value: 'reguliere', label: 'Régulière (1x/semaine)' },
-  { value: 'intensive', label: 'Intensive (2-3x/semaine)' },
-  { value: 'competition', label: 'Compétition' },
-];
-
 const GolfPractice: React.FC<GolfPracticeProps> = ({ userId, profile, isEditable, onUpdate }) => {
+  const { t } = useLanguage();
   const [saving, setSaving] = useState(false);
+
+  const LEVELS = [
+    { value: 'debutant' },
+    { value: 'intermediaire' },
+    { value: 'avance' },
+    { value: 'professionnel' },
+  ];
+
+  const FREQUENCIES = [
+    { value: 'occasionnelle' },
+    { value: 'reguliere' },
+    { value: 'intensive' },
+    { value: 'competition' },
+  ];
   const [formData, setFormData] = useState<Partial<GolfProfile>>({
     level: profile?.level || null,
     handicap: profile?.handicap || null,
@@ -68,7 +70,7 @@ const GolfPractice: React.FC<GolfPracticeProps> = ({ userId, profile, isEditable
       onUpdate();
     } catch (error) {
       console.error('Error saving practice:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(t('poloErrorSaving'));
     } finally {
       setSaving(false);
     }
@@ -93,8 +95,14 @@ const GolfPractice: React.FC<GolfPracticeProps> = ({ userId, profile, isEditable
     saveData(newData);
   };
 
-  const getLevelLabel = (value: string | null) => LEVELS.find(l => l.value === value)?.label || 'Non défini';
-  const getFrequencyLabel = (value: string | null) => FREQUENCIES.find(f => f.value === value)?.label || 'Non définie';
+  const getLevelLabel = (value: string | null) => {
+    if (!value) return t('golfPracticeNotDefined');
+    return t(`golfPracticeLevel_${value}`);
+  };
+  const getFrequencyLabel = (value: string | null) => {
+    if (!value) return t('golfPracticeNotDefinedF');
+    return t(`golfPracticeFrequency_${value}`);
+  };
 
   if (!isEditable) {
     return (
@@ -102,32 +110,32 @@ const GolfPractice: React.FC<GolfPracticeProps> = ({ userId, profile, isEditable
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
             <Activity className="h-5 w-5" />
-            📊 MA PRATIQUE
+            📊 {t('golfPracticeMyPractice')}
           </h3>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-muted/20 rounded-lg">
           <div>
-            <span className="text-xs text-muted-foreground">Niveau</span>
+            <span className="text-xs text-muted-foreground">{t('golfPracticeLevel')}</span>
             <p className="font-medium text-foreground">{getLevelLabel(profile?.level || null)}</p>
           </div>
           <div>
-            <span className="text-xs text-muted-foreground">Handicap</span>
-            <p className="font-medium text-foreground">{profile?.handicap || 'Non renseigné'}</p>
+            <span className="text-xs text-muted-foreground">{t('golfPracticeHandicap')}</span>
+            <p className="font-medium text-foreground">{profile?.handicap || t('golfPracticeNotProvided')}</p>
           </div>
           <div>
-            <span className="text-xs text-muted-foreground">Fréquence</span>
+            <span className="text-xs text-muted-foreground">{t('golfPracticeFrequency')}</span>
             <p className="font-medium text-foreground">{getFrequencyLabel(profile?.frequency || null)}</p>
           </div>
           <div>
-            <span className="text-xs text-muted-foreground">Expérience</span>
+            <span className="text-xs text-muted-foreground">{t('golfPracticeExperience')}</span>
             <p className="font-medium text-foreground">
-              {profile?.years_experience ? `${profile.years_experience} ans` : 'Non renseignée'}
+              {profile?.years_experience ? `${profile.years_experience} ${t('golfPracticeYears')}` : t('golfPracticeNotProvidedF')}
             </p>
           </div>
           <div className="col-span-2">
-            <span className="text-xs text-muted-foreground">Club</span>
+            <span className="text-xs text-muted-foreground">{t('golfPracticeClub')}</span>
             <p className="font-medium text-foreground">
-              {profile?.club_name ? `${profile.club_name}${profile.club_city ? `, ${profile.club_city}` : ''}` : 'Non renseigné'}
+              {profile?.club_name ? `${profile.club_name}${profile.club_city ? `, ${profile.club_city}` : ''}` : t('golfPracticeNotProvided')}
             </p>
           </div>
         </div>
@@ -140,14 +148,14 @@ const GolfPractice: React.FC<GolfPracticeProps> = ({ userId, profile, isEditable
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Activity className="h-5 w-5" />
-          📊 MA PRATIQUE
+          📊 {t('golfPracticeMyPractice')}
         </h3>
         {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
 
       <div className="space-y-6 p-4 bg-muted/30 rounded-lg border border-border/20">
         <div className="space-y-3">
-          <Label className="text-foreground font-medium">Niveau</Label>
+          <Label className="text-foreground font-medium">{t('golfPracticeLevel')}</Label>
           <RadioGroup
             value={formData.level || ''}
             onValueChange={(value) => handleRadioChange('level', value)}
@@ -156,7 +164,7 @@ const GolfPractice: React.FC<GolfPracticeProps> = ({ userId, profile, isEditable
             {LEVELS.map((level) => (
               <div key={level.value} className="flex items-center space-x-2">
                 <RadioGroupItem value={level.value} id={`golf-level-${level.value}`} />
-                <Label htmlFor={`golf-level-${level.value}`} className="cursor-pointer">{level.label}</Label>
+                <Label htmlFor={`golf-level-${level.value}`} className="cursor-pointer">{t(`golfPracticeLevel_${level.value}`)}</Label>
               </div>
             ))}
           </RadioGroup>
@@ -164,21 +172,21 @@ const GolfPractice: React.FC<GolfPracticeProps> = ({ userId, profile, isEditable
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="golf-handicap" className="text-foreground">Handicap</Label>
+            <Label htmlFor="golf-handicap" className="text-foreground">{t('golfPracticeHandicap')}</Label>
             <Input
               id="golf-handicap"
-              placeholder="Entrez votre handicap (ex: 18.5)"
+              placeholder={t('golfPracticeHandicapPlaceholder')}
               value={formData.handicap || ''}
               onChange={(e) => setFormData({ ...formData, handicap: e.target.value })}
               className="border-border/30"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="golf-years" className="text-foreground">Années d'expérience</Label>
+            <Label htmlFor="golf-years" className="text-foreground">{t('golfPracticeYearsExperience')}</Label>
             <Input
               id="golf-years"
               type="number"
-              placeholder="Nombre d'années"
+              placeholder={t('golfPracticeYearsNumberPlaceholder')}
               value={formData.years_experience || ''}
               onChange={(e) => setFormData({ ...formData, years_experience: parseInt(e.target.value) || null })}
               className="border-border/30"
@@ -187,7 +195,7 @@ const GolfPractice: React.FC<GolfPracticeProps> = ({ userId, profile, isEditable
         </div>
 
         <div className="space-y-3">
-          <Label className="text-foreground font-medium">Fréquence</Label>
+          <Label className="text-foreground font-medium">{t('golfPracticeFrequency')}</Label>
           <RadioGroup
             value={formData.frequency || ''}
             onValueChange={(value) => handleRadioChange('frequency', value)}
@@ -196,7 +204,7 @@ const GolfPractice: React.FC<GolfPracticeProps> = ({ userId, profile, isEditable
             {FREQUENCIES.map((freq) => (
               <div key={freq.value} className="flex items-center space-x-2">
                 <RadioGroupItem value={freq.value} id={`golf-freq-${freq.value}`} />
-                <Label htmlFor={`golf-freq-${freq.value}`} className="cursor-pointer">{freq.label}</Label>
+                <Label htmlFor={`golf-freq-${freq.value}`} className="cursor-pointer">{t(`golfPracticeFrequency_${freq.value}`)}</Label>
               </div>
             ))}
           </RadioGroup>
@@ -204,20 +212,20 @@ const GolfPractice: React.FC<GolfPracticeProps> = ({ userId, profile, isEditable
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="golf-club" className="text-foreground">Club</Label>
+            <Label htmlFor="golf-club" className="text-foreground">{t('golfPracticeClub')}</Label>
             <Input
               id="golf-club"
-              placeholder="Nom du club"
+              placeholder={t('golfPracticeClubNamePlaceholder')}
               value={formData.club_name || ''}
               onChange={(e) => setFormData({ ...formData, club_name: e.target.value })}
               className="border-border/30"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="golf-city" className="text-foreground">Ville</Label>
+            <Label htmlFor="golf-city" className="text-foreground">{t('golfPracticeCity')}</Label>
             <Input
               id="golf-city"
-              placeholder="Ville"
+              placeholder={t('golfPracticeCity')}
               value={formData.club_city || ''}
               onChange={(e) => setFormData({ ...formData, club_city: e.target.value })}
               className="border-border/30"

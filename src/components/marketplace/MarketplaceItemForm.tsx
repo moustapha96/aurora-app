@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,17 @@ interface MarketplaceItemFormProps {
   onUploadImage: (file: File) => Promise<string | null>;
 }
 
+const getInitialFormData = (item?: MarketplaceItem | null): MarketplaceItemFormData => ({
+  title: item?.title || '',
+  description: item?.description || '',
+  category: item?.category || '',
+  price: item?.price || 0,
+  currency: item?.currency || 'EUR',
+  main_image_url: item?.main_image_url || null,
+  additional_images: item?.additional_images || [],
+  offer_end_date: item?.offer_end_date || null
+});
+
 export const MarketplaceItemForm = ({
   open,
   onOpenChange,
@@ -28,19 +39,16 @@ export const MarketplaceItemForm = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const additionalFilesRef = useRef<HTMLInputElement>(null);
   
-  const [formData, setFormData] = useState<MarketplaceItemFormData>({
-    title: item?.title || '',
-    description: item?.description || '',
-    category: item?.category || '',
-    price: item?.price || 0,
-    currency: item?.currency || 'EUR',
-    main_image_url: item?.main_image_url || null,
-    additional_images: item?.additional_images || [],
-    offer_end_date: item?.offer_end_date || null
-  });
-  
+  const [formData, setFormData] = useState<MarketplaceItemFormData>(getInitialFormData(item));
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Sync form data when item changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      setFormData(getInitialFormData(item));
+    }
+  }, [item, open]);
 
   const getCategoryLabel = (category: string) => {
     const labels: Record<string, string> = {
@@ -301,7 +309,7 @@ export const MarketplaceItemForm = ({
 
           {/* Offer End Date */}
           <div className="space-y-2">
-            <Label htmlFor="endDate">{t('offerEndDate')}</Label>
+            <Label htmlFor="endDate">{t('endofOffer')}</Label>
             <Input
               id="endDate"
               type="datetime-local"

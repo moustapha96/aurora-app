@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { PageNavigation } from "@/components/BackButton";
+import { PageHeaderBackButton } from "@/components/BackButton";
 import { LinkedAccountGuard } from "@/components/LinkedAccountGuard";
 import { MarketplaceItemCard, MarketplaceItemForm } from "@/components/marketplace";
 import { useMarketplace, MARKETPLACE_CATEGORIES } from "@/hooks/useMarketplace";
@@ -77,15 +77,17 @@ const MarketplaceContent = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <PageNavigation to="/member-card" />
       
-      <main className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-16">
+      <main className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-16">
         
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-xl sm:text-2xl font-serif text-primary uppercase tracking-wide">
-            {t('privateMarketplace')}
-          </h1>
+        <div className="mb-8">
+          <div className="flex items-center mb-2">
+            <PageHeaderBackButton />
+            <h1 className="text-xl sm:text-2xl font-serif text-primary uppercase tracking-wide">
+              {t('privateMarketplace')}
+            </h1>
+          </div>
           <p className="text-muted-foreground text-sm mt-2">
             {t('privateMarketplaceDesc')}
           </p>

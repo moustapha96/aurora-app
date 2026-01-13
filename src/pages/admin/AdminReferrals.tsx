@@ -80,7 +80,7 @@ interface Referral {
 }
 
 const AdminReferrals = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [links, setLinks] = useState<ReferralLink[]>([]);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
@@ -205,7 +205,7 @@ const AdminReferrals = () => {
 
     } catch (error) {
       console.error('Error loading referral data:', error);
-      toast.error("Erreur lors du chargement des données");
+      toast.error(t('adminReferralsLoadError'));
     } finally {
       setLoading(false);
     }
@@ -215,12 +215,12 @@ const AdminReferrals = () => {
     const url = `${window.location.origin}/register?link=${linkCode}`;
     await navigator.clipboard.writeText(url);
     setCopiedId(linkId);
-    toast.success("Lien copié !");
+    toast.success(t('adminReferralsLinkCopied'));
     setTimeout(() => setCopiedId(null), 2000);
   };
 
   const deleteLink = async (linkId: string) => {
-    if (!confirm("Supprimer ce lien ?")) return;
+    if (!confirm(t('adminReferralsDeleteLinkConfirm'))) return;
     
     try {
       const { error } = await supabase
@@ -232,12 +232,25 @@ const AdminReferrals = () => {
       toast.success(t('adminLinkDeleted'));
       loadData();
     } catch {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('adminReferralsDeleteLinkError'));
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
+    const localeMap: Record<string, string> = {
+      'fr': 'fr-FR',
+      'en': 'en-US',
+      'es': 'es-ES',
+      'de': 'de-DE',
+      'it': 'it-IT',
+      'pt': 'pt-PT',
+      'ar': 'ar-SA',
+      'zh': 'zh-CN',
+      'ja': 'ja-JP',
+      'ru': 'ru-RU'
+    };
+    const locale = localeMap[language] || 'fr-FR';
+    return new Date(dateString).toLocaleDateString(locale, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -288,8 +301,8 @@ const AdminReferrals = () => {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Parrainages & Liens</h1>
-          <p className="text-muted-foreground">Gérez les liens de parrainage, comptes liés et invitations</p>
+          <h1 className="text-2xl font-bold">{t('adminReferralsTitle')}</h1>
+          <p className="text-muted-foreground">{t('adminReferralsDescription')}</p>
         </div>
 
         {/* Stats Cards */}
@@ -300,7 +313,7 @@ const AdminReferrals = () => {
               <Link2 className="w-4 h-4 text-primary" />
               <span className="text-2xl font-bold">{stats.totalLinks}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Liens créés</p>
+            <p className="text-xs text-muted-foreground">{t('adminReferralsLinksCreated')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -309,7 +322,7 @@ const AdminReferrals = () => {
               <Users className="w-4 h-4 text-amber-500" />
               <span className="text-2xl font-bold">{stats.familyLinks}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Liens famille</p>
+            <p className="text-xs text-muted-foreground">{t('adminReferralsFamilyLinks')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -318,7 +331,7 @@ const AdminReferrals = () => {
               <MousePointer className="w-4 h-4 text-blue-500" />
               <span className="text-2xl font-bold">{stats.totalClicks}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Clics totaux</p>
+            <p className="text-xs text-muted-foreground">{t('adminReferralsTotalClicks')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -327,7 +340,7 @@ const AdminReferrals = () => {
               <UserPlus className="w-4 h-4 text-green-500" />
               <span className="text-2xl font-bold">{stats.totalRegistrations}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Inscriptions</p>
+            <p className="text-xs text-muted-foreground">{t('adminReferralsRegistrations')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -336,25 +349,25 @@ const AdminReferrals = () => {
               <Users className="w-4 h-4 text-purple-500" />
               <span className="text-2xl font-bold">{stats.linkedAccounts}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Comptes liés</p>
+            <p className="text-xs text-muted-foreground">{t('adminReferralsLinkedAccounts')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-yellow-500 border-yellow-500">En attente</Badge>
+              <Badge variant="outline" className="text-yellow-500 border-yellow-500">{t('adminReferralsPending')}</Badge>
               <span className="text-2xl font-bold">{stats.pendingReferrals}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Parrainages</p>
+            <p className="text-xs text-muted-foreground">{t('adminReferralsTabReferrals')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-green-500 border-green-500">Confirmés</Badge>
+              <Badge variant="outline" className="text-green-500 border-green-500">{t('adminReferralsConfirmed')}</Badge>
               <span className="text-2xl font-bold">{stats.confirmedReferrals}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Parrainages</p>
+            <p className="text-xs text-muted-foreground">{t('adminReferralsTabReferrals')}</p>
           </CardContent>
         </Card>
       </div>
@@ -363,7 +376,7 @@ const AdminReferrals = () => {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Rechercher..."
+          placeholder={t('adminReferralsSearchPlaceholder')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -373,31 +386,31 @@ const AdminReferrals = () => {
       {/* Tabs */}
       <Tabs defaultValue="links" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="links">Liens ({filteredLinks.length})</TabsTrigger>
-          <TabsTrigger value="linked">Comptes liés ({filteredLinked.length})</TabsTrigger>
-          <TabsTrigger value="referrals">Parrainages ({filteredReferrals.length})</TabsTrigger>
+          <TabsTrigger value="links">{t('adminReferralsTabLinks')} ({filteredLinks.length})</TabsTrigger>
+          <TabsTrigger value="linked">{t('adminReferralsTabLinked')} ({filteredLinked.length})</TabsTrigger>
+          <TabsTrigger value="referrals">{t('adminReferralsTabReferrals')} ({filteredReferrals.length})</TabsTrigger>
         </TabsList>
 
         {/* Links Tab */}
         <TabsContent value="links">
           <Card>
             <CardHeader>
-              <CardTitle>Liens de parrainage</CardTitle>
-              <CardDescription>Tous les liens créés par les membres</CardDescription>
+              <CardTitle>{t('adminReferralsLinksTitle')}</CardTitle>
+              <CardDescription>{t('adminReferralsLinksDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Sponsor</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Clics</TableHead>
-                    <TableHead>Inscriptions</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Créé le</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>{t('adminReferralsLinksTableName')}</TableHead>
+                    <TableHead>{t('adminReferralsLinksTableSponsor')}</TableHead>
+                    <TableHead>{t('adminReferralsLinksTableCode')}</TableHead>
+                    <TableHead>{t('adminReferralsLinksTableType')}</TableHead>
+                    <TableHead>{t('adminReferralsLinksTableClicks')}</TableHead>
+                    <TableHead>{t('adminReferralsLinksTableRegistrations')}</TableHead>
+                    <TableHead>{t('adminReferralsLinksTableStatus')}</TableHead>
+                    <TableHead>{t('adminReferralsLinksTableCreated')}</TableHead>
+                    <TableHead>{t('adminReferralsLinksTableActions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -414,18 +427,18 @@ const AdminReferrals = () => {
                       </TableCell>
                       <TableCell>
                         {link.is_family_link ? (
-                          <Badge variant="outline" className="text-amber-500 border-amber-500">Famille</Badge>
+                          <Badge variant="outline" className="text-amber-500 border-amber-500">{t('adminReferralsLinksTypeFamily')}</Badge>
                         ) : (
-                          <Badge variant="outline">Standard</Badge>
+                          <Badge variant="outline">{t('adminReferralsLinksTypeStandard')}</Badge>
                         )}
                       </TableCell>
                       <TableCell>{link.click_count || 0}</TableCell>
                       <TableCell>{link.registration_count || 0}</TableCell>
                       <TableCell>
                         {link.is_active ? (
-                          <Badge className="bg-green-500/20 text-green-500">Actif</Badge>
+                          <Badge className="bg-green-500/20 text-green-500">{t('adminReferralsLinksStatusActive')}</Badge>
                         ) : (
-                          <Badge variant="secondary">Inactif</Badge>
+                          <Badge variant="secondary">{t('adminReferralsLinksStatusInactive')}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-xs">{formatDate(link.created_at)}</TableCell>
@@ -476,21 +489,21 @@ const AdminReferrals = () => {
         <TabsContent value="linked">
           <Card>
             <CardHeader>
-              <CardTitle>Comptes liés</CardTitle>
-              <CardDescription>Membres associés à d'autres membres (famille)</CardDescription>
+              <CardTitle>{t('adminReferralsLinkedTitle')}</CardTitle>
+              <CardDescription>{t('adminReferralsLinkedDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               {filteredLinked.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Aucun compte lié pour le moment</p>
+                <p className="text-center text-muted-foreground py-8">{t('adminReferralsLinkedEmpty')}</p>
               ) : (
                 <>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Sponsor</TableHead>
-                        <TableHead>Compte lié</TableHead>
-                        <TableHead>Type de relation</TableHead>
-                        <TableHead>Créé le</TableHead>
+                        <TableHead>{t('adminReferralsLinkedTableSponsor')}</TableHead>
+                        <TableHead>{t('adminReferralsLinkedTableLinkedAccount')}</TableHead>
+                        <TableHead>{t('adminReferralsLinkedTableRelationType')}</TableHead>
+                        <TableHead>{t('adminReferralsLinkedTableCreated')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -532,18 +545,18 @@ const AdminReferrals = () => {
         <TabsContent value="referrals">
           <Card>
             <CardHeader>
-              <CardTitle>Parrainages</CardTitle>
-              <CardDescription>Historique des parrainages entre membres</CardDescription>
+              <CardTitle>{t('adminReferralsReferralsTitle')}</CardTitle>
+              <CardDescription>{t('adminReferralsReferralsDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Parrain</TableHead>
-                    <TableHead>Filleul</TableHead>
-                    <TableHead>Code utilisé</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>{t('adminReferralsReferralsTableSponsor')}</TableHead>
+                    <TableHead>{t('adminReferralsReferralsTableReferred')}</TableHead>
+                    <TableHead>{t('adminReferralsReferralsTableCodeUsed')}</TableHead>
+                    <TableHead>{t('adminReferralsReferralsTableStatus')}</TableHead>
+                    <TableHead>{t('adminReferralsReferralsTableDate')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -562,9 +575,9 @@ const AdminReferrals = () => {
                       </TableCell>
                       <TableCell>
                         {referral.status === 'confirmed' ? (
-                          <Badge className="bg-green-500/20 text-green-500">Confirmé</Badge>
+                          <Badge className="bg-green-500/20 text-green-500">{t('adminReferralsReferralsStatusConfirmed')}</Badge>
                         ) : referral.status === 'pending' ? (
-                          <Badge className="bg-yellow-500/20 text-yellow-500">En attente</Badge>
+                          <Badge className="bg-yellow-500/20 text-yellow-500">{t('adminReferralsReferralsStatusPending')}</Badge>
                         ) : (
                           <Badge variant="secondary">{referral.status}</Badge>
                         )}
