@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "../app.aurorasociety.ch"),
+      "@": path.resolve(__dirname, "./build"),
     },
   },
 }));
