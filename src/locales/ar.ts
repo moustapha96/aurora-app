@@ -1675,6 +1675,13 @@ export const ar: Record<string, string> = {
   securePayment: "دفع آمن بتشفير SSL. بياناتك المصرفية محمية.",
   confirmPayment: "تأكيد الدفع",
   paymentSuccess: "تم الدفع بنجاح!",
+  buyNow: "اشتري الآن",
+  checkout: "الدفع",
+  completePayment: "أكمل عملية الدفع",
+  processing: "جاري المعالجة...",
+  pay: "ادفع",
+  paymentError: "خطأ في الدفع",
+  stripeNotConfigured: "Stripe غير مُكوّن. يرجى الاتصال بالمسؤول.",
 
   // Messaging
   messaging: "المراسلة",

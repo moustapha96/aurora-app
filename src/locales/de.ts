@@ -1676,6 +1676,13 @@ export const de: Record<string, string> = {
   securePayment: "Sichere Zahlung durch SSL-Verschlüsselung. Ihre Bankdaten sind geschützt.",
   confirmPayment: "Zahlung bestätigen",
   paymentSuccess: "Zahlung erfolgreich!",
+  buyNow: "Jetzt kaufen",
+  checkout: "Kasse",
+  completePayment: "Zahlung abschließen",
+  processing: "Wird verarbeitet...",
+  pay: "Bezahlen",
+  paymentError: "Zahlungsfehler",
+  stripeNotConfigured: "Stripe ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator.",
 
   // Messaging
   messaging: "Messaging",

@@ -14,6 +14,11 @@ Cette documentation décrit l'intégration Veriff pour la vérification d'identi
 https://lwfqselpqlliaxduxihu.supabase.co/functions/v1/veriff-webhook
 ```
 
+**URL de callback (pour les redirections utilisateur):**
+```
+https://app.aurorasociety.ch
+```
+
 ### Types de Webhooks à activer
 
 | Type | Description |

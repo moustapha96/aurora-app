@@ -1,0 +1,13 @@
+Voici les URLs à configurer dans **Veriff Station** :
+
+### Webhook URLs (à configurer dans Veriff Station)
+```
+https://lwfqselpqlliaxduxihu.supabase.co/functions/v1/veriff-webhook
+```
+→ Utilisez cette URL pour **Webhook Events URL** ET **Webhook Decision URL**
+
+### Callback URLs (redirection utilisateur après vérification)
+- **Inscription :** `https://app.aurorasociety.ch/register?verification=complete&token={token}`
+- **Paramètres de sécurité :** `https://app.aurorasociety.ch/security-settings?verification=complete`
+
+Ces callbacks sont générés automatiquement par le code - pas besoin de les configurer manuellement dans Veriff.

@@ -1669,8 +1669,15 @@ export const it: Record<string, string> = {
   cardExpirationDate: "Date d'expiration",
   nameOnCard: "Nom sur la carte",
   securePayment: "Paiement sécurisé par cryptage SSL. Vos données bancaires sont protégées.",
-  confirmPayment: "Confirmer le paiement",
-  paymentSuccess: "Paiement effectué avec succès !",
+  confirmPayment: "Conferma pagamento",
+  paymentSuccess: "Pagamento completato con successo!",
+  buyNow: "Acquista ora",
+  checkout: "Pagamento",
+  completePayment: "Completa il tuo pagamento",
+  processing: "Elaborazione...",
+  pay: "Paga",
+  paymentError: "Errore nel pagamento",
+  stripeNotConfigured: "Stripe non è configurato. Si prega di contattare l'amministratore.",
 
   // Messaging
   messaging: "Messagerie",

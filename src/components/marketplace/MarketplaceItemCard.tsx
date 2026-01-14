@@ -4,9 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MarketplaceCountdown } from './MarketplaceCountdown';
+import { StripeCheckout } from './StripeCheckout';
 import { MarketplaceItem } from '@/hooks/useMarketplace';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Eye, ChevronLeft, ChevronRight, Package, MapPin } from 'lucide-react';
+import { Eye, ChevronLeft, ChevronRight, Package, MapPin, CreditCard } from 'lucide-react';
 
 interface MarketplaceItemCardProps {
   item: MarketplaceItem;
@@ -14,6 +15,7 @@ interface MarketplaceItemCardProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onMarkSold?: () => void;
+  onPurchaseSuccess?: () => void;
 }
 
 export const MarketplaceItemCard = ({ 
@@ -21,10 +23,12 @@ export const MarketplaceItemCard = ({
   isOwner = false,
   onEdit,
   onDelete,
-  onMarkSold
+  onMarkSold,
+  onPurchaseSuccess
 }: MarketplaceItemCardProps) => {
   const { t } = useLanguage();
   const [showDetails, setShowDetails] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const allImages = [
@@ -213,7 +217,7 @@ export const MarketplaceItemCard = ({
               <div className="space-y-4">
                 <MarketplaceCountdown endDate={item.offer_end_date} />
                 
-                {isOwner && (
+                {isOwner ? (
                   <div className="flex flex-col gap-2">
                     <Button variant="outline" onClick={onEdit}>
                       {t('edit')}
@@ -227,12 +231,35 @@ export const MarketplaceItemCard = ({
                       {t('delete')}
                     </Button>
                   </div>
-                )}
+                ) : item.status === 'active' ? (
+                  <Button 
+                    onClick={() => setShowCheckout(true)}
+                    className="w-full"
+                    size="lg"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    {t('buyNow')}
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Stripe Checkout */}
+      <StripeCheckout
+        open={showCheckout}
+        onOpenChange={setShowCheckout}
+        itemId={item.id}
+        itemTitle={item.title}
+        amount={item.price}
+        currency={item.currency}
+        onSuccess={() => {
+          onPurchaseSuccess?.();
+          setShowDetails(false);
+        }}
+      />
     </>
   );
 };

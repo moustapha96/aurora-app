@@ -1642,6 +1642,13 @@ export const zh: Record<string, string> = {
   securePayment: "通过 SSL 加密的安全支付。你的银行数据受到保护。",
   confirmPayment: "确认支付",
   paymentSuccess: "支付成功！",
+  buyNow: "立即购买",
+  checkout: "结账",
+  completePayment: "完成您的支付",
+  processing: "处理中...",
+  pay: "支付",
+  paymentError: "支付错误",
+  stripeNotConfigured: "Stripe 未配置。请联系管理员。",
 
   // Messaging
   messaging: "消息",

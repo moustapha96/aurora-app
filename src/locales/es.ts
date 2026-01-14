@@ -1666,6 +1666,13 @@ export const es: Record<string, string> = {
   securePayment: "Pago seguro mediante cifrado SSL. Sus datos bancarios están protegidos.",
   confirmPayment: "Confirmar pago",
   paymentSuccess: "¡Pago exitoso!",
+  buyNow: "Comprar ahora",
+  checkout: "Pago",
+  completePayment: "Complete su pago",
+  processing: "Procesando...",
+  pay: "Pagar",
+  paymentError: "Error en el pago",
+  stripeNotConfigured: "Stripe no está configurado. Por favor, contacte al administrador.",
 
   // Messaging
   messaging: "Mensajería",

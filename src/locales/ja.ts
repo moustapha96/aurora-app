@@ -1649,6 +1649,13 @@ export const ja: Record<string, string> = {
   securePayment: "SSL 暗号化による安全な支払い。銀行データは保護されています。",
   confirmPayment: "支払いを確認",
   paymentSuccess: "支払いが正常に完了しました！",
+  buyNow: "今すぐ購入",
+  checkout: "チェックアウト",
+  completePayment: "お支払いを完了してください",
+  processing: "処理中...",
+  pay: "支払う",
+  paymentError: "支払いエラー",
+  stripeNotConfigured: "Stripeが設定されていません。管理者にお問い合わせください。",
 
   // Messaging
   messaging: "メッセージング",

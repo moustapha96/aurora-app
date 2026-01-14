@@ -44,3 +44,9 @@ verify_jwt = false
 
 [functions.regenerate-account-numbers]
 verify_jwt = true
+
+[functions.create-payment-intent]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false

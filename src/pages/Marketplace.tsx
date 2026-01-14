@@ -171,6 +171,9 @@ const MarketplaceContent = () => {
                       onEdit={isOwner ? () => setEditingItem(item) : undefined}
                       onDelete={isOwner ? () => deleteItem(item.id) : undefined}
                       onMarkSold={isOwner ? () => markAsSold(item.id) : undefined}
+                      onPurchaseSuccess={() => {
+                        fetchItems(selectedCategory === 'all' ? undefined : selectedCategory);
+                      }}
                     />
                   );
                 })}

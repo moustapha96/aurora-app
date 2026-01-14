@@ -1680,6 +1680,13 @@
   securePayment: "Paiement sécurisé par cryptage SSL. Vos données bancaires sont protégées.",
   confirmPayment: "Confirmer le paiement",
   paymentSuccess: "Paiement effectué avec succès !",
+  buyNow: "Acheter maintenant",
+  checkout: "Paiement",
+  completePayment: "Complétez votre paiement",
+  processing: "Traitement en cours...",
+  pay: "Payer",
+  paymentError: "Erreur lors du paiement",
+  stripeNotConfigured: "Stripe n'est pas configuré. Veuillez contacter l'administrateur.",
 
   // Messaging
   messaging: "Messagerie",

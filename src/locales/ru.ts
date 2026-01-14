@@ -1656,6 +1656,13 @@ export const ru: Record<string, string> = {
    securePayment: "Безопасный платёж с шифрованием SSL. Ваши банковские данные защищены.",
    confirmPayment: "Подтвердить платёж",
    paymentSuccess: "Платёж успешно выполнен!",
+   buyNow: "Купить сейчас",
+   checkout: "Оформление заказа",
+   completePayment: "Завершите платеж",
+   processing: "Обработка...",
+   pay: "Оплатить",
+   paymentError: "Ошибка платежа",
+   stripeNotConfigured: "Stripe не настроен. Пожалуйста, свяжитесь с администратором.",
  
    // Messaging
    messaging: "Обмен сообщениями",

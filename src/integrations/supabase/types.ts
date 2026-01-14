@@ -1342,6 +1342,56 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_payments: {
+        Row: {
+          amount: number
+          buyer_id: string
+          completed_at: string | null
+          created_at: string | null
+          currency: string
+          id: string
+          item_id: string
+          seller_id: string
+          status: string
+          stripe_payment_intent_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          item_id: string
+          seller_id: string
+          status?: string
+          stripe_payment_intent_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          item_id?: string
+          seller_id?: string
+          status?: string
+          stripe_payment_intent_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_payments_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
