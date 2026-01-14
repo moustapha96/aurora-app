@@ -15,14 +15,23 @@ const Referrals = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <div className="container mx-auto px-4 pt-20 sm:pt-24 pb-8 max-w-7xl">
-        <div className="mb-8">
-          <div className="flex items-center mb-2">
-            <PageHeaderBackButton />
-            <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('referralsTitle')}</h1>
+
+      <div className="border-b border-border p-4 sm:p-6 bg-card mt-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center mb-2">
+              {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
+              <PageHeaderBackButton to={"/member-card"} />
+              <div>
+              <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('referralsTitle')}</h1>
+              <p className="text-gold/60 text-sm mt-1">{t('referralsDescription')}</p>
+              </div>
+            </div>
           </div>
-          <p className="text-gold/60 text-sm mt-1">{t('referralsDescription')}</p>
         </div>
+
+
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 mt-12 overflow-x-hidden">
+
 
         {/* FamilyParrainage Component - Complete referral system with links, statistics, and member management */}
         <FamilyParrainage 

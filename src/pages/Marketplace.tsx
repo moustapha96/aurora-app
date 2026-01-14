@@ -78,21 +78,26 @@ const MarketplaceContent = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-16">
-        
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center mb-2">
-            <PageHeaderBackButton />
-            <h1 className="text-xl sm:text-2xl font-serif text-primary uppercase tracking-wide">
+      <div className="border-b border-border p-4 sm:p-6 bg-card mt-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center mb-2">
+              {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
+              <PageHeaderBackButton to={"/member-card"} />
+              <div>
+              <h1 className="text-xl sm:text-2xl font-serif text-primary uppercase tracking-wide">
               {t('privateMarketplace')}
             </h1>
-          </div>
-          <p className="text-muted-foreground text-sm mt-2">
+            <p className="text-muted-foreground text-sm mt-2">
             {t('privateMarketplaceDesc')}
-          </p>
+          </p>  </div>
+            </div>
+          </div>
         </div>
 
+
+
+      <main className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-16">
+        
         {/* Tabs */}
         <Tabs defaultValue="browse" className="w-full">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">

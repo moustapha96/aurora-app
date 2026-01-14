@@ -333,24 +333,24 @@ const Business = () => {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-20 sm:pt-24 pb-8 safe-area-all">
+      <div className="min-h-screen bg-background pt-20 sm:pt-24 safe-area-all">
 
-          <div className="border-b border-border p-4 sm:p-6 bg-card">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex items-center mb-2">
-                {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
-                <PageHeaderBackButton to={"/member-card"} />
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('businessTitle')}</h1>
-                  <p className="text-gold/60 text-xs sm:text-sm mt-1">{t('businessSubtitle')}</p>
-                </div>
+        <div className="border-b border-border p-4 sm:p-6 bg-card mt-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center mb-2">
+              {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
+              <PageHeaderBackButton to={"/member-card"} />
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('businessTitle')}</h1>
+                <p className="text-gold/60 text-xs sm:text-sm mt-1">{t('businessSubtitle')}</p>
               </div>
             </div>
           </div>
+        </div>
 
 
 
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 mt-12 overflow-x-hidden">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
 
