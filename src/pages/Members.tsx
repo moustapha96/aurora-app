@@ -608,20 +608,33 @@ const Members = () => {
     <>
       <Header />
       <div className="min-h-screen bg-[hsl(var(--navy-blue-light))] text-gold px-4 sm:px-6 pt-20 sm:pt-24 pb-8 safe-area-all">
-        <div className="max-w-7xl mx-auto">
-          {/* Connection Requests Section */}
-          <div className="mb-6 sm:mb-8">
+
+
+      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-16 sm:top-0 z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+            <div className="flex items-center">
+              {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
+              <PageHeaderBackButton to={"/member-card"} />
+              <div>
+              <h1 className="text-2xl sm:text-4xl font-serif text-gold tracking-wide">{t('membersTitle')}</h1>
+           
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 mt-12 overflow-x-hidden">
+        
+        <div className="mb-6 sm:mb-8">
             <ConnectionRequests />
           </div>
 
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-            <div className="flex items-center">
-              <PageHeaderBackButton />
-              <h1 className="text-2xl sm:text-4xl font-serif text-gold tracking-wide">{t('membersTitle')}</h1>
-            </div>
-          </div>
+        </div>
 
+
+
+        <div className="max-w-7xl mx-auto">
+         
           {/* Search Bar and Filters */}
           <div className="mb-6 sm:mb-8 space-y-4">
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">

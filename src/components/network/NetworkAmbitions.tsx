@@ -253,53 +253,72 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{editingItem ? t('edit') : t('add')} {t('networkAmbitionAnAmbition')}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{editingItem ? t('edit') : t('add')} {t('networkAmbitionAnAmbition')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>{t('title')} *</Label>
+              <Label className="text-sm">{t('title')} *</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder={t('networkAmbitionTitlePlaceholder')}
+                className="text-sm"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>{t('category')}</Label>
+                <Label className="text-sm">{t('category')}</Label>
                 <Input
                   value={formData.category}
                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                   placeholder={t('networkAmbitionCategoryPlaceholder')}
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label>{t('networkAmbitionTimeline')}</Label>
+                <Label className="text-sm">{t('networkAmbitionTimeline')}</Label>
                 <Input
                   value={formData.timeline}
                   onChange={(e) => setFormData(prev => ({ ...prev, timeline: e.target.value }))}
                   placeholder={t('networkAmbitionTimelinePlaceholder')}
+                  className="text-sm"
                 />
               </div>
             </div>
             <div>
-              <Label>{t('description')}</Label>
+              <Label className="text-sm">{t('description')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder={t('networkAmbitionDescriptionPlaceholder')}
+                className="text-sm min-h-[100px]"
               />
             </div>
-            <div className="flex justify-between pt-4">
-              <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                {t('aiAurora')}
+            <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={handleAISuggest} 
+                disabled={isGenerating}
+                className="w-full sm:w-auto text-sm"
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin sm:mr-2" /> : <Sparkles className="w-4 h-4 sm:mr-2" />}
+                <span className="hidden sm:inline">{t('aiAurora')}</span>
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('cancel')}</Button>
-                <Button onClick={handleSave} disabled={isLoading}>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsDialogOpen(false)}
+                  className="flex-1 sm:flex-initial text-sm"
+                >
+                  {t('cancel')}
+                </Button>
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isLoading}
+                  className="flex-1 sm:flex-initial text-sm"
+                >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>

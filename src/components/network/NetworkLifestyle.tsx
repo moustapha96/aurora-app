@@ -432,19 +432,19 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
               {editingItem ? t('edit') : t('add')} - {getCategoryLabel(formData.cause)}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Image upload */}
             <div>
-              <Label>{t('photo')}</Label>
+              <Label className="text-sm">{t('photo')}</Label>
               <div className="flex items-center gap-3 mt-1">
                 {formData.image_url ? (
-                  <div className="relative w-24 h-24 rounded-lg overflow-hidden">
+                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden">
                     <img src={formData.image_url} alt={t('preview')} className="w-full h-full object-cover" />
                     <Button 
                       variant="ghost" 
@@ -456,8 +456,8 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                     </Button>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                    <Image className="w-6 h-6 text-muted-foreground" />
+                  <label className="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                    <Image className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground mt-1">{t('add')}</span>
                     <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
                   </label>
@@ -466,7 +466,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
             </div>
 
             <div>
-              <Label>{t('title')} *</Label>
+              <Label className="text-sm">{t('title')} *</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
@@ -475,20 +475,22 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                   formData.cause === 'oenologie' ? t('lifestyleTitlePlaceholder_oenologie') :
                   t('lifestyleTitlePlaceholder_mode')
                 }
+                className="text-sm"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>{t('locationHouse')}</Label>
+                <Label className="text-sm">{t('locationHouse')}</Label>
                 <Input
                   value={formData.organization}
                   onChange={(e) => setFormData(prev => ({ ...prev, organization: e.target.value }))}
                   placeholder={t('locationPlaceholder')}
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label>{t('category')}</Label>
+                <Label className="text-sm">{t('category')}</Label>
                 <select
                   value={formData.cause}
                   onChange={(e) => setFormData(prev => ({ ...prev, cause: e.target.value }))}
@@ -503,23 +505,39 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
             </div>
 
             <div>
-              <Label>{t('description')}</Label>
+              <Label className="text-sm">{t('description')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder={t('describeExperiencePreference')}
                 rows={3}
+                className="text-sm min-h-[100px]"
               />
             </div>
 
-            <div className="flex justify-between pt-4">
-              <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                {t('auroraSuggestion')}
+            <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={handleAISuggest} 
+                disabled={isGenerating}
+                className="w-full sm:w-auto text-sm"
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin sm:mr-2" /> : <Sparkles className="w-4 h-4 sm:mr-2" />}
+                <span className="hidden sm:inline">{t('auroraSuggestion')}</span>
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('cancel')}</Button>
-                <Button onClick={handleSave} disabled={isLoading} className="bg-gold text-black hover:bg-gold/90">
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsDialogOpen(false)}
+                  className="flex-1 sm:flex-initial text-sm"
+                >
+                  {t('cancel')}
+                </Button>
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isLoading} 
+                  className="flex-1 sm:flex-initial bg-gold text-black hover:bg-gold/90 text-sm"
+                >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>

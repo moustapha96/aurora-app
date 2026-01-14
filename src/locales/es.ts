@@ -1366,7 +1366,7 @@ export const es: Record<string, string> = {
   conciergeHeroDesc:
     "Su conserjería privada anticipa sus necesidades, gestiona sus limitaciones y lo libera de lo superfluo para enfocarse en lo esencial.",
   singleContact: "Un solo contacto, una respuesta para todo.",
-  contactYourConcierge: "Contacte a su conserje",
+  contactYourConcierge: "Asistente Conserje",
   ourWayToServe: "Nuestra forma de servir",
   noServiceCatalog:
     "No ofrecemos un catálogo de servicios. Escuchamos, comprendemos y actuamos. Cada solicitud es única, cada respuesta es personalizada. Desde la organización de un viaje privado hasta la búsqueda de una propiedad excepcional, desde la reserva de un restaurante estrellado hasta la gestión de un imprevisto, estamos a su lado.",

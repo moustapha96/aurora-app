@@ -144,7 +144,7 @@ const Personal = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto p-4 sm:p-6">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 mt-12 overflow-x-hidden">
           <div className="space-y-8 animate-fade-in">
             <PersonalSports sports={sports} isEditable={isOwnProfile} onDataChange={loadModulesData} />
             <PersonalVoyages entries={voyages} isEditable={isOwnProfile} onDataChange={loadModulesData} />

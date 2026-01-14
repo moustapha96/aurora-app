@@ -128,9 +128,9 @@ const Business = () => {
 
     } catch (error) {
       console.error('Error loading profile:', error);
-      toast({ 
-        title: t('errorLoading'), 
-        variant: "destructive" 
+      toast({
+        title: t('errorLoading'),
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -163,7 +163,7 @@ const Business = () => {
 
       toast({
         title: mode === "concierge" ? t('businessRequestSent') : t('businessProfileCreated'),
-        description: mode === "concierge" 
+        description: mode === "concierge"
           ? t('businessConciergePreparing')
           : t('businessSectionReady'),
       });
@@ -184,8 +184,8 @@ const Business = () => {
 
       const { error } = await supabase
         .from('business_content')
-        .upsert({ 
-          user_id: user.id, 
+        .upsert({
+          user_id: user.id,
           [field]: value,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
@@ -277,8 +277,8 @@ const Business = () => {
         <div className="min-h-screen bg-black text-gold p-6 pt-24 flex items-center justify-center">
           <div className="text-center max-w-md">
             <p className="text-gold mb-4">{t('businessNoAccess')}</p>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 if (window.history.length > 1) {
                   navigate(-1);
@@ -334,17 +334,25 @@ const Business = () => {
     <>
       <Header />
       <div className="min-h-screen bg-black text-gold px-4 sm:px-6 pt-20 sm:pt-24 pb-8 safe-area-all">
+
+          <div className="border-b border-border p-4 sm:p-6 bg-card">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center mb-2">
+                {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
+                <PageHeaderBackButton to={"/member-card"} />
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('businessTitle')}</h1>
+                  <p className="text-gold/60 text-xs sm:text-sm mt-1">{t('businessSubtitle')}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-            <div className="flex items-center">
-              {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
-              <PageHeaderBackButton to={"/member-card"} />
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('businessTitle')}</h1>
-                <p className="text-gold/60 text-xs sm:text-sm mt-1">{t('businessSubtitle')}</p>
-              </div>
-            </div>
 
             {isOwnProfile && !showOnboarding && (
               <Button
@@ -360,7 +368,7 @@ const Business = () => {
           </div>
 
           {/* Profile Summary Card */}
-          <div className="module-card rounded-xl p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="module-card rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 mt-12 overflow-x-hidden">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gold overflow-hidden bg-gradient-to-br from-gold/20 to-gold/5 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
                 {profile.avatar_url ? (
@@ -423,7 +431,7 @@ const Business = () => {
               isEmpty={pressEntries.length === 0}
               editable={isOwnProfile}
               moduleType="press"
-              onEdit={() => {}}
+              onEdit={() => { }}
             />
 
             {/* Projects */}
@@ -435,7 +443,7 @@ const Business = () => {
               isEmpty={projectsEntries.length === 0}
               editable={isOwnProfile}
               moduleType="projects"
-              onEdit={() => {}}
+              onEdit={() => { }}
             />
 
             {/* Vision */}

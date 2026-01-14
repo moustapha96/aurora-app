@@ -1385,7 +1385,7 @@ export const zh: Record<string, string> = {
   peaceOfMind: "心灵的宁静",
   conciergeHeroDesc: "你的私人礼宾服务会预测你的需求，管理你的约束，让你摆脱多余的事情，专注于本质。",
   singleContact: "单一联系人，一切问题的答案。",
-  contactYourConcierge: "联系你的礼宾服务",
+  contactYourConcierge: "礼宾助理",
   ourWayToServe: "我们的服务方式",
   noServiceCatalog: "我们不提供服务目录。我们倾听、理解并行动。每个请求都是独特的，每个回应都是量身定制的。从组织私人旅行到寻找优质房产，从预订星级餐厅到处理意外情况，我们都在你身边。",
   expertiseDomains: "专业领域",

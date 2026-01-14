@@ -144,7 +144,7 @@ const Network = () => {
         </div>
       </div>
 
-      <main className="container mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-16">
+      <main className="container mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-16 mt-12 overflow-x-hidden">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <NetworkMedia
             data={mediaData}

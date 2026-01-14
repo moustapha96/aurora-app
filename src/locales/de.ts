@@ -1379,7 +1379,7 @@ export const de: Record<string, string> = {
   conciergeHeroDesc:
     "Ihr privater Concierge antizipiert Ihre Bedürfnisse, verwaltet Ihre Einschränkungen und befreit Sie vom Überflüssigen, damit Sie sich auf das Wesentliche konzentrieren können.",
   singleContact: "Ein Ansprechpartner, eine Antwort auf alles.",
-  contactYourConcierge: "Kontaktieren Sie Ihren Concierge",
+  contactYourConcierge: "Concierge-Assistent",
   ourWayToServe: "Unsere Art zu dienen",
   noServiceCatalog:
     "Wir bieten keinen Servicekatalog an. Wir hören zu, verstehen und handeln. Jede Anfrage ist einzigartig, jede Antwort ist maßgeschneidert. Von der Organisation einer privaten Reise bis zur Suche nach einer außergewöhnlichen Immobilie, von der Reservierung eines Sternerestaurants bis zur Bewältigung einer unerwarteten Situation, wir sind an Ihrer Seite.",

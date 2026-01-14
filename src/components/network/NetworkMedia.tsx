@@ -669,33 +669,35 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
       {/* Dialog for Media/Interventions/Distinctions */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{editingItem ? t('edit') : t('add')} — {getDialogTitle()}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{editingItem ? t('edit') : t('add')} — {getDialogTitle()}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>{t('sourceMedia')} *</Label>
+                <Label className="text-sm">{t('sourceMedia')} *</Label>
                 <Input
                   value={formData.platform}
                   onChange={(e) => setFormData(prev => ({ ...prev, platform: e.target.value }))}
                   placeholder={t('sourceMediaPlaceholder')}
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label>{t('year')}</Label>
+                <Label className="text-sm">{t('year')}</Label>
                 <Input
                   value={formData.year}
                   onChange={(e) => setFormData(prev => ({ ...prev, year: e.target.value }))}
                   placeholder={t('yearPlaceholder')}
+                  className="text-sm"
                 />
               </div>
             </div>
             <div>
-              <Label>{t('type')}</Label>
+              <Label className="text-sm">{t('type')}</Label>
               <Select value={formData.media_type} onValueChange={(v) => setFormData(prev => ({ ...prev, media_type: v }))}>
-                <SelectTrigger>
+                <SelectTrigger className="text-sm">
                   <SelectValue placeholder={t('selectType')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -706,26 +708,28 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
               </Select>
             </div>
             <div>
-              <Label>{t('titleSubject')}</Label>
+              <Label className="text-sm">{t('titleSubject')}</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder={t('articleTitlePlaceholder')}
+                className="text-sm"
               />
             </div>
             <div>
-              <Label>{t('descriptionOptional')}</Label>
+              <Label className="text-sm">{t('descriptionOptional')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder={t('shortDescriptionPlaceholder')}
                 rows={2}
+                className="text-sm min-h-[80px]"
               />
             </div>
             <div>
-              <Label>{t('privacy')}</Label>
+              <Label className="text-sm">{t('privacy')}</Label>
               <Select value={formData.privacy_level} onValueChange={(v) => setFormData(prev => ({ ...prev, privacy_level: v }))}>
-                <SelectTrigger>
+                <SelectTrigger className="text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -740,14 +744,29 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-between pt-4">
-              <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                {t('auroraSuggestion')}
+            <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={handleAISuggest} 
+                disabled={isGenerating}
+                className="w-full sm:w-auto text-sm"
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin sm:mr-2" /> : <Sparkles className="w-4 h-4 sm:mr-2" />}
+                <span className="hidden sm:inline">{t('auroraSuggestion')}</span>
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('cancel')}</Button>
-                <Button onClick={handleSave} disabled={isLoading}>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsDialogOpen(false)}
+                  className="flex-1 sm:flex-initial text-sm"
+                >
+                  {t('cancel')}
+                </Button>
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isLoading}
+                  className="flex-1 sm:flex-initial text-sm"
+                >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>
@@ -758,27 +777,28 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
       {/* Dialog for Posture médiatique */}
       <Dialog open={isPostureDialogOpen} onOpenChange={setIsPostureDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{t('mediaPosture')}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{t('mediaPosture')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               {t('describeMediaApproachDescription')}
             </p>
             <div>
-              <Label>{t('yourPosture')}</Label>
+              <Label className="text-sm">{t('yourPosture')}</Label>
               <Textarea
                 value={postureText}
                 onChange={(e) => setPostureText(e.target.value)}
                 placeholder={t('posturePlaceholder')}
                 rows={4}
+                className="text-sm min-h-[100px]"
               />
             </div>
             <div>
-              <Label>{t('privacy')}</Label>
+              <Label className="text-sm">{t('privacy')}</Label>
               <Select value={posturePrivacy} onValueChange={setPosturePrivacy}>
-                <SelectTrigger>
+                <SelectTrigger className="text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -793,9 +813,19 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setIsPostureDialogOpen(false)}>{t('cancel')}</Button>
-              <Button onClick={handleSavePosture} disabled={isLoading}>
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsPostureDialogOpen(false)}
+                className="w-full sm:w-auto text-sm"
+              >
+                {t('cancel')}
+              </Button>
+              <Button 
+                onClick={handleSavePosture} 
+                disabled={isLoading}
+                className="w-full sm:w-auto text-sm"
+              >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
               </Button>
             </div>
@@ -805,15 +835,15 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
       {/* Dialog for Social Links */}
       <Dialog open={isSocialDialogOpen} onOpenChange={setIsSocialDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{editingSocialLink ? t('edit') : t('add')} {t('aNetwork')}</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{editingSocialLink ? t('edit') : t('add')} {t('aNetwork')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>{t('platform')}</Label>
+              <Label className="text-sm">{t('platform')}</Label>
               <Select value={socialFormData.platform} onValueChange={(v) => setSocialFormData(prev => ({ ...prev, platform: v }))}>
-                <SelectTrigger>
+                <SelectTrigger className="text-sm">
                   <SelectValue placeholder={t('select')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -824,17 +854,18 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
               </Select>
             </div>
             <div>
-              <Label>{t('urlOptional')}</Label>
+              <Label className="text-sm">{t('urlOptional')}</Label>
               <Input
                 value={socialFormData.url}
                 onChange={(e) => setSocialFormData(prev => ({ ...prev, url: e.target.value }))}
                 placeholder={t('urlPlaceholder')}
+                className="text-sm"
               />
             </div>
             <div>
-              <Label>{t('privacy')}</Label>
+              <Label className="text-sm">{t('privacy')}</Label>
               <Select value={socialFormData.privacy_level} onValueChange={(v) => setSocialFormData(prev => ({ ...prev, privacy_level: v }))}>
-                <SelectTrigger>
+                <SelectTrigger className="text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -849,9 +880,19 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setIsSocialDialogOpen(false)}>{t('cancel')}</Button>
-              <Button onClick={handleSaveSocialLink} disabled={isLoading}>
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsSocialDialogOpen(false)}
+                className="w-full sm:w-auto text-sm"
+              >
+                {t('cancel')}
+              </Button>
+              <Button 
+                onClick={handleSaveSocialLink} 
+                disabled={isLoading}
+                className="w-full sm:w-auto text-sm"
+              >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
               </Button>
             </div>

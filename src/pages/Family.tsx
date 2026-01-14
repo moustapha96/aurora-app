@@ -36,7 +36,6 @@ const FamilySocial = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
-
   // Content states for each module
   const [familyContent, setFamilyContent] = useState<any>({});
   const [lineageEntries, setLineageEntries] = useState<any[]>([]);
@@ -270,7 +269,7 @@ const FamilySocial = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 mt-12 overflow-x-hidden">
           {/* Profile Summary Card */}
           <Card className="module-card rounded-xl mb-8 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-gold/5 via-transparent to-gold/5 pointer-events-none" />

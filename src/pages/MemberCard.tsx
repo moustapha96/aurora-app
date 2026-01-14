@@ -298,7 +298,9 @@ const MemberCard = () => {
       title: t('members'),
       icon: Users,
       route: "/members",
-      items: [t('memberDirectory'), t('detailedProfiles'), t('exclusiveNetwork')]
+      items: [t('memberDirectory'), t('detailedProfiles'),
+        //  t('exclusiveNetwork')
+        ]
     }
   ];
 

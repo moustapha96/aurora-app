@@ -1386,7 +1386,7 @@ export const ja: Record<string, string> = {
   peaceOfMind: "心の平穏",
   conciergeHeroDesc: "あなたのプライベートコンシェルジュは、あなたのニーズを予測し、制約を管理し、不要なものから解放して、本質に集中できるようにします。",
   singleContact: "単一の連絡先、すべてへの答え。",
-  contactYourConcierge: "コンシェルジュに連絡",
+  contactYourConcierge: "コンシェルジュアシスタント",
   ourWayToServe: "私たちのサービス方法",
   noServiceCatalog: "サービスカタログは提供していません。私たちは聞き、理解し、行動します。各リクエストはユニークで、各レスポンスはオーダーメイドです。プライベート旅行の企画から特別な物件の検索、星付きレストランの予約から予期しない事態の管理まで、私たちはあなたのそばにいます。",
   expertiseDomains: "専門分野",
