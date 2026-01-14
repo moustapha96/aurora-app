@@ -6,6 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 serve(async (req) => {
@@ -18,39 +19,99 @@ serve(async (req) => {
     // Get Stripe secret key from environment
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeSecretKey) {
-      throw new Error("STRIPE_SECRET_KEY is not set");
+      console.error("STRIPE_SECRET_KEY is not set");
+      return new Response(
+        JSON.stringify({ 
+          message: "Stripe non configuré", 
+          code: "STRIPE_NOT_CONFIGURED" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
     }
 
+    // Initialize Stripe
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2024-11-20.acacia",
       httpClient: Stripe.createFetchHttpClient(),
     });
 
     // Get Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      }
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Supabase configuration missing");
+      return new Response(
+        JSON.stringify({ 
+          message: "Configuration Supabase manquante", 
+          code: "SUPABASE_NOT_CONFIGURED" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: { Authorization: req.headers.get("Authorization") || "" },
+      },
+    });
 
     // Get current user
     const {
       data: { user },
+      error: authError,
     } = await supabaseClient.auth.getUser();
 
-    if (!user) {
-      throw new Error("Unauthorized");
+    if (authError || !user) {
+      console.error("Auth error:", authError);
+      return new Response(
+        JSON.stringify({ 
+          message: "Non autorisé", 
+          code: "UNAUTHORIZED" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
+        }
+      );
     }
 
     // Parse request body
-    const { itemId, amount, currency } = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return new Response(
+        JSON.stringify({ 
+          message: "Corps de requête invalide", 
+          code: "INVALID_BODY" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
 
-    if (!itemId || !amount || !currency) {
-      throw new Error("Missing required fields: itemId, amount, currency");
+    const { itemId, amount, currency } = body || {};
+
+    if (!itemId) {
+      return new Response(
+        JSON.stringify({ 
+          message: "itemId requis", 
+          code: "MISSING_FIELDS" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
     }
 
     // Verify item exists and is available
@@ -61,21 +122,66 @@ serve(async (req) => {
       .single();
 
     if (itemError || !item) {
-      throw new Error("Item not found");
+      console.error("Item error:", itemError);
+      return new Response(
+        JSON.stringify({ 
+          message: "Article introuvable", 
+          code: "ITEM_NOT_FOUND" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 404,
+        }
+      );
     }
 
     if (item.status !== "active") {
-      throw new Error("Item is not available for purchase");
+      return new Response(
+        JSON.stringify({ 
+          message: "L'article n'est pas disponible à l'achat", 
+          code: "ITEM_NOT_AVAILABLE" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
     }
 
     if (item.user_id === user.id) {
-      throw new Error("Cannot purchase your own item");
+      return new Response(
+        JSON.stringify({ 
+          message: "Vous ne pouvez pas acheter votre propre article", 
+          code: "CANNOT_PURCHASE_OWN_ITEM" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
+
+    // Use item price if amount not provided, otherwise use provided amount
+    const finalAmount = amount !== undefined ? Number(amount) : Number(item.price);
+    const finalCurrency = (currency || item.currency || "EUR").toLowerCase();
+
+    if (isNaN(finalAmount) || finalAmount <= 0) {
+      return new Response(
+        JSON.stringify({ 
+          message: "Montant invalide", 
+          code: "INVALID_AMOUNT" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
     }
 
     // Create Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount,
-      currency: currency.toLowerCase(),
+      amount: Math.round(finalAmount * 100), // Convert to cents
+      currency: finalCurrency,
       metadata: {
         itemId: itemId,
         buyerId: user.id,
@@ -87,33 +193,46 @@ serve(async (req) => {
     });
 
     // Create payment record in database
-    await supabaseClient.from("marketplace_payments").insert({
-      item_id: itemId,
-      buyer_id: user.id,
-      seller_id: item.user_id,
-      amount: amount / 100, // Convert from cents
-      currency: currency,
-      stripe_payment_intent_id: paymentIntent.id,
-      status: "pending",
-    });
+    const { error: paymentError } = await supabaseClient
+      .from("marketplace_payments")
+      .insert({
+        item_id: itemId,
+        buyer_id: user.id,
+        seller_id: item.user_id,
+        amount: finalAmount,
+        currency: finalCurrency.toUpperCase(),
+        stripe_payment_intent_id: paymentIntent.id,
+        status: "pending",
+      });
+
+    if (paymentError) {
+      console.error("Payment record error:", paymentError);
+      // Continue anyway, the payment intent is created
+    }
 
     return new Response(
       JSON.stringify({
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
+        amount: finalAmount,
+        currency: finalCurrency.toUpperCase(),
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 201,
       }
     );
   } catch (error: any) {
-    console.error("Error creating payment intent:", error);
+    console.error("STRIPE_CREATE_INTENT_ERROR:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        message: "Échec init paiement Stripe", 
+        code: "STRIPE_CREATE_INTENT_ERROR",
+        error: error.message 
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
+        status: 500,
       }
     );
   }

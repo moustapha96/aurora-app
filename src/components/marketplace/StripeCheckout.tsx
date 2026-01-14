@@ -62,21 +62,31 @@ const CheckoutForm = ({
         const { data, error } = await supabase.functions.invoke('create-payment-intent', {
           body: {
             itemId,
-            amount: Math.round(amount * 100), // Convert to cents
-            currency: currency.toLowerCase(),
+            amount: amount, // Pass amount as-is, Edge Function will convert to cents
+            currency: currency,
           },
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Function error:', error);
+          const errorMessage = error.message || data?.message || t('paymentError');
+          setError(errorMessage);
+          toast.error(errorMessage);
+          return;
+        }
+
         if (data?.clientSecret) {
           setClientSecret(data.clientSecret);
         } else {
-          throw new Error('No client secret returned');
+          const errorMessage = data?.message || 'No client secret returned';
+          setError(errorMessage);
+          toast.error(errorMessage);
         }
       } catch (err: any) {
         console.error('Error creating payment intent:', err);
-        setError(err.message || t('paymentError'));
-        toast.error(err.message || t('paymentError'));
+        const errorMessage = err.message || t('paymentError');
+        setError(errorMessage);
+        toast.error(errorMessage);
       }
     };
 
