@@ -424,7 +424,7 @@ const EditProfile = () => {
           </div>
 
           {/* Account Number - Read Only with Copy */}
-          {accountNumber && (
+          {/* {accountNumber && (
             <div>
               <Label htmlFor="accountNumber" className="text-gold/80">{t('accountNumber')}</Label>
               <div className="relative">
@@ -449,7 +449,7 @@ const EditProfile = () => {
               </div>
               <p className="text-xs text-gold/40 mt-1">{t('accountNumberCannotBeChanged')}</p>
             </div>
-          )}
+          )} */}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

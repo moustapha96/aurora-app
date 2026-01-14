@@ -33,6 +33,7 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
   const [formData, setFormData] = useState<Partial<Commitment>>({});
   const [saving, setSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const getCategoryColor = (category?: string) => {
     switch (category?.toLowerCase()) {
@@ -137,6 +138,105 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
       toast.error(t("generationError"));
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const extractTextFromFile = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (file.type === 'text/plain') {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      } else {
+        // Pour PDF/DOCX, on lit le fichier comme base64 et on extrait le texte brut
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          const bytes = new Uint8Array(arrayBuffer);
+          let text = '';
+          // Extraire les caractères ASCII lisibles
+          for (let i = 0; i < Math.min(bytes.length, 50000); i++) {
+            const char = bytes[i];
+            if (char >= 32 && char <= 126) {
+              text += String.fromCharCode(char);
+            } else if (char === 10 || char === 13) {
+              text += '\n';
+            } else if (char === 9) {
+              text += ' ';
+            }
+          }
+          resolve(text);
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      }
+    });
+  };
+
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validation du type de fichier
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+    if (!validTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx|txt)$/i)) {
+      toast.error(t("unsupportedFormat") || "Format de fichier non supporté");
+      return;
+    }
+
+    // Validation de la taille (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(t("fileTooLarge") || "Le fichier est trop volumineux (max 5MB)");
+      return;
+    }
+
+    setIsImporting(true);
+    toast.info(t("documentImportedAnalysisInProgress") || "Analyse du document en cours...");
+
+    try {
+      // Extraire le texte du fichier
+      let documentText = await extractTextFromFile(file);
+
+      if (!documentText || documentText.trim().length < 20) {
+        toast.error(t("cannotExtractTextFromFile") || "Impossible d'extraire le texte du fichier");
+        setIsImporting(false);
+        return;
+      }
+
+      // Limiter la longueur du texte pour l'API
+      const limitedText = documentText.substring(0, 30000);
+
+      // Appeler la fonction AI pour analyser le document
+      const { data, error } = await supabase.functions.invoke("family-ai-suggest", {
+        body: {
+          module: "commitments",
+          currentInput: {
+            title: formData.title || "",
+            category: formData.category || "",
+            organization: formData.organization || "",
+            documentText: limitedText, // Passer le texte du document
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.suggestion) {
+        setFormData({ ...formData, description: data.suggestion });
+        toast.success(t("documentAnalyzed") || "Document analysé avec succès");
+      } else {
+        // Si pas de suggestion, utiliser le texte extrait directement
+        setFormData({ ...formData, description: documentText.substring(0, 2000) });
+        toast.success(t("documentImported") || "Document importé");
+      }
+    } catch (error: any) {
+      console.error("Import error:", error);
+      toast.error(error.message || t("generationError") || "Erreur lors de l'analyse");
+    } finally {
+      setIsImporting(false);
+      // Réinitialiser l'input file pour permettre de réimporter le même fichier
+      event.target.value = '';
     }
   };
 
@@ -348,9 +448,14 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
                     onClick={() =>
                       document.getElementById("import-doc-commitments-main")?.click()
                     }
-                    className="text-muted-foreground hover:text-foreground h-8 px-2 text-sm"
+                    disabled={isImporting}
+                    className="text-muted-foreground hover:text-foreground h-8 px-2 text-sm disabled:opacity-50"
                   >
-                    <FileUp className="w-4 h-4 mr-1" />
+                    {isImporting ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <FileUp className="w-4 h-4 mr-1" />
+                    )}
                     {t("import")}
                   </Button>
                   <input
@@ -358,9 +463,7 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
                     type="file"
                     accept=".pdf,.doc,.docx,.txt"
                     className="hidden"
-                    onChange={() =>
-                      toast.success(t("documentImportedAnalysisInProgress"))
-                    }
+                    onChange={handleFileImport}
                   />
                   <Button
                     type="button"

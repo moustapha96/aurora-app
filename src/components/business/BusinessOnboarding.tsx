@@ -43,6 +43,8 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
 
   // Concierge
   const [conciergeMessage, setConciergeMessage] = useState("");
+  const [conciergeFiles, setConciergeFiles] = useState<File[]>([]);
+  const conciergeFileInputRef = useRef<HTMLInputElement>(null);
 
   const modes = [
     {
@@ -226,12 +228,59 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     onComplete(selectedMode || "manual", generatedData);
   };
 
+  const handleConciergeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const fileArray = Array.from(files);
+      const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'image/jpeg', 'image/png'];
+      
+      const validFiles = fileArray.filter(file => {
+        if (!validTypes.includes(file.type)) {
+          toast({
+            title: t('businessUnsupportedFormat'),
+            description: t('businessUploadPDFWordText'),
+            variant: "destructive",
+          });
+          return false;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          toast({
+            title: t('error'),
+            description: t('businessFileTooLarge') || 'Le fichier est trop volumineux (max 5MB)',
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      });
+      
+      setConciergeFiles(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  const handleRemoveConciergeFile = (index: number) => {
+    setConciergeFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleConciergeSubmit = async () => {
+    if (!conciergeMessage.trim()) {
+      toast({
+        title: t('businessInformationRequired'),
+        description: t('businessIndicateYourSources'),
+        variant: "destructive",
+      });
+      return;
+    }
+    
     toast({
       title: t('businessRequestSent'),
       description: t('businessConciergePreparing'),
     });
-    onComplete("concierge", { pending: true, message: conciergeMessage });
+    onComplete("concierge", { 
+      pending: true, 
+      message: conciergeMessage,
+      files: conciergeFiles 
+    });
   };
 
   // Step: Choose Mode
@@ -329,10 +378,14 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
           </Button>
           <Button
             onClick={handleAIGenerate}
-            disabled={!q1 || !q2}
-            className="bg-gold text-black hover:bg-gold/90"
+            disabled={!q1.trim() || !q2.trim() || isLoading}
+            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Sparkles className="w-4 h-4 mr-2" />
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4 mr-2" />
+            )}
             {t('businessGenerateMyProfile')}
           </Button>
         </div>
@@ -413,7 +466,11 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             <Edit3 className="w-4 h-4 mr-2" />
             {t('edit')}
           </Button>
-          <Button onClick={handleValidate} className="bg-gold text-black hover:bg-gold/90">
+          <Button 
+            onClick={handleValidate} 
+            disabled={!generatedData}
+            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             {t('businessValidateAll')}
           </Button>
         </div>
@@ -470,7 +527,11 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
           >
             {t('businessBackToPreview')}
           </Button>
-          <Button onClick={handleValidate} className="bg-gold text-black hover:bg-gold/90">
+          <Button 
+            onClick={handleValidate} 
+            disabled={!generatedData}
+            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             {t('businessValidateModifications')}
           </Button>
         </div>
@@ -500,10 +561,48 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             />
           </div>
 
-          <Button variant="outline" className="border-gold/30 text-gold hover:bg-gold/10">
-            <Upload className="w-4 h-4 mr-2" />
-            {t('businessAddAttachments')}
-          </Button>
+          <div className="space-y-2">
+            <input
+              type="file"
+              ref={conciergeFileInputRef}
+              onChange={handleConciergeFileChange}
+              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+              multiple
+              className="hidden"
+            />
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => conciergeFileInputRef.current?.click()}
+              className="border-gold/30 text-gold hover:bg-gold/10"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              {t('businessAddAttachments')}
+            </Button>
+            
+            {conciergeFiles.length > 0 && (
+              <div className="space-y-2 mt-2">
+                {conciergeFiles.map((file, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-gold/10 border border-gold/30 rounded-lg">
+                    <FileText className="w-5 h-5 text-gold" />
+                    <div className="flex-1">
+                      <p className="text-gold font-medium text-sm">{file.name}</p>
+                      <p className="text-gold/50 text-xs">{(file.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveConciergeFile(index)}
+                      className="text-gold/60 hover:text-gold"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex justify-between">
@@ -516,8 +615,8 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
           </Button>
           <Button
             onClick={handleConciergeSubmit}
-            disabled={!conciergeMessage}
-            className="bg-gold text-black hover:bg-gold/90"
+            disabled={!conciergeMessage.trim()}
+            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Phone className="w-4 h-4 mr-2" />
             {t('businessEntrustToConcierge')}
@@ -604,7 +703,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
           <Button
             onClick={handleImport}
             disabled={isLoading || (!uploadedFile && !importSources.trim())}
-            className="bg-gold text-black hover:bg-gold/90"
+            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

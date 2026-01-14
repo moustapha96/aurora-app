@@ -34,7 +34,8 @@ type CategoryType =
   | 'voile' 
   | 'ski' 
   | 'heliskiing' 
-  | 'tennis' 
+  | 'tennis'
+  | 'football'
   | 'chasse' 
   | 'peche' 
   | 'aviation' 
@@ -90,6 +91,7 @@ const SPORT_OPTIONS: SportOption[] = [
   { type: 'alpinisme' },
   { type: 'randonnee' },
   { type: 'tennis' },
+  { type: 'football' },
   { type: 'padel' },
   { type: 'squash' },
   { type: 'automobile' },

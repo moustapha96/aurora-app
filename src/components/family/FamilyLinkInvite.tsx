@@ -726,8 +726,8 @@ export const FamilyLinkInvite = ({ isEditable = false, onUpdate }: FamilyLinkInv
   const availablePages = [
     { route: "/profile", label: t("profile"), icon: User, description: t("profileDescription") || "Profil personnel" },
     { route: "/business", label: t("business"), icon: Briefcase, description: t("businessDescription") || "Activités professionnelles" },
-    { route: "/family", label: t("family"), icon: Heart, description: t("familyDescription") || "Famille et alliances" },
-    { route: "/personal", label: t("personal"), icon: Crown, description: t("personalDescription") || "Vie personnelle" },
+    { route: "/family", label: t("family"), icon: Heart, description: t("familyDescription") || "Lignée et alliances" },
+    { route: "/personal", label: t("personal"), icon: Crown, description: t("personalDescription") || "Passions" },
     { route: "/network", label: t("network"), icon: Globe, description: t("networkDescription") || "Réseau d'influence" },
     { route: "/members", label: t("members"), icon: Users, description: t("membersDescription") || "Annuaire des membres" },
     { route: "/marketplace", label: t("marketplace"), icon: ShoppingBag, description: t("marketplaceDescription") || "Place de marché" },

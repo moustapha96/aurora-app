@@ -72,8 +72,8 @@ const SECTION_CONFIG: Record<DocumentSection, {
   family: {
     tableName: 'family_documents',
     bucketName: 'family-documents',
-    defaultTitle: 'Documents familiaux',
-    defaultDescription: 'Documents privés liés à votre histoire familiale',
+    defaultTitle: 'Documents lignée',
+    defaultDescription: 'Documents privés liés à votre lignée',
     icon: <FileText className="w-5 h-5 text-primary" />
   },
   business: {
@@ -86,7 +86,7 @@ const SECTION_CONFIG: Record<DocumentSection, {
   personal: {
     tableName: 'personal_documents',
     bucketName: 'personal-documents',
-    defaultTitle: 'Documents personnels',
+    defaultTitle: 'Documents passions',
     defaultDescription: 'Documents liés à vos passions et centres d\'intérêt',
     icon: <FileText className="w-5 h-5 text-purple-500" />
   },
@@ -573,9 +573,9 @@ const VerificationDetailsDialog = ({
 
   const getSectionLabel = (section: DocumentSection) => {
     const labels: Record<DocumentSection, string> = {
-      family: 'Famille',
+      family: 'Lignée',
       business: 'Business',
-      personal: 'Personnel',
+      personal: 'Passions',
       network: 'Réseau'
     };
     return labels[section];

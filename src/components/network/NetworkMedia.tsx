@@ -64,7 +64,7 @@ const MEDIA_TYPES = [
 const PRIVACY_LEVELS = [
   { value: 'private', icon: Lock },
   { value: 'aurora_circle', icon: Users },
-  { value: 'concierge_only', icon: Shield }
+  // { value: 'concierge_only', icon: Shield }
 ];
 
 // Social platforms will be translated dynamically using t()

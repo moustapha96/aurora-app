@@ -160,12 +160,12 @@ export const ConnectionRequests = () => {
 
       if (friendshipError) throw friendshipError;
 
-      toast.success("Demande acceptée");
+      toast.success(t('connectionRequestAccepted'));
       setSelectedRequest(null);
       loadRequests();
     } catch (error) {
       console.error('Error accepting request:', error);
-      toast.error("Erreur lors de l'acceptation");
+      toast.error(t('errorAcceptingRequest') || t('error'));
     }
   };
 
@@ -178,18 +178,18 @@ export const ConnectionRequests = () => {
 
       if (error) throw error;
 
-      toast.success("Demande refusée");
+      toast.success(t('connectionRequestRejected'));
       loadRequests();
     } catch (error) {
       console.error('Error rejecting request:', error);
-      toast.error("Erreur lors du refus");
+      toast.error(t('errorRejectingRequest') || t('error'));
     }
   };
 
   if (loading) {
     return (
       <Card className="bg-black/30 border-gold/20 p-6">
-        <p className="text-gold/60 text-center">Chargement...</p>
+        <p className="text-gold/60 text-center">{t('loading')}</p>
       </Card>
     );
   }
@@ -210,7 +210,7 @@ export const ConnectionRequests = () => {
       <Card className="bg-black/30 border-gold/20 p-6">
         <div className="flex items-center gap-2 mb-6">
           <UserPlus className="w-5 h-5 text-gold" />
-          <h3 className="text-xl font-serif text-gold">Demandes de connexion</h3>
+          <h3 className="text-xl font-serif text-gold">{t('connectionRequestsLabel')}</h3>
           <Badge className="bg-gold/20 text-gold border-gold/30">
             {requests.length}
           </Badge>
@@ -252,7 +252,7 @@ export const ConnectionRequests = () => {
                     className="bg-gold/20 hover:bg-gold/30 text-gold border border-gold/40"
                   >
                     <Check className="w-4 h-4 mr-1" />
-                    Accepter
+                    {t('acceptRequest')}
                   </Button>
                   <Button
                     size="sm"
@@ -261,7 +261,7 @@ export const ConnectionRequests = () => {
                     className="border-gold/30 text-gold/70 hover:bg-gold/10"
                   >
                     <X className="w-4 h-4 mr-1" />
-                    Refuser
+                    {t('rejectRequest')}
                   </Button>
                 </div>
               </div>

@@ -582,14 +582,14 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                 <Users className="h-6 w-6 text-gold" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{currentCount}</p>
+                <p className="text-2xl font-bold text-foreground">{currentCount} / {maxReferrals}</p>
                 <p className="text-sm text-muted-foreground">{t('referredMembers')}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
+        {/* <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-full bg-primary/20">
@@ -615,7 +615,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Two Column Layout */}

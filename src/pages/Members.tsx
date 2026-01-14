@@ -511,7 +511,7 @@ const Members = () => {
       setSelectedMember(member);
       setShowUpgradeDialog(true);
     } else {
-      // Même cercle ou inférieur - afficher dialogue de connexion
+      // Même cercle ou inférieur - afficher dialogue de relation
       setSelectedMember(member);
     }
   };
