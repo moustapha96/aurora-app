@@ -824,6 +824,8 @@ export const zh: Record<string, string> = {
   adminTaskActivated: "任务已激活",
   adminTaskDeactivated: "任务已停用",
   adminTaskDeleted: "任务已删除",
+  adminLinkDeleted: "链接已删除",
+  adminNotSpecified: "未指定",
 
   // Admin API Config
   adminApiConfigTitle: "API 配置",

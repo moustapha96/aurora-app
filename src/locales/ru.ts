@@ -832,6 +832,8 @@ export const ru: Record<string, string> = {
   adminTaskActivated: "Задача активирована",
   adminTaskDeactivated: "Задача деактивирована",
   adminTaskDeleted: "Задача удалена",
+  adminLinkDeleted: "Ссылка удалена",
+  adminNotSpecified: "Не указано",
 
   // Admin API Config
   adminApiConfigTitle: "Конфигурация API",

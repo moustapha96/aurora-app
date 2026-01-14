@@ -780,6 +780,8 @@ export const pt: Record<string, string> = {
   adminTaskActivated: "Tarefa ativada",
   adminTaskDeactivated: "Tarefa desativada",
   adminTaskDeleted: "Tarefa excluída",
+  adminLinkDeleted: "Link excluído",
+  adminNotSpecified: "Não especificado",
 
   // Admin API Config
   adminApiConfigTitle: "Configuração API",

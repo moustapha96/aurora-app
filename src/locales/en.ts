@@ -799,6 +799,8 @@ export const en: Record<string, string> = {
   adminTaskActivated: "Task activated",
   adminTaskDeactivated: "Task deactivated",
   adminTaskDeleted: "Task deleted",
+  adminLinkDeleted: "Link deleted",
+  adminNotSpecified: "Not specified",
 
   // Admin API Config
   adminApiConfigTitle: "API Configuration",

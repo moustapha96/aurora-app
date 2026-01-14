@@ -809,6 +809,8 @@
   adminTaskActivated: "Tâche activée",
   adminTaskDeactivated: "Tâche désactivée",
   adminTaskDeleted: "Tâche supprimée",
+  adminLinkDeleted: "Lien supprimé",
+  adminNotSpecified: "Non spécifié",
 
   // Admin API Config
   adminApiConfigTitle: "Configuration API",

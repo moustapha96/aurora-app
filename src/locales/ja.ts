@@ -825,6 +825,8 @@ export const ja: Record<string, string> = {
   adminTaskActivated: "タスクが有効化されました",
   adminTaskDeactivated: "タスクが無効化されました",
   adminTaskDeleted: "タスクが削除されました",
+  adminLinkDeleted: "リンクが削除されました",
+  adminNotSpecified: "指定なし",
 
   // Admin API Config
   adminApiConfigTitle: "API設定",

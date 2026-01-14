@@ -802,6 +802,8 @@ export const ar: Record<string, string> = {
   adminTaskActivated: "تم تفعيل المهمة",
   adminTaskDeactivated: "تم إلغاء تفعيل المهمة",
   adminTaskDeleted: "تم حذف المهمة",
+  adminLinkDeleted: "تم حذف الرابط",
+  adminNotSpecified: "غير محدد",
 
   // Admin API Config
   adminApiConfigTitle: "تكوين API",

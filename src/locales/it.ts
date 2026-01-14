@@ -799,6 +799,8 @@ export const it: Record<string, string> = {
   adminTaskActivated: "Attività attivata",
   adminTaskDeactivated: "Attività disattivata",
   adminTaskDeleted: "Attività eliminata",
+  adminLinkDeleted: "Collegamento eliminato",
+  adminNotSpecified: "Non specificato",
 
   // Admin API Config
   adminApiConfigTitle: "Configurazione API",
