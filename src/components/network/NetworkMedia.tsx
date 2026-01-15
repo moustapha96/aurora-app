@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NetworkModule } from "./NetworkModule";
-import { Newspaper, Plus, Pencil, Trash2, Loader2, Sparkles, ChevronDown, ChevronRight, Award, Mic, Link2, Lock, Users, Shield } from "lucide-react";
+import { Newspaper, Plus, Pencil, Trash2, Loader2, ChevronDown, ChevronRight, Award, Mic, Link2, Lock, Users, Shield } from "lucide-react";
 import { TruncatedText } from "@/components/ui/truncated-text";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -92,9 +92,8 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MediaItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [dialogCategory, setDialogCategory] = useState<string>('medias');
-  
+
   // Expanded states for each bloc
   const [expandedBlocs, setExpandedBlocs] = useState({
     medias: true,
@@ -139,8 +138,8 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
   const loadPosture = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) return;
 
       const { data: postureData } = await supabase
         .from('network_media_posture')
@@ -160,8 +159,8 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
   const loadSocialLinks = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) return;
 
       const { data: links } = await supabase
         .from('network_social_links')
@@ -207,24 +206,6 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
     setIsDialogOpen(true);
   };
 
-  const handleAISuggest = async () => {
-    setIsGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('network-ai-suggest', {
-        body: { moduleType: 'media', context: `${dialogCategory}: ${formData.title}` }
-      });
-      if (error) throw error;
-      if (data?.suggestion) {
-        setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success(t('suggestionGenerated'));
-      }
-    } catch (error) {
-      toast.error(t('generationError'));
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const handleSave = async () => {
     if (!formData.title.trim()) {
       toast.error(t('titleRequired'));
@@ -233,8 +214,16 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('Auth error:', authError);
+        toast.error(t('authenticationError') || 'Erreur d\'authentification');
+        return;
+      }
+      if (!user) {
+        toast.error(t('authenticationError') || 'Vous devez être connecté pour effectuer cette action');
+        return;
+      }
 
       if (editingItem) {
         const { error } = await supabase
@@ -296,8 +285,16 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
   const handleSavePosture = async () => {
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('Auth error:', authError);
+        toast.error(t('authenticationError') || 'Erreur d\'authentification');
+        return;
+      }
+      if (!user) {
+        toast.error(t('authenticationError') || 'Vous devez être connecté pour effectuer cette action');
+        return;
+      }
 
       const { error } = await supabase
         .from('network_media_posture')
@@ -327,8 +324,16 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('Auth error:', authError);
+        toast.error(t('authenticationError') || 'Erreur d\'authentification');
+        return;
+      }
+      if (!user) {
+        toast.error(t('authenticationError') || 'Vous devez être connecté pour effectuer cette action');
+        return;
+      }
 
       if (editingSocialLink) {
         const { error } = await supabase
@@ -452,10 +457,10 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
   };
 
   return (
-    <NetworkModule 
-      title={t('mediaPresence')} 
-      icon={Newspaper} 
-      moduleType="media" 
+    <NetworkModule
+      title={t('mediaPresence')}
+      icon={Newspaper}
+      moduleType="media"
       isEditable={isEditable}
     >
       <p className="text-xs text-muted-foreground mb-4">
@@ -464,207 +469,219 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
       <div className="space-y-4">
         {/* Bloc A — Médias & Publications */}
-        <Collapsible open={expandedBlocs.medias} onOpenChange={() => toggleBloc('medias')}>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
-            {expandedBlocs.medias ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            <Newspaper className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">{t('mediaPublications')}</span>
-            <span className="text-xs text-muted-foreground ml-auto">{mediasData.length}</span>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pl-6 pt-2">
-            {mediasData.length > 0 ? (
-              <div className="space-y-1">
-                {mediasData.map(renderMediaItem)}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-2">
-                {t('noPublication')}
-              </p>
-            )}
-            {isEditable && (
-              <button 
-                onClick={() => handleOpenAdd('medias')}
-                className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" /> {t('add')}
-              </button>
-            )}
-          </CollapsibleContent>
-        </Collapsible>
 
-        {/* Bloc B — Interventions publiques */}
-        <Collapsible open={expandedBlocs.interventions} onOpenChange={() => toggleBloc('interventions')}>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
-            {expandedBlocs.interventions ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            <Mic className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">{t('publicInterventions')}</span>
-            <span className="text-xs text-muted-foreground ml-auto">{interventionsData.length}</span>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pl-6 pt-2">
-            {interventionsData.length > 0 ? (
-              <div className="space-y-1">
-                {interventionsData.map(renderMediaItem)}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-2">
-                {t('noIntervention')}
-              </p>
-            )}
-            {isEditable && (
-              <button 
-                onClick={() => handleOpenAdd('interventions')}
-                className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" /> {t('add')}
-              </button>
-            )}
-          </CollapsibleContent>
-        </Collapsible>
+        <div className="p-2.5 rounded-lg bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20">
 
-        {/* Bloc C — Distinctions */}
-        <Collapsible open={expandedBlocs.distinctions} onOpenChange={() => toggleBloc('distinctions')}>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
-            {expandedBlocs.distinctions ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            <Award className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">{t('distinctionsRecognitions')}</span>
-            <span className="text-xs text-muted-foreground ml-auto">{distinctionsData.length}</span>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pl-6 pt-2">
-            {distinctionsData.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {distinctionsData.map(renderDistinctionItem)}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-2">
-                {t('noDistinction')}
-              </p>
-            )}
-            {isEditable && (
-              <button 
-                onClick={() => handleOpenAdd('distinctions')}
-                className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" /> {t('add')}
-              </button>
-            )}
-          </CollapsibleContent>
-        </Collapsible>
+          <Collapsible open={expandedBlocs.medias} onOpenChange={() => toggleBloc('medias')}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
+              {expandedBlocs.medias ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              <Newspaper className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">{t('mediaPublications')}</span>
+              <span className="text-xs text-muted-foreground ml-auto">{mediasData.length}</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pl-6 pt-2">
 
-        {/* Bloc D — Posture médiatique */}
-        <Collapsible open={expandedBlocs.posture} onOpenChange={() => toggleBloc('posture')}>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
-            {expandedBlocs.posture ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            <Shield className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">{t('mediaPosture')}</span>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pl-6 pt-2">
-            {posture.posture_text ? (
-              <div className="bg-muted/30 rounded-lg p-3 relative group">
-                <p className="text-sm italic text-foreground/90">« {posture.posture_text} »</p>
-                <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                  {getPrivacyIcon(posture.privacy_level)}
-                  <span>{getPrivacyLevelLabel(posture.privacy_level || '')}</span>
+              {mediasData.length > 0 && (
+                <div className="space-y-1">
+                  {mediasData.map(renderMediaItem)}
                 </div>
-                {isEditable && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100"
-                    onClick={() => setIsPostureDialogOpen(true)}
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div>
-                <p className="text-sm text-muted-foreground py-2">
-                  {t('describeMediaApproach')}
-                </p>
-                {isEditable && (
-                  <button 
-                    onClick={() => setIsPostureDialogOpen(true)}
-                    className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> {t('add')}
-                  </button>
-                )}
-              </div>
-            )}
-          </CollapsibleContent>
-        </Collapsible>
+              )}
+
+              {isEditable && (
+                <button
+                  onClick={() => handleOpenAdd('medias')}
+                  className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> {t('add')}
+                </button>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
+
+
+       
+        {/* Bloc B — Interventions publiques */}
+
+        <div className="p-2.5 rounded-lg bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20">
+
+
+          <Collapsible open={expandedBlocs.interventions} onOpenChange={() => toggleBloc('interventions')}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
+              {expandedBlocs.interventions ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              <Mic className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">{t('publicInterventions')}</span>
+              <span className="text-xs text-muted-foreground ml-auto">{interventionsData.length}</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pl-6 pt-2">
+
+              {interventionsData.length > 0 && (
+                <div className="space-y-1">
+                  {interventionsData.map(renderMediaItem)}
+                </div>
+              )}
+
+              {isEditable && (
+                <button
+                  onClick={() => handleOpenAdd('interventions')}
+                  className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> {t('add')}
+                </button>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
+
+      
+        {/* Bloc C — Distinctions */}
+        <div className="p-2.5 rounded-lg bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20">
+          <Collapsible open={expandedBlocs.distinctions} onOpenChange={() => toggleBloc('distinctions')}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
+              {expandedBlocs.distinctions ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              <Award className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">{t('distinctionsRecognitions')}</span>
+              <span className="text-xs text-muted-foreground ml-auto">{distinctionsData.length}</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pl-6 pt-2">
+              {distinctionsData.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {distinctionsData.map(renderDistinctionItem)}
+                </div>
+              )}
+              {isEditable && (
+                <button
+                  onClick={() => handleOpenAdd('distinctions')}
+                  className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> {t('add')}
+                </button>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
+      
+        {/* Bloc D — Posture médiatique */}
+        <div className="p-2.5 rounded-lg bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20">
+          <Collapsible open={expandedBlocs.posture} onOpenChange={() => toggleBloc('posture')}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
+              {expandedBlocs.posture ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              <Shield className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">{t('mediaPosture')}</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pl-6 pt-2">
+              {posture.posture_text ? (
+                <div className="bg-muted/30 rounded-lg p-3 relative group">
+                  <p className="text-sm italic text-foreground/90">« {posture.posture_text} »</p>
+                  <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                    {getPrivacyIcon(posture.privacy_level)}
+                    <span>{getPrivacyLevelLabel(posture.privacy_level || '')}</span>
+                  </div>
+                  {isEditable && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100"
+                      onClick={() => setIsPostureDialogOpen(true)}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm text-muted-foreground py-2">
+                    {t('describeMediaApproach')}
+                  </p>
+                  {isEditable && (
+                    <button
+                      onClick={() => setIsPostureDialogOpen(true)}
+                      className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> {t('add')}
+                    </button>
+                  )}
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
 
         {/* Bloc E — Réseaux */}
-        <Collapsible open={expandedBlocs.reseaux} onOpenChange={() => toggleBloc('reseaux')}>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
-            {expandedBlocs.reseaux ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            <Link2 className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">{t('networks')}</span>
-            <span className="text-xs text-muted-foreground ml-auto">{socialLinks.length}</span>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pl-6 pt-2">
-            <p className="text-xs text-muted-foreground mb-2">
-              {t('professionalPresence')}
-            </p>
-            {socialLinks.length > 0 ? (
-              <div className="space-y-2">
-                {socialLinks.map(link => (
-                  <div key={link.id} className="flex items-center gap-2 py-1 group">
-                    <span className="font-medium text-sm">
-                      {getSocialPlatformLabel(link.platform)}
-                    </span>
-                    {link.url && (
-                      <span className="text-xs text-muted-foreground truncate max-w-[150px]">{link.url}</span>
-                    )}
-                    <span className="text-muted-foreground/50 ml-auto">{getPrivacyIcon(link.privacy_level)}</span>
-                    {isEditable && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6"
-                          onClick={() => {
-                            setEditingSocialLink(link);
-                            setSocialFormData({
-                              platform: link.platform,
-                              url: link.url || '',
-                              privacy_level: link.privacy_level || 'aurora_circle'
-                            });
-                            setIsSocialDialogOpen(true);
-                          }}
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 text-destructive"
-                          onClick={() => handleDeleteSocialLink(link.id)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-2">{t('noNetworkAdded')}</p>
-            )}
-            {isEditable && (
-              <button 
-                onClick={() => {
-                  setEditingSocialLink(null);
-                  setSocialFormData({ platform: '', url: '', privacy_level: 'aurora_circle' });
-                  setIsSocialDialogOpen(true);
-                }}
-                className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" /> {t('add')}
-              </button>
-            )}
-          </CollapsibleContent>
-        </Collapsible>
+        <div className="p-2.5 rounded-lg bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20">
+          <Collapsible open={expandedBlocs.reseaux} onOpenChange={() => toggleBloc('reseaux')}>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
+              {expandedBlocs.reseaux ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              <Link2 className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">{t('networks')}</span>
+              <span className="text-xs text-muted-foreground ml-auto">{socialLinks.length}</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pl-6 pt-2">
+              <p className="text-xs text-muted-foreground mb-2">
+                {t('professionalPresence')}
+              </p>
+              {socialLinks.length > 0 && (
+                <div className="space-y-2">
+                  {socialLinks.map(link => (
+                    <div key={link.id} className="flex items-center gap-2 py-1 group">
+                      <span className="font-medium text-sm">
+                        {getSocialPlatformLabel(link.platform)}
+                      </span>
+                      {link.url && (
+                        <span className="text-xs text-muted-foreground truncate max-w-[150px]">{link.url}</span>
+                      )}
+                      <span className="text-muted-foreground/50 ml-auto">{getPrivacyIcon(link.privacy_level)}</span>
+                      {isEditable && (
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => {
+                              setEditingSocialLink(link);
+                              setSocialFormData({
+                                platform: link.platform,
+                                url: link.url || '',
+                                privacy_level: link.privacy_level || 'aurora_circle'
+                              });
+                              setIsSocialDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive"
+                            onClick={() => handleDeleteSocialLink(link.id)}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {isEditable && (
+                <button
+                  onClick={() => {
+                    setEditingSocialLink(null);
+                    setSocialFormData({ platform: '', url: '', privacy_level: 'aurora_circle' });
+                    setIsSocialDialogOpen(true);
+                  }}
+                  className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> {t('add')}
+                </button>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       </div>
 
       {/* Dialog for Media/Interventions/Distinctions */}
@@ -744,32 +761,21 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={handleAISuggest} 
-                disabled={isGenerating}
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
                 className="w-full sm:w-auto text-sm"
               >
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin sm:mr-2" /> : <Sparkles className="w-4 h-4 sm:mr-2" />}
-                <span className="hidden sm:inline">{t('auroraSuggestion')}</span>
+                {t('cancel')}
               </Button>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
-                  className="flex-1 sm:flex-initial text-sm"
-                >
-                  {t('cancel')}
-                </Button>
-                <Button 
-                  onClick={handleSave} 
-                  disabled={isLoading}
-                  className="flex-1 sm:flex-initial text-sm"
-                >
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
-                </Button>
-              </div>
+              <Button
+                onClick={handleSave}
+                disabled={isLoading}
+                className="w-full sm:w-auto text-sm"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -814,15 +820,15 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
               </Select>
             </div>
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setIsPostureDialogOpen(false)}
                 className="w-full sm:w-auto text-sm"
               >
                 {t('cancel')}
               </Button>
-              <Button 
-                onClick={handleSavePosture} 
+              <Button
+                onClick={handleSavePosture}
                 disabled={isLoading}
                 className="w-full sm:w-auto text-sm"
               >
@@ -881,15 +887,15 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
               </Select>
             </div>
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setIsSocialDialogOpen(false)}
                 className="w-full sm:w-auto text-sm"
               >
                 {t('cancel')}
               </Button>
-              <Button 
-                onClick={handleSaveSocialLink} 
+              <Button
+                onClick={handleSaveSocialLink}
                 disabled={isLoading}
                 className="w-full sm:w-auto text-sm"
               >

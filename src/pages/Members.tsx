@@ -62,16 +62,35 @@ type Member = {
 const MemberCard = ({ member, onClick, status, isSelected, t }: { member: Member; onClick: () => void; status?: string; isSelected?: boolean; t: (key: string) => string }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [avatarVersion, setAvatarVersion] = useState(Date.now());
   
-  // Create a unique key for each member's avatar to prevent cache issues
+  // Listen for avatar updates
+  useEffect(() => {
+    const handleAvatarUpdate = (event: CustomEvent<{ avatarUrl: string; userId: string }>) => {
+      if (event.detail.userId === member.id) {
+        setAvatarVersion(Date.now());
+        setImageLoaded(false);
+        setImageError(false);
+      }
+    };
+    
+    window.addEventListener('avatar-updated', handleAvatarUpdate as EventListener);
+    return () => {
+      window.removeEventListener('avatar-updated', handleAvatarUpdate as EventListener);
+    };
+  }, [member.id]);
+  
+  // Create avatar URL with cache-buster
   const avatarSrc = React.useMemo(() => {
     if (!member.avatar_url) return null;
-    // Add member ID as cache buster for base64 images
+    // Skip base64 images (shouldn't happen anymore)
     if (member.avatar_url.startsWith('data:')) {
-      return member.avatar_url;
+      return null;
     }
-    return member.avatar_url;
-  }, [member.avatar_url, member.id]);
+    // Add cache-buster to force refresh
+    const cleanUrl = member.avatar_url.split('?')[0];
+    return `${cleanUrl}?t=${avatarVersion}`;
+  }, [member.avatar_url, avatarVersion]);
   
   return (
     <Card 

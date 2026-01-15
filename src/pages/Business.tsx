@@ -10,6 +10,8 @@ import { BusinessOnboarding } from "@/components/business/BusinessOnboarding";
 import { BusinessModule } from "@/components/business/BusinessModule";
 import { BusinessTimeline } from "@/components/business/BusinessTimeline";
 import { BusinessOpportunities } from "@/components/business/BusinessOpportunities";
+import { BusinessMainImage } from "@/components/business/BusinessMainImage";
+import { BusinessProjectsGallery } from "@/components/business/BusinessProjectsGallery";
 import { getCurrencySymbol } from "@/lib/currencySymbols";
 import { PageHeaderBackButton } from "@/components/BackButton";
 
@@ -248,6 +250,40 @@ const Business = () => {
     }
   };
 
+  const handleProjectAdd = async (project: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('business_projects')
+      .insert({ ...project, user_id: user.id })
+      .select()
+      .single();
+
+    if (error) throw error;
+    setProjectsEntries((prev) => [...prev, data]);
+  };
+
+  const handleProjectEdit = async (project: any) => {
+    const { error } = await supabase
+      .from('business_projects')
+      .update({ ...project, updated_at: new Date().toISOString() })
+      .eq('id', project.id);
+
+    if (error) throw error;
+    setProjectsEntries((prev) => prev.map((p) => (p.id === project.id ? project : p)));
+  };
+
+  const handleProjectDelete = async (id: string) => {
+    const { error } = await supabase.from('business_projects').delete().eq('id', id);
+    if (error) throw error;
+    setProjectsEntries((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleMainImageChange = (url: string | null) => {
+    setBusinessContent((prev: any) => ({ ...prev, main_image_url: url }));
+  };
+
   // Formater le patrimoine (only visible for own profile)
   const formatWealth = () => {
     if (!isOwnProfile || !privateData?.wealth_amount || !privateData?.wealth_unit || !privateData?.wealth_currency) {
@@ -385,6 +421,15 @@ const Business = () => {
             </div>
           </div>
 
+          {/* Main Business Image */}
+          <div className="mb-6">
+            <BusinessMainImage
+              imageUrl={businessContent.main_image_url}
+              editable={isOwnProfile}
+              onImageChange={handleMainImageChange}
+            />
+          </div>
+
           {/* Modules Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Bio Executive */}
@@ -434,16 +479,13 @@ const Business = () => {
               onEdit={() => { }}
             />
 
-            {/* Projects */}
-            <BusinessModule
-              icon={FolderKanban}
-              title={t('businessProjects')}
-              subtitle={t('businessProjectsSubtitle')}
-              content={projectsEntries.map(p => `• ${p.title}`).join('\n') || undefined}
-              isEmpty={projectsEntries.length === 0}
+            {/* Projects with Gallery */}
+            <BusinessProjectsGallery
+              projects={projectsEntries}
               editable={isOwnProfile}
-              moduleType="projects"
-              onEdit={() => { }}
+              onAdd={handleProjectAdd}
+              onEdit={handleProjectEdit}
+              onDelete={handleProjectDelete}
             />
 
             {/* Vision */}

@@ -288,6 +288,7 @@ export const ru: Record<string, string> = {
    notProvided: "Не указано",
    clickToAddBusiness: "Нажмите, чтобы добавить бизнес-информацию",
    clickToAddFamily: "Нажмите, чтобы добавить семейную информацию",
+   clickToAddPersonal: "Нажмите, чтобы добавить личную информацию",
    familySocial: "Семья и социальное",
    philanthropy: "Филантропия",
    artCollections: "Коллекции искусства",
@@ -1985,6 +1986,12 @@ export const ru: Record<string, string> = {
    modified: "Изменено",
    added: "Добавлено",
    imageUploaded: "Изображение загружено",
+   imageUploadError: "Ошибка при загрузке изображения",
+   imagePreview: "Предпросмотр",
+   clickToUploadImage: "Нажмите, чтобы загрузить изображение",
+   pleaseSelectAnImage: "Пожалуйста, выберите изображение",
+   maxFileSize: "Максимальный размер: 5MB",
+   imageEditor: "Изображение",
    youMustBeConnected: "Вы должны быть авторизованы",
    entryModified: "Запись изменена",
    entryAdded: "Запись добавлена",
@@ -2026,6 +2033,15 @@ export const ru: Record<string, string> = {
    describeYourGastronomicPassion: "Опишите вашу гастрономическую страсть...",
    exMarcusAurelius: "Напр.: Марк Аврелий",
    describeThisInspiration: "Опишите это вдохновение...",
+   
+   // Sports Editor
+   editSport: "Редактировать спорт",
+   addSport: "Добавить спорт",
+   exGolfYachting: "Например: Гольф, Яхтинг",
+   exClubMonaco: "Например: Клуб Монако",
+   badgeLevel: "Значок / Уровень",
+   exExpertHandicap5: "Например: Эксперт, Гандикап 5",
+   describeYourPassion: "Опишите вашу страсть...",
 
    // Polo module
    poloMyPassion: "МОЯ СТРАСТЬ К ПОЛО",
@@ -2566,5 +2582,37 @@ export const ru: Record<string, string> = {
    pleaseIndicateTitleFirst: "Пожалуйста, сначала укажите название",
    philanthropyEducationEnvironment: "Филантропия, Образование, Окружающая среда...",
    startYear: "Год начала",
- }
+
+  // Business Images
+  businessMainImage: "Основное бизнес-изображение",
+  businessAddMainImage: "Добавьте изображение для иллюстрации вашего профессионального мира",
+  businessUploadImage: "Загрузить изображение",
+  businessMaxSize: "Макс. размер: {size}МБ",
+  businessImageUploaded: "Изображение загружено",
+  businessImageRemoved: "Изображение удалено",
+  businessImageTooLarge: "Изображение слишком большое (макс. {size}МБ)",
+  businessAddPhotos: "Добавить фото",
+  businessPhotos: "фото",
+  businessMaxImagesReached: "Достигнуто максимальное количество изображений ({max})",
+  businessImagesUploaded: "Фотографии загружены",
+  businessNoProjects: "Пока нет проектов",
+  businessAddProject: "Добавить проект",
+  businessProjectAdded: "Проект добавлен",
+  businessProjectUpdated: "Проект обновлен",
+  businessProjectDeleted: "Проект удален",
+  businessConfirmDeleteProject: "Удалить этот проект?",
+  businessProjectTitleRequired: "Название проекта обязательно",
+  businessProjectTitlePlaceholder: "Название проекта",
+  businessProjectDescPlaceholder: "Описание проекта...",
+  
+  // Business Module Images
+  images: "Изображения",
+  maxImagesReached: "Максимум {max} изображений разрешено. Вы можете добавить еще {remaining} изображение(я).",
+  imageTooLarge: "Изображение слишком большое (макс. {size}МБ)",
+  imagesUploaded: "Изображения загружены",
+  imageRemoved: "Изображение удалено",
+  addImages: "Добавить изображения",
+  clickToUploadImages: "Нажмите, чтобы добавить изображения (макс. 10, по 2МБ каждое)",
+  remove: "Удалить",
+}
 

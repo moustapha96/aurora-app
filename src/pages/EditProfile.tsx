@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Globe, Upload, Users, Loader2, CheckCircle, AlertTriangle, XCircle, User, Shield, ImageIcon, Copy } from "lucide-react";
+import { ArrowLeft, Globe, Upload, Users, Loader2, CheckCircle, AlertTriangle, XCircle, User, Shield, ImageIcon, Copy, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage, languages } from "@/contexts/LanguageContext";
@@ -26,11 +26,13 @@ const EditProfile = () => {
   const { language, setLanguage, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [identityVerified, setIdentityVerified] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const [accountNumber, setAccountNumber] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { verificationStatus, verificationResult, verifyImage, resetVerification, isVerifying, canProceed } = useProfileImageVerification();
   const [showAssociatedAccountsDialog, setShowAssociatedAccountsDialog] = useState(false);
   const [showAssociatedAccountForm, setShowAssociatedAccountForm] = useState(false);
@@ -68,6 +70,24 @@ const EditProfile = () => {
 
   useEffect(() => {
     loadProfile();
+  }, []);
+
+  // Listen for avatar updates from other components
+  useEffect(() => {
+    const handleAvatarUpdate = async (event: CustomEvent<{ avatarUrl: string; userId: string }>) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.id === event.detail.userId) {
+        // Add cache-buster to ensure fresh image
+        const cleanUrl = event.detail.avatarUrl.split('?')[0];
+        const avatarUrlWithCache = `${cleanUrl}?t=${Date.now()}`;
+        setAvatarUrl(avatarUrlWithCache);
+      }
+    };
+
+    window.addEventListener('avatar-updated', handleAvatarUpdate as EventListener);
+    return () => {
+      window.removeEventListener('avatar-updated', handleAvatarUpdate as EventListener);
+    };
   }, []);
 
   const loadProfile = async () => {
@@ -113,7 +133,14 @@ const EditProfile = () => {
         };
         setFormData(profileData);
         setInitialData(profileData);
-        setAvatarUrl(data.avatar_url || "");
+        // Add cache-buster to avatar URL to ensure fresh image
+        // Remove existing cache-buster if present, then add a new one
+        let avatarUrlWithCache = "";
+        if (data.avatar_url) {
+          const cleanUrl = data.avatar_url.split('?')[0];
+          avatarUrlWithCache = `${cleanUrl}?t=${Date.now()}`;
+        }
+        setAvatarUrl(avatarUrlWithCache);
         setIdentityVerified(data.identity_verified || false);
         setAccountNumber(data.account_number || "");
       }
@@ -131,33 +158,46 @@ const EditProfile = () => {
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setAvatarFile(file);
-      resetVerification();
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        setAvatarUrl(base64);
-        // Trigger verification
-        const result = await verifyImage(base64);
-        
-        // If verification passed, immediately upload and update profile
-        if (result?.isValid || (result?.hasFace && result?.isAppropriate)) {
-          await uploadAndUpdateAvatar(file);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+
+    setAvatarFile(file);
+    setUploading(true);
+    resetVerification();
+    
+    // Create object URL for preview (not base64 to avoid saving it accidentally)
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarUrl(previewUrl);
+    
+    // Read as base64 ONLY for verification API
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      
+      // Trigger verification with base64
+      const result = await verifyImage(base64);
+      
+      // If verification passed, immediately upload and update profile
+      if (result?.isValid || (result?.hasFace && result?.isAppropriate)) {
+        await uploadAndUpdateAvatar(file);
+      } else {
+        // Revoke object URL if verification failed
+        URL.revokeObjectURL(previewUrl);
+        setUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const uploadAndUpdateAvatar = async (file: File) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setUploading(false);
+        return;
+      }
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const filePath = `${user.id}/avatar.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -166,40 +206,47 @@ const EditProfile = () => {
       if (uploadError) {
         console.error('Error uploading avatar:', uploadError);
         toast.error(t('avatarUploadError'));
+        setUploading(false);
         return;
       }
 
-      const { data: urlData } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
       
-      // Add cache-buster to force refresh everywhere
-      const newAvatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      // Save clean URL to database (without cache-buster)
+      const cleanAvatarUrl = publicUrl;
 
-      // Update profile in database immediately
+      // Update profile in database immediately with clean URL
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: newAvatarUrl })
+        .update({ avatar_url: cleanAvatarUrl })
         .eq('id', user.id);
 
       if (updateError) {
         console.error('Error updating avatar:', updateError);
         toast.error(t('profileUpdateError'));
+        setUploading(false);
         return;
       }
 
-      setAvatarUrl(newAvatarUrl);
+      // Add cache-buster for display (but save clean URL to DB)
+      const displayAvatarUrl = `${cleanAvatarUrl}?t=${Date.now()}`;
+      setAvatarUrl(displayAvatarUrl);
       setAvatarFile(null); // Clear the file since it's already uploaded
       
       // Dispatch custom event to notify other components of avatar change
+      // Send clean URL so other components can add their own cache-buster
       window.dispatchEvent(new CustomEvent('avatar-updated', { 
-        detail: { avatarUrl: newAvatarUrl, userId: user.id } 
+        detail: { avatarUrl: cleanAvatarUrl, userId: user.id } 
       }));
       
       toast.success(t('profilePhotoUpdated'));
+      setUploading(false);
     } catch (error) {
       console.error('Error in uploadAndUpdateAvatar:', error);
       toast.error(t('photoUpdateError'));
+      setUploading(false);
     }
   };
 
@@ -231,8 +278,8 @@ const EditProfile = () => {
           const { data: urlData } = supabase.storage
             .from('avatars')
             .getPublicUrl(filePath);
-          // Add cache-buster to force refresh everywhere
-          uploadedAvatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+          // Save clean URL (cache-buster will be added for display)
+          uploadedAvatarUrl = urlData.publicUrl;
         }
       }
 
@@ -278,8 +325,15 @@ const EditProfile = () => {
 
       if (privateError) throw privateError;
 
+      // Update avatar URL with cache-buster for display
+      if (uploadedAvatarUrl) {
+        const displayAvatarUrl = `${uploadedAvatarUrl}?t=${Date.now()}`;
+        setAvatarUrl(displayAvatarUrl);
+      }
+
       // Dispatch avatar update event if avatar was changed
       if (avatarFile && uploadedAvatarUrl) {
+        // Send clean URL so other components can add their own cache-buster
         window.dispatchEvent(new CustomEvent('avatar-updated', { 
           detail: { avatarUrl: uploadedAvatarUrl, userId: user.id } 
         }));
@@ -341,38 +395,78 @@ const EditProfile = () => {
         {/* Form */}
         <div className="space-y-6 bg-black/50 border border-gold/20 rounded-lg p-8">
           {/* Avatar Upload */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Label className="text-gold/80">{t('profilePhoto')}</Label>
-            <div className="flex items-center gap-4">
-              <div className="relative inline-block">
-                <Avatar className="h-24 w-24 border-2 border-gold/30">
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative w-32 h-32 sm:w-40 sm:h-40">
+                <div
+                  className="w-full h-full rounded-full border-2 border-gold overflow-hidden cursor-pointer group"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   {avatarUrl ? (
-                    <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
+                    <img
+                      src={avatarUrl}
+                      alt={t('avatarPreview')}
+                      className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
+                      onError={(e) => {
+                        // Si l'image ne charge pas, réinitialiser l'URL
+                        console.error('Error loading avatar image');
+                        setAvatarUrl("");
+                      }}
+                      onLoad={() => {
+                        // Image chargée avec succès
+                        console.log('Avatar image loaded successfully');
+                      }}
+                    />
                   ) : (
-                    <AvatarFallback className="bg-gold/10 text-gold">
-                      <Upload className="w-8 h-8" />
-                    </AvatarFallback>
+                    <div className="w-full h-full bg-gradient-to-br from-gold/20 to-gold/5 flex items-center justify-center group-hover:from-gold/30 group-hover:to-gold/10 transition-all">
+                      <span className="text-4xl sm:text-5xl font-serif text-gold">
+                        {formData.firstName?.[0]?.toUpperCase() || formData.lastName?.[0]?.toUpperCase() || 'A'}
+                      </span>
+                    </div>
                   )}
-                </Avatar>
-                <IdentityVerifiedBadge 
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full pointer-events-none">
+                    <Camera className="w-8 h-8 sm:w-10 sm:h-10 text-gold" />
+                  </div>
+                </div>
+
+                {/* Camera Button - Always visible */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isVerifying || uploading}
+                  className="absolute -bottom-1 right-1/2 translate-x-1/2 bg-gold text-black rounded-full p-2 sm:p-2.5 shadow-lg hover:bg-gold/90 transition-colors disabled:opacity-50"
+                >
+                  {isVerifying || uploading ? (
+                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
+                  )}
+                </button>
+
+                {/* Identity Verified Badge - Bottom right */}
+                {/* <IdentityVerifiedBadge 
                   isVerified={identityVerified} 
                   className="absolute -bottom-1 -right-1"
-                />
-              </div>
-              <div className="flex-1 space-y-2">
-                <Input
+                /> */}
+
+                <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  capture="environment"
                   onChange={handleAvatarChange}
-                  disabled={isVerifying}
-                  className="bg-black/50 border-gold/20 text-gold file:text-gold file:border-0 file:bg-gold/10 file:mr-4 file:py-2 file:px-4"
+                  disabled={isVerifying || uploading}
+                  className="hidden"
                 />
+              </div>
+
+              <div className="w-full space-y-2 text-center">
                 <p className="text-xs text-gold/60">{t('photoFormatsHint')}</p>
                 
                 {/* Verification Status */}
                 {verificationStatus !== 'idle' && (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       {verificationStatus === 'verifying' && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
                       {verificationStatus === 'valid' && <CheckCircle className="w-4 h-4 text-green-500" />}
                       {verificationStatus === 'warning' && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
@@ -388,7 +482,7 @@ const EditProfile = () => {
                     {verificationResult && (
                       <div className="space-y-1">
                         <p className="text-xs text-gold/60">{verificationResult.reason}</p>
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap justify-center gap-1">
                           <Badge variant={verificationResult.hasFace ? "default" : "destructive"} className="text-xs">
                             <User className="w-3 h-3 mr-1" />
                             {verificationResult.hasFace ? t('faceDetected') : t('noFaceDetected')}
@@ -412,15 +506,15 @@ const EditProfile = () => {
 
           {/* Email - Read Only */}
           <div>
-            <Label htmlFor="email" className="text-gold/80">{t('emailReadOnly')}</Label>
-            <Input
+            <Label htmlFor="email" className="text-gold/80">{ userEmail} </Label>
+            {/* <Input
               id="email"
               value={userEmail}
               disabled
               readOnly
               className="bg-black/30 border-gold/10 text-gold/60 cursor-not-allowed"
             />
-            <p className="text-xs text-gold/40 mt-1">{t('emailCannotBeChanged')}</p>
+            <p className="text-xs text-gold/40 mt-1">{t('emailCannotBeChanged')}</p> */}
           </div>
 
           {/* Account Number - Read Only with Copy */}

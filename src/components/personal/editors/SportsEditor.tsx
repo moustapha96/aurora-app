@@ -159,36 +159,53 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
+      <DialogContent className="w-[95vw] sm:w-full max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
         <DialogHeader>
-          <DialogTitle>{sport?.id ? t("editSport") : t("addSport")}</DialogTitle>
+          <DialogTitle className="text-base sm:text-lg">{sport?.id ? t("editSport") : t("addSport")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>{t("title")} *</Label>
-              <Input {...register("title", { required: true })} placeholder={t("exGolfYachting")} />
+              <Label className="text-sm">{t("title")} *</Label>
+              <Input 
+                {...register("title", { required: true })} 
+                placeholder={t("exGolfYachting")} 
+                className="text-sm"
+              />
             </div>
             <div>
-              <Label>{t("subtitle")}</Label>
-              <Input {...register("subtitle")} placeholder={t("exClubMonaco")} />
+              <Label className="text-sm">{t("subtitle")}</Label>
+              <Input 
+                {...register("subtitle")} 
+                placeholder={t("exClubMonaco")} 
+                className="text-sm"
+              />
             </div>
           </div>
           <div>
-            <Label>{t("badgeLevel")}</Label>
-            <Input {...register("badge_text")} placeholder={t("exExpertHandicap5")} />
+            <Label className="text-sm">{t("badgeLevel")}</Label>
+            <Input 
+              {...register("badge_text")} 
+              placeholder={t("exExpertHandicap5")} 
+              className="text-sm"
+            />
           </div>
           <div>
-            <Label>{t("description")}</Label>
-            <Textarea {...register("description")} placeholder={t("describeYourPassion")} rows={4} />
-            <div className="flex gap-2 mt-2">
+            <Label className="text-sm">{t("description")}</Label>
+            <Textarea 
+              {...register("description")} 
+              placeholder={t("describeYourPassion")} 
+              rows={4} 
+              className="text-sm min-h-[100px]"
+            />
+            <div className="flex flex-col sm:flex-row gap-2 mt-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleAISuggest}
                 disabled={generating}
-                className="gap-2"
+                className="gap-2 text-sm w-full sm:w-auto"
               >
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {t("aiAurora")}
@@ -198,7 +215,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
                 variant="outline"
                 size="sm"
                 onClick={() => document.getElementById('import-doc-sports')?.click()}
-                className="gap-2"
+                className="gap-2 text-sm w-full sm:w-auto"
               >
                 <FileUp className="w-4 h-4" />
                 {t("import")}
@@ -218,7 +235,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
             </div>
           </div>
           <div>
-            <Label>{t("photo")}</Label>
+            <Label className="text-sm">{t("photo")}</Label>
             <input
               type="file"
               accept="image/*"
@@ -228,24 +245,37 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
             />
             {watch("image_url") && (
               <div className="relative mt-2">
-                <img src={watch("image_url")} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
+                <img 
+                  src={watch("image_url")} 
+                  alt="Preview" 
+                  className="w-full h-32 sm:h-40 object-cover rounded-lg" 
+                />
                 <Button
                   type="button"
                   variant="destructive"
                   size="icon"
-                  className="absolute top-2 right-2"
+                  className="absolute top-2 right-2 h-7 w-7 sm:h-8 sm:w-8"
                   onClick={() => setValue("image_url", "")}
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </Button>
               </div>
             )}
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto text-sm"
+            >
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={uploading || submitting} className="bg-gold text-black hover:bg-gold/90">
+            <Button 
+              type="submit" 
+              disabled={uploading || submitting} 
+              className="bg-gold text-black hover:bg-gold/90 w-full sm:w-auto text-sm"
+            >
               {submitting ? t("saving") : t("validate")}
             </Button>
           </div>

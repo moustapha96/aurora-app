@@ -60,6 +60,11 @@ const Profile = () => {
         toast.error(t('errorLoadingProfile'));
       } else if (profileData) {
         console.log('[Profile] Profile loaded successfully');
+        // Add cache-buster to avatar URL for fresh display
+        if (profileData.avatar_url) {
+          const cleanUrl = profileData.avatar_url.split('?')[0];
+          profileData.avatar_url = `${cleanUrl}?t=${Date.now()}`;
+        }
         setProfile(profileData);
       }
 
@@ -144,7 +149,10 @@ const Profile = () => {
   useEffect(() => {
     const handleAvatarUpdate = (event: CustomEvent<{ avatarUrl: string; userId: string }>) => {
       if (profile && (profile.id === event.detail.userId || (!id && isOwnProfile))) {
-        setProfile((prev: any) => ({ ...prev, avatar_url: event.detail.avatarUrl }));
+        // Add cache-buster to ensure fresh image
+        const cleanUrl = event.detail.avatarUrl.split('?')[0];
+        const avatarUrlWithCache = `${cleanUrl}?t=${Date.now()}`;
+        setProfile((prev: any) => ({ ...prev, avatar_url: avatarUrlWithCache }));
       }
     };
 
@@ -295,7 +303,7 @@ const Profile = () => {
             )}
             
             {/* Identity Verified Badge */}
-            <IdentityVerifiedBadge isVerified={profile.identity_verified} />
+            {/* <IdentityVerifiedBadge isVerified={profile.identity_verified} /> */}
             
             {isOwnProfile && privateData && (
               <WealthBadge 

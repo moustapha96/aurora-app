@@ -60,7 +60,13 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 export const useLanguage = () => {
   const context = useContext(LanguageContext)
   if (context === undefined) {
-    throw new Error('useLanguage must be used within a LanguageProvider')
+    // Fallback pour éviter les erreurs lors du HMR ou si le contexte n'est pas encore prêt
+    console.warn('useLanguage called outside LanguageProvider, using fallback')
+    return {
+      language: 'fr' as Language,
+      setLanguage: () => {},
+      t: (key: string) => translations['fr']?.[key] || key
+    }
   }
   return context
 }

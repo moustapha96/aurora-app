@@ -135,6 +135,7 @@ export type Database = {
           company_photos: string[] | null
           created_at: string
           id: string
+          main_image_url: string | null
           onboarding_completed: boolean | null
           onboarding_mode: string | null
           portfolio_text: string | null
@@ -152,6 +153,7 @@ export type Database = {
           company_photos?: string[] | null
           created_at?: string
           id?: string
+          main_image_url?: string | null
           onboarding_completed?: boolean | null
           onboarding_mode?: string | null
           portfolio_text?: string | null
@@ -169,6 +171,7 @@ export type Database = {
           company_photos?: string[] | null
           created_at?: string
           id?: string
+          main_image_url?: string | null
           onboarding_completed?: boolean | null
           onboarding_mode?: string | null
           portfolio_text?: string | null
@@ -261,6 +264,7 @@ export type Database = {
           display_order: number | null
           id: string
           image_url: string | null
+          images: string[] | null
           status: string | null
           title: string
           updated_at: string
@@ -272,6 +276,7 @@ export type Database = {
           display_order?: number | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           status?: string | null
           title: string
           updated_at?: string
@@ -283,6 +288,7 @@ export type Database = {
           display_order?: number | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           status?: string | null
           title?: string
           updated_at?: string
@@ -628,6 +634,45 @@ export type Database = {
         }
         Relationships: []
       }
+      family_audio: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number | null
+          duration_seconds: number | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          duration_seconds?: number | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          duration_seconds?: number | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       family_board: {
         Row: {
           created_at: string
@@ -718,6 +763,7 @@ export type Database = {
           created_at: string
           description: string | null
           display_order: number | null
+          document_url: string | null
           id: string
           image_url: string | null
           organization: string | null
@@ -731,6 +777,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number | null
+          document_url?: string | null
           id?: string
           image_url?: string | null
           organization?: string | null
@@ -744,6 +791,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number | null
+          document_url?: string | null
           id?: string
           image_url?: string | null
           organization?: string | null

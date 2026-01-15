@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { NetworkModule } from "./NetworkModule";
-import { TrendingUp, Plus, Trash2, Loader2, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+import { TrendingUp, Plus, Trash2, Loader2, Sparkles, ChevronDown, ChevronRight, BarChart, Users, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
@@ -34,7 +35,11 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
   const [editingItem, setEditingItem] = useState<InfluenceItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState({
+    metric: true,
+    clubs: false,
+    associations: false
+  });
   const [formData, setFormData] = useState({
     title: "",
     category: "",
@@ -48,8 +53,8 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
     setEditingItem(null);
   };
 
-  const handleCategoryClick = (category: CategoryType) => {
-    setSelectedCategory(prev => prev === category ? null : category);
+  const toggleCategory = (category: CategoryType) => {
+    setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
   };
 
   const handleAddToCategory = (category: CategoryType) => {
@@ -163,81 +168,91 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
     return data.filter(item => categoryMap[cat].some(c => item.category?.toLowerCase().includes(c.toLowerCase())));
   };
 
+  const getCategoryIcon = (category: CategoryType) => {
+    switch (category) {
+      case 'metric': return BarChart;
+      case 'clubs': return Users;
+      case 'associations': return Building2;
+    }
+  };
+
   const renderCategorySection = (category: CategoryType, label: string) => {
     const items = getItemsByCategory(category);
+    const Icon = getCategoryIcon(category);
     
     return (
-      <div>
-        <button 
-          onClick={() => handleCategoryClick(category)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full group py-1"
-        >
-          {selectedCategory === category ? (
-            <ChevronDown className="w-3.5 h-3.5" />
-          ) : (
-            <ChevronRight className="w-3.5 h-3.5" />
-          )}
-          <span className="text-sm">{label}</span>
-          {items.length > 0 && (
-            <span className="text-xs text-muted-foreground">({items.length})</span>
-          )}
-        </button>
-        {selectedCategory === category && (
-          <div className="ml-5 mt-1 space-y-2">
-            {items.map((item) => (
-              <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <InlineEditableField
-                      value={item.title}
-                      onSave={(value) => handleInlineUpdate(item.id, "title", value)}
-                      placeholder="Titre"
-                      disabled={!isEditable}
-                      className="font-medium text-sm text-foreground"
-                    />
-                    {item.metric && item.value && (
-                      <span className="text-xs text-muted-foreground">{item.metric}: {item.value}</span>
-                    )}
-                    {isEditable ? (
-                      <InlineEditableField
-                        value={item.description || ""}
-                        onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                        placeholder="Description"
-                        multiline
-                        className="text-xs text-muted-foreground"
-                      />
-                    ) : item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
-                  </div>
-                  {isEditable && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
+      <div className="p-2.5 rounded-lg bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20">
+        <Collapsible open={expandedCategories[category]} onOpenChange={() => toggleCategory(category)}>
+          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
+            {expandedCategories[category] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            <Icon className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">{label}</span>
+            {items.length > 0 && (
+              <span className="text-xs text-muted-foreground ml-auto">({items.length})</span>
+            )}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pl-6 pt-2">
+            {items.length > 0 && (
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <InlineEditableField
+                          value={item.title}
+                          onSave={(value) => handleInlineUpdate(item.id, "title", value)}
+                          placeholder="Titre"
+                          disabled={!isEditable}
+                          className="font-medium text-sm text-foreground"
+                        />
+                        {item.metric && item.value && (
+                          <span className="text-xs text-muted-foreground">{item.metric}: {item.value}</span>
+                        )}
+                        {isEditable ? (
+                          <InlineEditableField
+                            value={item.description || ""}
+                            onSave={(value) => handleInlineUpdate(item.id, "description", value)}
+                            placeholder="Description"
+                            multiline
+                            className="text-xs text-muted-foreground"
+                          />
+                        ) : item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
+                      </div>
+                      {isEditable && (
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
             {isEditable && (
               <button 
                 onClick={() => handleAddToCategory(category)}
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
               >
-                <Plus className="w-3 h-3" />
-                <span>{t('add')}</span>
+                <Plus className="w-3.5 h-3.5" /> {t('add')}
               </button>
             )}
-          </div>
-        )}
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     );
   };
 
   return (
     <NetworkModule title={t('influenceCommunities')} icon={TrendingUp} moduleType="influence" isEditable={isEditable}>
-      <div className="space-y-2">
+      <div className="space-y-4">
         {renderCategorySection('metric', t('influenceMetric'))}
+        
+        
         {renderCategorySection('clubs', t('memberClubs'))}
+        
+        
         {renderCategorySection('associations', t('associations'))}
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Briefcase, Users, Heart, Globe, Settings, Fingerprint, Camera, Crown, Diamond, BadgeDollarSign, Loader2 } from "lucide-react";
@@ -27,6 +27,7 @@ const MemberCard = () => {
   const [connectionsCount, setConnectionsCount] = useState(0);
   const [businessContent, setBusinessContent] = useState<any>(null);
   const [familyContent, setFamilyContent] = useState<any>(null);
+  const [personalContent, setPersonalContent] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,12 +39,31 @@ const MemberCard = () => {
         loadProfile(),
         loadConnectionsCount(),
         loadBusinessContent(),
-        loadFamilyContent()
+        loadFamilyContent(),
+        loadPersonalContent()
       ]);
       done(); // Signal progress bar completion after ALL data is loaded
     };
     loadAllData();
   }, []);
+
+  // Listen for avatar updates from other components (like EditProfile)
+  useEffect(() => {
+    const handleAvatarUpdate = async (event: CustomEvent<{ avatarUrl: string; userId: string }>) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.id === event.detail.userId && profile) {
+        // Add cache-buster to ensure fresh image
+        const cleanUrl = event.detail.avatarUrl.split('?')[0];
+        const avatarUrlWithCache = `${cleanUrl}?t=${Date.now()}`;
+        setProfile((prev: any) => ({ ...prev, avatar_url: avatarUrlWithCache }));
+      }
+    };
+
+    window.addEventListener('avatar-updated', handleAvatarUpdate as EventListener);
+    return () => {
+      window.removeEventListener('avatar-updated', handleAvatarUpdate as EventListener);
+    };
+  }, [profile]);
 
 
   const loadConnectionsCount = async () => {
@@ -121,6 +141,41 @@ const MemberCard = () => {
     setFamilyContent(data);
   };
 
+  const loadPersonalContent = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const [sportsRes, voyagesRes, philosophieRes, artRes, collectionsRes, projetsRes] = await Promise.all([
+        supabase.from("sports_hobbies").select("*").eq("user_id", user.id).order("display_order"),
+        supabase.from("personal_voyages").select("*").eq("user_id", user.id).order("display_order").limit(3),
+        supabase.from("personal_art_culture").select("*").eq("user_id", user.id).in("category", ["mentors", "philosophie", "citations", "lectures"]).order("display_order").limit(3),
+        supabase.from("personal_art_culture").select("*").eq("user_id", user.id).not("category", "in", "(mentors,philosophie,citations,lectures)").order("display_order").limit(3),
+        supabase.from("personal_collections").select("*").eq("user_id", user.id).not("category", "in", "(en_cours,a_venir,realises)").order("display_order").limit(3),
+        supabase.from("personal_collections").select("*").eq("user_id", user.id).in("category", ["en_cours", "a_venir", "realises"]).order("display_order").limit(3)
+      ]);
+
+      console.log('[MemberCard] Sports loaded:', sportsRes.data);
+      console.log('[MemberCard] Sports count:', sportsRes.data?.length || 0);
+      console.log('[MemberCard] Sports error:', sportsRes.error);
+      if (sportsRes.data && sportsRes.data.length > 0) {
+        console.log('[MemberCard] First sport:', sportsRes.data[0]);
+        console.log('[MemberCard] Sports titles:', sportsRes.data.map((s: any) => s.title));
+      }
+
+      setPersonalContent({
+        sports: sportsRes.data || [],
+        voyages: voyagesRes.data || [],
+        philosophie: philosophieRes.data || [],
+        artCulture: artRes.data || [],
+        collections: collectionsRes.data || [],
+        projets: projetsRes.data || []
+      });
+    } catch (error) {
+      console.error('[MemberCard] Error loading personal content:', error);
+    }
+  };
+
   const loadProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -180,6 +235,11 @@ const MemberCard = () => {
       setProfile(newProfile);
     } else {
       console.log('[MemberCard] Profile loaded:', data);
+      // Add cache-buster to avatar URL for fresh display
+      if (data.avatar_url) {
+        const cleanUrl = data.avatar_url.split('?')[0];
+        data.avatar_url = `${cleanUrl}?t=${Date.now()}`;
+      }
       setProfile(data);
     }
   };
@@ -223,21 +283,23 @@ const MemberCard = () => {
             .from('avatars')
             .getPublicUrl(filePath);
 
-          // Add cache-buster to force refresh everywhere
-          const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
+          // Save CLEAN URL to database (without cache-buster)
+          const cleanUrl = publicUrl;
 
           const { error: updateError } = await supabase
             .from('profiles')
-            .update({ avatar_url: cacheBustedUrl })
+            .update({ avatar_url: cleanUrl })
             .eq('id', user.id);
 
           if (updateError) throw updateError;
 
-          setProfile({ ...profile, avatar_url: cacheBustedUrl });
+          // Add cache-buster for local display only
+          const displayUrl = `${cleanUrl}?t=${Date.now()}`;
+          setProfile({ ...profile, avatar_url: displayUrl });
 
-          // Dispatch custom event to notify other components of avatar change
+          // Dispatch custom event with CLEAN URL so other components add their own cache-buster
           window.dispatchEvent(new CustomEvent('avatar-updated', {
-            detail: { avatarUrl: cacheBustedUrl, userId: user.id }
+            detail: { avatarUrl: cleanUrl, userId: user.id }
           }));
 
           toast.success(t('photoUpdated'));
@@ -280,7 +342,49 @@ const MemberCard = () => {
       title: t('personal'),
       icon: Users,
       route: "/personal",
-      items: [t('artCollections'), t('sportsActivities'), t('travelDestinationsLabel'), t('socialInfluenceLabel')]
+      items: personalContent ? (() => {
+        const items: string[] = [];
+        // Ajouter tous les titres des sports personnalisés
+        if (personalContent.sports && Array.isArray(personalContent.sports) && personalContent.sports.length > 0) {
+          personalContent.sports.forEach((sport: any) => {
+            if (sport && sport.title && sport.title.trim()) {
+              items.push(sport.title.trim());
+            }
+          });
+        }
+        if (personalContent.voyages?.length > 0) {
+          const destination = personalContent.voyages[0].destination;
+          if (destination && destination.trim()) {
+            items.push(destination.trim());
+          }
+        }
+        if (personalContent.artCulture?.length > 0) {
+          const title = personalContent.artCulture[0].title;
+          if (title && title.trim()) {
+            items.push(title.trim());
+          }
+        }
+        if (personalContent.collections?.length > 0) {
+          const title = personalContent.collections[0].title;
+          if (title && title.trim()) {
+            items.push(title.trim());
+          }
+        }
+        if (personalContent.projets?.length > 0) {
+          const title = personalContent.projets[0].title;
+          if (title && title.trim()) {
+            items.push(title.trim());
+          }
+        }
+        if (personalContent.philosophie?.length > 0) {
+          const title = personalContent.philosophie[0].title;
+          if (title && title.trim()) {
+            items.push(title.trim());
+          }
+        }
+        console.log('[MemberCard] Personal items to display:', items);
+        return items.length > 0 ? items : [t('clickToAddPersonal')];
+      })() : [t('clickToAddPersonal')]
     },
     {
       title: t('influenceNetwork'),
@@ -299,7 +403,6 @@ const MemberCard = () => {
       icon: Users,
       route: "/members",
       items: [t('memberDirectory'), t('detailedProfiles'),
-        //  t('exclusiveNetwork')
         ]
     }
   ];
@@ -423,7 +526,7 @@ const MemberCard = () => {
               </button>
 
               {/* Identity Verified Badge - Bottom right */}
-              <IdentityVerifiedBadge isVerified={profile.identity_verified} />
+              {/* <IdentityVerifiedBadge isVerified={profile.identity_verified} /> */}
 
               {/* Fondateur Badge - Top left (10 o'clock) */}
               {profile.is_founder && (

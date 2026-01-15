@@ -21,6 +21,7 @@ import {
   FamilyParrainage,
   FamilyLinkInvite
 } from "@/components/family";
+import { FamilyAudio } from "@/components/family/FamilyAudio";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -439,7 +440,8 @@ const FamilySocial = () => {
 
           {/* Documents Section - Owner only */}
           {isOwnProfile && (
-            <div className="mt-8">
+            <div className="mt-8 space-y-6">
+              <FamilyAudio isOwnProfile={isOwnProfile} />
               <FamilyDocuments isOwnProfile={isOwnProfile} />
             </div>
           )}
