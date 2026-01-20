@@ -39,8 +39,9 @@ const registrationSchema = z.object({
 // Types for verification status dialog
 type VerificationDialogState = {
   open: boolean;
-  status: 'pending' | 'rejected' | null;
+  status: 'pending' | 'rejected' | 'pending_sponsor' | 'rejected_sponsor' | null;
   message: string;
+  rejectionReason?: string;
 };
 
 const Login = () => {
@@ -257,25 +258,11 @@ const Login = () => {
       if (authData.user) {
         let avatarUrl = null;
 
-        // Upload avatar if present
+        // Upload avatar if present - use standardized path
         if (avatarBase64) {
           try {
-            // Convert base64 to blob
-            const response = await fetch(avatarBase64);
-            const blob = await response.blob();
-            const fileName = `${authData.user.id}-${Date.now()}.jpg`;
-            const filePath = `avatars/${fileName}`;
-
-            const { error: uploadError } = await supabase.storage
-              .from('avatars')
-              .upload(filePath, blob, { upsert: true });
-
-            if (!uploadError) {
-              const { data: urlData } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(filePath);
-              avatarUrl = urlData.publicUrl;
-            }
+            const { uploadAvatar } = await import('@/lib/avatarUtils');
+            avatarUrl = await uploadAvatar(authData.user.id, avatarBase64);
           } catch (uploadErr) {
             console.error('Error uploading avatar:', uploadErr);
           }
@@ -593,7 +580,40 @@ const Login = () => {
       // account_active permet aussi de se connecter sans vérification Veriff
       const canAccess = profile?.identity_verified || profile?.account_active;
       if (!canAccess && !isAdmin) {
-        // Vérifier le statut de la demande de vérification existante
+        // D'abord, vérifier si le parrain a approuvé l'inscription
+        const { data: referralData } = await supabase
+          .from('referrals')
+          .select('sponsor_approved, rejection_reason, sponsor_id')
+          .eq('referred_id', userId)
+          .maybeSingle();
+
+        // Si l'utilisateur a été invité par un parrain, vérifier l'approbation
+        if (referralData && referralData.sponsor_id) {
+          if (referralData.sponsor_approved === false && referralData.rejection_reason) {
+            // Inscription refusée par le parrain - rediriger vers la page de vérification avec message d'erreur
+            await supabase.auth.signOut();
+            sessionStorage.setItem('waitingForSponsorApproval', 'rejected');
+            sessionStorage.setItem('rejectionReason', referralData.rejection_reason || t('noRejectionReason'));
+            sessionStorage.setItem('pendingVerificationEmail', username);
+            toast.error(t('sponsorApprovalRejectedMessage').replace('{reason}', referralData.rejection_reason || t('noRejectionReason')));
+            setLoading(false);
+            navigate('/register?step=verification');
+            return;
+          }
+
+          if (!referralData.sponsor_approved) {
+            // En attente de validation du parrain - rediriger vers la page de vérification
+            await supabase.auth.signOut();
+            sessionStorage.setItem('waitingForSponsorApproval', 'true');
+            sessionStorage.setItem('pendingVerificationEmail', username);
+            toast.info(t('waitingForSponsorApproval'));
+            setLoading(false);
+            navigate('/register?step=verification');
+            return;
+          }
+        }
+
+        // Parrain a validé, maintenant vérifier le statut de la vérification d'identité
         const { data: verificationData } = await supabase
           .from('identity_verifications')
           .select('status, created_at')
@@ -1127,6 +1147,10 @@ const Login = () => {
             <DialogTitle className="text-gold font-serif">
               {verificationDialog.status === 'pending' 
                 ? t('verificationInProgress') 
+                : verificationDialog.status === 'pending_sponsor'
+                ? t('sponsorApprovalPending')
+                : verificationDialog.status === 'rejected_sponsor'
+                ? t('sponsorApprovalRejected')
                 : t('verificationRejected')}
             </DialogTitle>
             <DialogDescription className="text-gold/60">
@@ -1156,6 +1180,35 @@ const Login = () => {
                     t('recheckStatus')
                   )}
                 </Button>
+                <Button
+                  onClick={() => setVerificationDialog(prev => ({ ...prev, open: false }))}
+                  className="w-full text-gold border-gold hover:bg-gold hover:text-black"
+                  variant="outline"
+                >
+                  {t('close')}
+                </Button>
+              </div>
+            ) : verificationDialog.status === 'pending_sponsor' ? (
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+                </div>
+                <p className="text-gold/80 text-sm text-center">
+                  {t('contactYourSponsor')}
+                </p>
+                <Button
+                  onClick={() => setVerificationDialog(prev => ({ ...prev, open: false }))}
+                  className="w-full text-gold border-gold hover:bg-gold hover:text-black"
+                  variant="outline"
+                >
+                  {t('close')}
+                </Button>
+              </div>
+            ) : verificationDialog.status === 'rejected_sponsor' ? (
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <span className="text-red-500 text-2xl">✕</span>
+                </div>
                 <Button
                   onClick={() => setVerificationDialog(prev => ({ ...prev, open: false }))}
                   className="w-full text-gold border-gold hover:bg-gold hover:text-black"

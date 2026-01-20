@@ -2515,6 +2515,9 @@ export type Database = {
           id: string
           referral_code: string
           referred_id: string
+          rejection_reason: string | null
+          sponsor_approved: boolean | null
+          sponsor_approved_at: string | null
           sponsor_id: string
           status: string
           updated_at: string
@@ -2524,6 +2527,9 @@ export type Database = {
           id?: string
           referral_code: string
           referred_id: string
+          rejection_reason?: string | null
+          sponsor_approved?: boolean | null
+          sponsor_approved_at?: string | null
           sponsor_id: string
           status?: string
           updated_at?: string
@@ -2533,6 +2539,9 @@ export type Database = {
           id?: string
           referral_code?: string
           referred_id?: string
+          rejection_reason?: string | null
+          sponsor_approved?: boolean | null
+          sponsor_approved_at?: string | null
           sponsor_id?: string
           status?: string
           updated_at?: string
@@ -2807,6 +2816,16 @@ export type Database = {
       }
     }
     Functions: {
+      check_sponsor_approval: {
+        Args: { user_id_param: string }
+        Returns: {
+          needs_approval: boolean
+          referral_id: string
+          rejection_reason: string
+          sponsor_approved: boolean
+          sponsor_id: string
+        }[]
+      }
       cleanup_expired_2fa_codes: { Args: never; Returns: undefined }
       create_private_conversation: {
         Args: { other_user_id: string }

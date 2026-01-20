@@ -10,7 +10,7 @@ import { BusinessOnboarding } from "@/components/business/BusinessOnboarding";
 import { BusinessModule } from "@/components/business/BusinessModule";
 import { BusinessTimeline } from "@/components/business/BusinessTimeline";
 import { BusinessOpportunities } from "@/components/business/BusinessOpportunities";
-import { BusinessMainImage } from "@/components/business/BusinessMainImage";
+import { BusinessImageGallery } from "@/components/business/BusinessImageGallery";
 import { BusinessProjectsGallery } from "@/components/business/BusinessProjectsGallery";
 import { getCurrencySymbol } from "@/lib/currencySymbols";
 import { PageHeaderBackButton } from "@/components/BackButton";
@@ -94,7 +94,22 @@ const Business = () => {
         .maybeSingle();
 
       if (contentData) {
+        // Normaliser company_photos si nécessaire
+        if (contentData.company_photos && typeof contentData.company_photos === 'string') {
+          try {
+            contentData.company_photos = JSON.parse(contentData.company_photos);
+          } catch (e) {
+            console.error('Error parsing company_photos:', e);
+            contentData.company_photos = [];
+          }
+        }
         setBusinessContent(contentData);
+        // Log pour déboguer
+        console.log('Business content chargé:', {
+          company_photos: contentData.company_photos,
+          type: typeof contentData.company_photos,
+          isArray: Array.isArray(contentData.company_photos)
+        });
         // Check if onboarding completed
         if (!contentData.onboarding_completed && isOwn) {
           setShowOnboarding(true);
@@ -280,8 +295,26 @@ const Business = () => {
     setProjectsEntries((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const handleMainImageChange = (url: string | null) => {
-    setBusinessContent((prev: any) => ({ ...prev, main_image_url: url }));
+  const handleImagesChange = async (images: string[]) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("business_content")
+        .upsert({
+          user_id: user.id,
+          company_photos: images,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
+
+      if (error) throw error;
+
+      setBusinessContent((prev: any) => ({ ...prev, company_photos: images }));
+    } catch (error) {
+      console.error("Error updating images:", error);
+      toast({ title: t("error"), variant: "destructive" });
+    }
   };
 
   // Formater le patrimoine (only visible for own profile)
@@ -421,12 +454,12 @@ const Business = () => {
             </div>
           </div>
 
-          {/* Main Business Image */}
+          {/* Business Images Gallery */}
           <div className="mb-6">
-            <BusinessMainImage
-              imageUrl={businessContent.main_image_url}
+            <BusinessImageGallery
+              images={businessContent.company_photos || []}
               editable={isOwnProfile}
-              onImageChange={handleMainImageChange}
+              onImagesChange={handleImagesChange}
             />
           </div>
 

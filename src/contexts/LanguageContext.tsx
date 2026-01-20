@@ -1,5 +1,3 @@
-"use client"
-
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { translations } from '@/locales'
 import type { Language } from '@/types/language'
@@ -25,7 +23,16 @@ export const languages = [
   { code: 'ru' as Language, name: 'Русский', flag: '🇷🇺' },
 ]
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
+// Contexte avec valeurs par défaut pour éviter tout fallback/bruit console
+const defaultLanguage: Language = 'fr'
+
+const defaultLanguageContext: LanguageContextType = {
+  language: defaultLanguage,
+  setLanguage: () => {},
+  t: (key: string) => translations[defaultLanguage]?.[key] || translations['en']?.[key] || key
+}
+
+const LanguageContext = createContext<LanguageContextType>(defaultLanguageContext)
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
@@ -35,7 +42,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const browserLang = navigator.language.split('-')[0] as Language
       if (translations[browserLang]) return browserLang
     }
-    return 'fr'
+    return defaultLanguage
   })
 
   useEffect(() => {
@@ -47,7 +54,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }
 
   const t = (key: string): string => {
-    return translations[language]?.[key] || translations['fr']?.[key] || translations['en']?.[key] || key
+    return translations[language]?.[key] || translations[defaultLanguage]?.[key] || translations['en']?.[key] || key
   }
 
   return (
@@ -58,15 +65,5 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 }
 
 export const useLanguage = () => {
-  const context = useContext(LanguageContext)
-  if (context === undefined) {
-    // Fallback pour éviter les erreurs lors du HMR ou si le contexte n'est pas encore prêt
-    console.warn('useLanguage called outside LanguageProvider, using fallback')
-    return {
-      language: 'fr' as Language,
-      setLanguage: () => {},
-      t: (key: string) => translations['fr']?.[key] || key
-    }
-  }
-  return context
+  return useContext(LanguageContext)
 }

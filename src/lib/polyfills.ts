@@ -18,50 +18,22 @@ export function setupDocumentPictureInPicturePolyfill() {
     requestWindow: (options?: any) => Promise.reject(new Error('Document Picture-in-Picture API is not supported')),
   };
 
-  // Toujours définir le polyfill, même s'il existe déjà, pour s'assurer qu'il est disponible
-  try {
-    // Essayer d'abord avec Object.defineProperty pour une définition propre
-    if (!('documentPictureInPicture' in window)) {
-      Object.defineProperty(window, 'documentPictureInPicture', {
-        value: polyfill,
-        writable: true,
-        configurable: true,
-        enumerable: false,
-      });
-    } else {
-      // Si l'API existe déjà, s'assurer qu'elle a au moins la méthode requestWindow
-      const existing = (window as any).documentPictureInPicture;
-      if (!existing || typeof existing.requestWindow !== 'function') {
-        Object.defineProperty(window, 'documentPictureInPicture', {
-          value: polyfill,
-          writable: true,
-          configurable: true,
-          enumerable: false,
-        });
-      }
-    }
-  } catch (e) {
-      // Si Object.defineProperty échoue, utiliser l'assignation directe
-      (window as any).documentPictureInPicture = polyfill;
-  }
-
-  // Vérifier aussi sur document au cas où (bien que normalement ce soit sur window)
-  if (typeof document !== 'undefined') {
-    const documentPolyfill = (window as any).documentPictureInPicture || polyfill;
+  // Fonction helper pour définir le polyfill de manière robuste
+  const definePolyfill = (obj: any, name: string, value: any) => {
     try {
-      if (!('documentPictureInPicture' in document)) {
-        Object.defineProperty(document, 'documentPictureInPicture', {
-          value: documentPolyfill,
+      if (!(name in obj)) {
+        Object.defineProperty(obj, name, {
+          value: value,
           writable: true,
           configurable: true,
           enumerable: false,
         });
       } else {
         // Si l'API existe déjà, s'assurer qu'elle a au moins la méthode requestWindow
-        const existing = (document as any).documentPictureInPicture;
+        const existing = obj[name];
         if (!existing || typeof existing.requestWindow !== 'function') {
-          Object.defineProperty(document, 'documentPictureInPicture', {
-            value: documentPolyfill,
+          Object.defineProperty(obj, name, {
+            value: value,
             writable: true,
             configurable: true,
             enumerable: false,
@@ -70,8 +42,61 @@ export function setupDocumentPictureInPicturePolyfill() {
       }
     } catch (e) {
       // Si Object.defineProperty échoue, utiliser l'assignation directe
-      (document as any).documentPictureInPicture = documentPolyfill;
+      try {
+        obj[name] = value;
+      } catch (e2) {
+        // Si même l'assignation directe échoue, ignorer silencieusement
+        console.warn(`Could not define ${name} on object`, e2);
+      }
     }
+  };
+
+  // Définir sur window
+  definePolyfill(window, 'documentPictureInPicture', polyfill);
+
+  // Définir aussi sur window.self pour les contextes de workers/iframes
+  if (typeof window.self !== 'undefined' && window.self !== window) {
+    definePolyfill(window.self, 'documentPictureInPicture', polyfill);
+  }
+
+  // Définir aussi sur globalThis pour une accessibilité maximale
+  if (typeof globalThis !== 'undefined' && globalThis !== window) {
+    definePolyfill(globalThis, 'documentPictureInPicture', polyfill);
+  }
+
+  // Vérifier aussi sur document au cas où (bien que normalement ce soit sur window)
+  if (typeof document !== 'undefined') {
+    const documentPolyfill = (window as any).documentPictureInPicture || polyfill;
+    definePolyfill(document, 'documentPictureInPicture', documentPolyfill);
+  }
+
+  // Définir aussi un getter global pour les accès asynchrones
+  // IMPORTANT: Stocker le polyfill dans une variable locale pour éviter la récursion
+  const polyfillValue = polyfill;
+  try {
+    if (typeof globalThis !== 'undefined') {
+      // Vérifier si globalThis a déjà une valeur définie (pas un getter)
+      const existing = (globalThis as any).documentPictureInPicture;
+      if (existing && typeof existing === 'object' && typeof existing.requestWindow === 'function') {
+        // Déjà défini correctement, ne pas le redéfinir
+        return;
+      }
+      
+      // Définir directement la valeur, pas un getter, pour éviter la récursion
+      try {
+        Object.defineProperty(globalThis, 'documentPictureInPicture', {
+          value: polyfillValue,
+          writable: true,
+          configurable: true,
+          enumerable: false,
+        });
+      } catch (e) {
+        // Fallback si defineProperty échoue
+        (globalThis as any).documentPictureInPicture = polyfillValue;
+      }
+    }
+  } catch (e) {
+    // Ignorer si cela échoue
   }
 }
 

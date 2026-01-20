@@ -51,6 +51,7 @@ const Register = () => {
   const [referralCodeValid, setReferralCodeValid] = useState<boolean | null>(null);
   const [checkingReferralCode, setCheckingReferralCode] = useState(false);
   const [usedReferralLink, setUsedReferralLink] = useState<string | null>(null);
+  const [validatedCode, setValidatedCode] = useState<string | null>(null); // Stocker le code déjà validé
   const [isFamilyRegistration, setIsFamilyRegistration] = useState(false);
   const [formData, setFormData] = useState({
     referralCode: "",
@@ -103,22 +104,30 @@ const Register = () => {
   const checkReferralCode = async (code: string) => {
     if (!code || code.trim().length === 0) {
       setReferralCodeValid(null);
+      setValidatedCode(null);
       return;
     }
 
     const trimmedCode = code.trim();
+
+    // Si le code est déjà validé et qu'il n'a pas changé, ne pas re-vérifier
+    if (validatedCode === trimmedCode && referralCodeValid === true) {
+      return;
+    }
 
     // Vérifier le format du code
     // - Le champ attend un CODE (AURORA-XXXXXX)
     // - Un lien (AURORA-LINK-XXXXXX) doit être passé via l'URL ?link=
     if (trimmedCode.startsWith('AURORA-LINK-')) {
       setReferralCodeValid(false);
+      setValidatedCode(null);
       toast.error(t('pastedLinkError'));
       return;
     }
 
     if (!trimmedCode.startsWith('AURORA-')) {
       setReferralCodeValid(false);
+      setValidatedCode(null);
       toast.error(t('invalidCodeFormat'));
       return;
     }
@@ -132,20 +141,24 @@ const Register = () => {
       if (error) {
         console.error('Error checking referral code:', error);
         setReferralCodeValid(false);
+        setValidatedCode(null);
         toast.error(t('errorCheckingCode'));
         return;
       }
 
       if (data && data.length > 0 && data[0].is_valid) {
         setReferralCodeValid(true);
+        setValidatedCode(trimmedCode); // Stocker le code validé
         toast.success(t('referralCodeValid'));
       } else {
         setReferralCodeValid(false);
+        setValidatedCode(null);
         toast.error(t('referralCodeInvalid'));
       }
     } catch (error) {
       console.error('Error checking referral code:', error);
       setReferralCodeValid(false);
+      setValidatedCode(null);
       toast.error(t('errorCheckingCode'));
     } finally {
       setCheckingReferralCode(false);
@@ -201,6 +214,7 @@ const Register = () => {
       // Remplir le code de parrainage et valider
       setFormData(prev => ({ ...prev, referralCode: link.referral_code }));
       setReferralCodeValid(true);
+      setValidatedCode(link.referral_code); // Stocker le code validé
       setUsedReferralLink(trimmedLinkCode); // Sauvegarder le code du lien utilisé
       
       toast.success(`${t('referralLinkValid')}: ${link.referral_code}`);
@@ -215,20 +229,32 @@ const Register = () => {
 
   // Handler pour le changement du code de parrainage avec debounce
   const handleReferralCodeChange = (value: string) => {
+    const trimmedValue = value.trim();
     setFormData(prev => ({ ...prev, referralCode: value }));
-    setReferralCodeValid(null);
+    
+    // Si le code change et qu'il est différent du code validé, réinitialiser la validation
+    if (trimmedValue !== validatedCode) {
+      setReferralCodeValid(null);
+      setValidatedCode(null);
+    }
     
     // Annuler le timeout précédent
     if (referralCodeTimeoutRef.current) {
       clearTimeout(referralCodeTimeoutRef.current);
     }
     
+    // Si le code est déjà validé et qu'il n'a pas changé, ne pas re-vérifier
+    if (trimmedValue === validatedCode && referralCodeValid === true) {
+      return;
+    }
+    
     // Définir un nouveau timeout pour vérifier après 500ms d'inactivité
     referralCodeTimeoutRef.current = setTimeout(() => {
-      if (value.trim().length > 0) {
-        checkReferralCode(value);
+      if (trimmedValue.length > 0) {
+        checkReferralCode(trimmedValue);
       } else {
         setReferralCodeValid(null);
+        setValidatedCode(null);
       }
     }, 500);
   };
@@ -285,9 +311,9 @@ const Register = () => {
       // Traiter le code de parrainage direct
       const trimmedRef = refCode.trim();
       setFormData(prev => ({ ...prev, referralCode: trimmedRef }));
-      // Vérifier automatiquement le code après un court délai
+      // Vérifier automatiquement le code après un court délai (une seule fois)
       setTimeout(() => {
-        handleReferralCodeChange(trimmedRef);
+        checkReferralCode(trimmedRef);
       }, 300);
     }
     
@@ -311,11 +337,12 @@ const Register = () => {
 
   // Variable pour désactiver les autres champs si le code n'est pas valide
   // Le champ de code de parrainage reste TOUJOURS modifiable pour permettre la correction
-  // Les autres champs sont désactivés si :
-  // - Un code/lien a été fourni (URL ou saisi) ET il n'est pas encore validé
-  const hasUrlParam = searchParams.get('ref') || searchParams.get('link');
+  // Les autres champs sont désactivés uniquement si :
+  // - Un code a été saisi ET il n'est pas encore validé ET on est en train de vérifier
+  // OU - Un code a été saisi ET la vérification a échoué
+  // Les champs sont activés dès que referralCodeValid === true
   const hasCodeEntered = formData.referralCode.trim().length > 0;
-  const fieldsDisabled = (hasUrlParam || hasCodeEntered) && referralCodeValid !== true;
+  const fieldsDisabled = hasCodeEntered && (checkingReferralCode || referralCodeValid === false);
   // Le champ de code n'est JAMAIS désactivé (sauf pendant la vérification)
   const referralCodeFieldDisabled = checkingReferralCode;
 
@@ -402,25 +429,12 @@ const Register = () => {
         throw new Error(t('errorCreatingAccount'));
       }
 
-      // Upload avatar si présent
+      // Upload avatar si présent - utiliser le chemin standardisé
       let avatarUrl = null;
       if (avatarFile && avatarPreview) {
         try {
-          const response = await fetch(avatarPreview);
-          const blob = await response.blob();
-          const fileName = `${authData.user.id}-${Date.now()}.jpg`;
-          const filePath = `avatars/${fileName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, blob, { upsert: true });
-
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage
-              .from('avatars')
-              .getPublicUrl(filePath);
-            avatarUrl = urlData.publicUrl;
-          }
+          const { uploadAvatar } = await import('@/lib/avatarUtils');
+          avatarUrl = await uploadAvatar(authData.user.id, avatarPreview);
         } catch (uploadErr) {
           console.error('Error uploading avatar:', uploadErr);
         }
@@ -527,7 +541,8 @@ const Register = () => {
                 sponsor_id: sponsorProfile.id,
                 referred_id: authData.user.id,
                 referral_code: formData.referralCode,
-                status: 'pending'
+                status: 'pending',
+                sponsor_approved: false
               });
 
             if (referralError) {
@@ -565,14 +580,39 @@ const Register = () => {
 
       toast.success(t('registrationSuccess'));
       
+      // Vérifier si l'utilisateur a un code de parrainage et si l'approbation du sponsor est requise
+      if (formData.referralCode) {
+        const { data: referralData } = await supabase
+          .from('referrals')
+          .select('sponsor_approved')
+          .eq('referred_id', authData.user.id)
+          .maybeSingle();
+
+        if (referralData && !referralData.sponsor_approved) {
+          // En attente de validation du parrain - sauvegarder l'état dans sessionStorage
+          sessionStorage.setItem('waitingForSponsorApproval', 'true');
+          // Sauvegarder les données utilisateur pour la vérification
+          sessionStorage.setItem('verificationUserData', JSON.stringify({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email
+          }));
+          // Passer à l'étape de vérification pour afficher le message d'attente
+          setRegistrationStep('verification');
+          return;
+        }
+      }
+      
       // Sauvegarder les données utilisateur pour la vérification
       sessionStorage.setItem('verificationUserData', JSON.stringify({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email
       }));
+      // S'assurer que l'état d'attente n'est pas défini
+      sessionStorage.removeItem('waitingForSponsorApproval');
       
-      // Passer à l'étape de vérification après inscription réussie
+      // Passer à l'étape de vérification après inscription réussie (seulement si sponsor a approuvé)
       setRegistrationStep('verification');
     } catch (error: any) {
       console.error('Registration error:', error);

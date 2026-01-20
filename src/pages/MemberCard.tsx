@@ -53,8 +53,8 @@ const MemberCard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user && user.id === event.detail.userId && profile) {
         // Add cache-buster to ensure fresh image
-        const cleanUrl = event.detail.avatarUrl.split('?')[0];
-        const avatarUrlWithCache = `${cleanUrl}?t=${Date.now()}`;
+        const { getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+        const avatarUrlWithCache = getAvatarDisplayUrl(event.detail.avatarUrl) || event.detail.avatarUrl;
         setProfile((prev: any) => ({ ...prev, avatar_url: avatarUrlWithCache }));
       }
     };
@@ -237,8 +237,8 @@ const MemberCard = () => {
       console.log('[MemberCard] Profile loaded:', data);
       // Add cache-buster to avatar URL for fresh display
       if (data.avatar_url) {
-        const cleanUrl = data.avatar_url.split('?')[0];
-        data.avatar_url = `${cleanUrl}?t=${Date.now()}`;
+        const { getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+        data.avatar_url = getAvatarDisplayUrl(data.avatar_url) || data.avatar_url;
       }
       setProfile(data);
     }
@@ -265,26 +265,18 @@ const MemberCard = () => {
           return; // Don't upload invalid images
         }
 
-        // Proceed with upload
+        // Proceed with upload using shared utility
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error(t('notAuthenticated'));
 
-          const fileExt = file.name.split('.').pop();
-          const filePath = `${user.id}/avatar.${fileExt}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, file, { upsert: true });
-
-          if (uploadError) throw uploadError;
-
-          const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-
-          // Save CLEAN URL to database (without cache-buster)
-          const cleanUrl = publicUrl;
+          const { uploadAvatar, dispatchAvatarUpdate, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+          
+          const cleanUrl = await uploadAvatar(user.id, base64);
+          
+          if (!cleanUrl) {
+            throw new Error(t('uploadError'));
+          }
 
           const { error: updateError } = await supabase
             .from('profiles')
@@ -294,13 +286,11 @@ const MemberCard = () => {
           if (updateError) throw updateError;
 
           // Add cache-buster for local display only
-          const displayUrl = `${cleanUrl}?t=${Date.now()}`;
+          const displayUrl = getAvatarDisplayUrl(cleanUrl) || cleanUrl;
           setProfile({ ...profile, avatar_url: displayUrl });
 
-          // Dispatch custom event with CLEAN URL so other components add their own cache-buster
-          window.dispatchEvent(new CustomEvent('avatar-updated', {
-            detail: { avatarUrl: cleanUrl, userId: user.id }
-          }));
+          // Dispatch custom event for real-time sync
+          dispatchAvatarUpdate(cleanUrl, user.id);
 
           toast.success(t('photoUpdated'));
         } catch (error: any) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Users, Plus, Gift, CheckCircle2, XCircle, Loader2, Search, UserPlus, Share2, Copy, Check, Link2, Trash2, Edit, Eye, EyeOff } from "lucide-react";
+import { Users, Plus, Gift, CheckCircle2, XCircle, Loader2, Search, UserPlus, Share2, Copy, Check, Link2, Trash2, Edit, Eye, EyeOff, Clock, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,9 @@ interface ReferredMember {
   id: string;
   referred_id: string;
   status: string;
+  sponsor_approved: boolean;
+  sponsor_approved_at: string | null;
+  rejection_reason: string | null;
   created_at: string;
   referred_profile: {
     id: string;
@@ -65,6 +68,13 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
   const [newLinkName, setNewLinkName] = useState("");
   const [creatingLink, setCreatingLink] = useState(false);
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  
+  // Sponsor approval states
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<ReferredMember | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [processingApproval, setProcessingApproval] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -116,12 +126,22 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
       // Charger les membres parrainés depuis la table referrals
       const { data: referralsData, error: referralsError } = await (supabase as any)
         .from('referrals')
-        .select('id, referred_id, status, created_at')
+        .select('id, referred_id, status, sponsor_approved, sponsor_approved_at, rejection_reason, created_at')
         .eq('sponsor_id', profileId)
         .order('created_at', { ascending: false });
 
       if (referralsError) {
         console.error("Error loading referrals:", referralsError);
+      }
+
+      // Log pour déboguer
+      console.log('Referrals chargés:', referralsData?.length || 0, 'références');
+      if (referralsData && referralsData.length > 0) {
+        console.log('Exemple de referral:', {
+          id: referralsData[0].id,
+          sponsor_approved: referralsData[0].sponsor_approved,
+          status: referralsData[0].status
+        });
       }
 
       // Pour chaque referral, charger le profil du membre parrainé
@@ -140,7 +160,11 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
           return {
             id: ref.id,
             referred_id: ref.referred_id,
-            status: ref.status,
+            status: ref.status || 'pending',
+            // Normaliser : null ou undefined = false (non approuvé)
+            sponsor_approved: ref.sponsor_approved === true ? true : false,
+            sponsor_approved_at: ref.sponsor_approved_at,
+            rejection_reason: ref.rejection_reason,
             created_at: ref.created_at,
             referred_profile: refProfile || null
           };
@@ -547,8 +571,18 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
     });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
+  const getStatusBadge = (member: ReferredMember) => {
+    // Si le membre est rejeté par le parrain
+    if (member.status === 'rejected' && member.rejection_reason) {
+      return <Badge className="bg-red-500/10 text-red-500 border-red-500/20"><XCircle className="w-3 h-3 mr-1" />{t('rejected')}</Badge>;
+    }
+    
+    // Si en attente d'approbation du parrain
+    if (!member.sponsor_approved && member.status === 'pending') {
+      return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20"><Clock className="w-3 h-3 mr-1" />{t('pendingSponsorApproval')}</Badge>;
+    }
+    
+    switch (member.status) {
       case 'confirmed':
         return <Badge className="bg-green-500/10 text-green-500 border-green-500/20"><CheckCircle2 className="w-3 h-3 mr-1" />{t('confirmed')}</Badge>;
       case 'pending':
@@ -556,9 +590,88 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
       case 'rejected':
         return <Badge className="bg-red-500/10 text-red-500 border-red-500/20"><XCircle className="w-3 h-3 mr-1" />{t('rejected')}</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline">{member.status}</Badge>;
     }
   };
+
+  // Approve a member's registration
+  const approveMember = async () => {
+    if (!selectedMember) return;
+    
+    setProcessingApproval(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('referrals')
+        .update({ 
+          sponsor_approved: true, 
+          sponsor_approved_at: new Date().toISOString(),
+          rejection_reason: null
+        })
+        .eq('id', selectedMember.id);
+
+      if (error) throw error;
+
+      toast.success(t('memberApproved'));
+      setApproveDialogOpen(false);
+      setSelectedMember(null);
+      loadData();
+      onUpdate?.();
+    } catch (error: any) {
+      console.error("Error approving member:", error);
+      toast.error(error.message || t('error'));
+    } finally {
+      setProcessingApproval(false);
+    }
+  };
+
+  // Reject a member's registration
+  const rejectMember = async () => {
+    if (!selectedMember) return;
+    
+    setProcessingApproval(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('referrals')
+        .update({ 
+          status: 'rejected',
+          rejection_reason: rejectionReason || null,
+          sponsor_approved: false
+        })
+        .eq('id', selectedMember.id);
+
+      if (error) throw error;
+
+      toast.success(t('memberRejected'));
+      setRejectDialogOpen(false);
+      setSelectedMember(null);
+      setRejectionReason("");
+      loadData();
+      onUpdate?.();
+    } catch (error: any) {
+      console.error("Error rejecting member:", error);
+      toast.error(error.message || t('error'));
+    } finally {
+      setProcessingApproval(false);
+    }
+  };
+
+  // Filter members by approval status
+  // Approuvés / confirmés / rejetés (historique)
+  const approvedOrConfirmedMembers = referredMembers.filter(m => 
+    m.sponsor_approved === true || m.status === 'confirmed' || m.status === 'rejected'
+  );
+  
+  // En attente : uniquement les membres NON approuvés (sponsor_approved !== true) et NON rejetés
+  const pendingApprovalMembers = referredMembers.filter(m => {
+    const isNotApproved = m.sponsor_approved !== true; // false, null, ou undefined
+    const isNotRejected = m.status !== 'rejected';
+    return isNotApproved && isNotRejected;
+  });
+  
+  // Log pour déboguer
+  console.log('Membres totaux:', referredMembers.length);
+  console.log('En attente d\'approbation:', pendingApprovalMembers.length);
+  console.log('Approuvés/confirmés:', approvedOrConfirmedMembers.length);
 
   if (isLoading) {
     return (
@@ -853,48 +966,126 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
 
         {/* Colonne droite : Liste des membres parrainés */}
         <div className="space-y-4 sm:space-y-6">
-      {referredMembers.length === 0 ? (
-        <div className="text-center py-8">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">{t('noReferredMembers')}</h3>
-          <p className="text-muted-foreground">
-            {isEditable 
-              ? t('startSponsoringHint')
-              : t('noReferralsRecorded')}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {referredMembers.map((member) => (
-            <Card
-              key={member.id}
-              className="hover:bg-muted/50 transition-colors cursor-pointer"
-              onClick={() => navigate(`/profile/${member.referred_profile?.id}`)}
-            >
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={member.referred_profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-gold/10 text-gold">
-                      {member.referred_profile?.first_name?.[0]}{member.referred_profile?.last_name?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-foreground">
-                        {member.referred_profile?.first_name} {member.referred_profile?.last_name}
-                      </h4>
-                      {getStatusBadge(member.status)}
-                    </div>
+          {/* Section: Membres en attente d'approbation - TOUJOURS VISIBLE SI isEditable */}
+          {isEditable && (
+            <div className="space-y-3">
+              {pendingApprovalMembers.length > 0 ? (
+                <>
+                  <div className="bg-orange-500/10 border-2 border-orange-500/50 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-2">
+                      <AlertCircle className="h-6 w-6 text-orange-500 animate-pulse" />
+                      {t('pendingApprovalMembers')} 
+                      <Badge variant="destructive" className="ml-2">
+                        {pendingApprovalMembers.length}
+                      </Badge>
+                    </h3>
                     <p className="text-sm text-muted-foreground">
-                      {t('sponsoredOn')} {formatDate(member.created_at)}
+                      {t('waitingForYourApproval')} - {pendingApprovalMembers.length} {pendingApprovalMembers.length === 1 ? t('member') : t('members')}
                     </p>
                   </div>
+                  {pendingApprovalMembers.map((member) => (
+                    <Card key={member.id} className="border-orange-500/30 bg-orange-500/5">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={member.referred_profile?.avatar_url || undefined} />
+                            <AvatarFallback className="bg-gold/10 text-gold">
+                              {member.referred_profile?.first_name?.[0]}{member.referred_profile?.last_name?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-foreground">
+                                {member.referred_profile?.first_name} {member.referred_profile?.last_name}
+                              </h4>
+                              {getStatusBadge(member)}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {t('waitingForYourApproval')}
+                            </p>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-green-500/30 text-green-600 hover:bg-green-500/10 flex-1 sm:flex-initial"
+                              onClick={(e) => { e.stopPropagation(); setSelectedMember(member); setApproveDialogOpen(true); }}
+                            >
+                              <ThumbsUp className="w-4 h-4 sm:mr-2" />
+                              <span className="hidden sm:inline">{t('approve')}</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-red-500/30 text-red-600 hover:bg-red-500/10 flex-1 sm:flex-initial"
+                              onClick={(e) => { e.stopPropagation(); setSelectedMember(member); setRejectDialogOpen(true); }}
+                            >
+                              <ThumbsDown className="w-4 h-4 sm:mr-2" />
+                              <span className="hidden sm:inline">{t('reject')}</span>
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
+              ) : (
+                <div className="bg-muted/30 border border-border rounded-lg p-4 text-center">
+                  <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {t('noPendingApprovals')}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-          </div>
+              )}
+            </div>
+          )}
+
+          {/* Section: Autres membres */}
+          {referredMembers.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">{t('noReferredMembers')}</h3>
+              <p className="text-muted-foreground">
+                {isEditable ? t('startSponsoringHint') : t('noReferralsRecorded')}
+              </p>
+            </div>
+          ) : approvedOrConfirmedMembers.length > 0 && (
+            <div className="space-y-3">
+              {pendingApprovalMembers.length > 0 && (
+                <h3 className="text-lg font-semibold text-foreground">{t('approvedMembers')}</h3>
+              )}
+              {approvedOrConfirmedMembers.map((member) => (
+                <Card
+                  key={member.id}
+                  className="hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/profile/${member.referred_profile?.id}`)}
+                >
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={member.referred_profile?.avatar_url || undefined} />
+                        <AvatarFallback className="bg-gold/10 text-gold">
+                          {member.referred_profile?.first_name?.[0]}{member.referred_profile?.last_name?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium text-foreground">
+                            {member.referred_profile?.first_name} {member.referred_profile?.last_name}
+                          </h4>
+                          {getStatusBadge(member)}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {member.sponsor_approved_at 
+                            ? `${t('sponsorValidatedAt')} ${formatDate(member.sponsor_approved_at)}`
+                            : `${t('sponsoredOn')} ${formatDate(member.created_at)}`}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
         )}
         </div>
       </div>
@@ -1037,6 +1228,111 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                   {t('createLink')}
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog pour approuver un membre */}
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ThumbsUp className="w-5 h-5 text-green-500" />
+              {t('approveThisMember')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('approveThisMemberDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMember && (
+            <Card className="bg-muted/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={selectedMember.referred_profile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-gold/10 text-gold">
+                      {selectedMember.referred_profile?.first_name?.[0]}{selectedMember.referred_profile?.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h4 className="font-medium text-foreground">
+                      {selectedMember.referred_profile?.first_name} {selectedMember.referred_profile?.last_name}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">{formatDate(selectedMember.created_at)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApproveDialogOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              onClick={approveMember}
+              disabled={processingApproval}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {processingApproval ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ThumbsUp className="w-4 h-4 mr-2" />}
+              {t('approveMember')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog pour refuser un membre */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ThumbsDown className="w-5 h-5 text-red-500" />
+              {t('rejectThisMember')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('rejectThisMemberDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMember && (
+            <Card className="bg-muted/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={selectedMember.referred_profile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-gold/10 text-gold">
+                      {selectedMember.referred_profile?.first_name?.[0]}{selectedMember.referred_profile?.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h4 className="font-medium text-foreground">
+                      {selectedMember.referred_profile?.first_name} {selectedMember.referred_profile?.last_name}
+                    </h4>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="rejectionReason">{t('rejectionReason')}</Label>
+            <Textarea
+              id="rejectionReason"
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder={t('rejectionReasonPlaceholder')}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRejectDialogOpen(false); setRejectionReason(""); }}>
+              {t('cancel')}
+            </Button>
+            <Button
+              onClick={rejectMember}
+              disabled={processingApproval}
+              variant="destructive"
+            >
+              {processingApproval ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ThumbsDown className="w-4 h-4 mr-2" />}
+              {t('rejectMember')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -87,7 +87,7 @@ const MemberCard = ({ member, onClick, status, isSelected, t }: { member: Member
     if (member.avatar_url.startsWith('data:')) {
       return null;
     }
-    // Add cache-buster to force refresh
+    // Clean URL and add cache-buster to force refresh
     const cleanUrl = member.avatar_url.split('?')[0];
     return `${cleanUrl}?t=${avatarVersion}`;
   }, [member.avatar_url, avatarVersion]);

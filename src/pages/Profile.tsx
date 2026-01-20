@@ -62,8 +62,8 @@ const Profile = () => {
         console.log('[Profile] Profile loaded successfully');
         // Add cache-buster to avatar URL for fresh display
         if (profileData.avatar_url) {
-          const cleanUrl = profileData.avatar_url.split('?')[0];
-          profileData.avatar_url = `${cleanUrl}?t=${Date.now()}`;
+          const { getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+          profileData.avatar_url = getAvatarDisplayUrl(profileData.avatar_url) || profileData.avatar_url;
         }
         setProfile(profileData);
       }
@@ -147,11 +147,11 @@ const Profile = () => {
 
   // Listen for avatar updates from other components
   useEffect(() => {
-    const handleAvatarUpdate = (event: CustomEvent<{ avatarUrl: string; userId: string }>) => {
+    const handleAvatarUpdate = async (event: CustomEvent<{ avatarUrl: string; userId: string }>) => {
       if (profile && (profile.id === event.detail.userId || (!id && isOwnProfile))) {
         // Add cache-buster to ensure fresh image
-        const cleanUrl = event.detail.avatarUrl.split('?')[0];
-        const avatarUrlWithCache = `${cleanUrl}?t=${Date.now()}`;
+        const { getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+        const avatarUrlWithCache = getAvatarDisplayUrl(event.detail.avatarUrl) || event.detail.avatarUrl;
         setProfile((prev: any) => ({ ...prev, avatar_url: avatarUrlWithCache }));
       }
     };

@@ -12,7 +12,7 @@ interface RegistrationVerificationProps {
   onComplete: (verificationId: string, status: string) => void;
 }
 
-type VerificationStep = 'intro' | 'initiating' | 'redirecting' | 'checking' | 'success' | 'pending' | 'error' | 'loading' | 'existing_pending';
+type VerificationStep = 'intro' | 'initiating' | 'redirecting' | 'checking' | 'success' | 'pending' | 'error' | 'loading' | 'existing_pending' | 'waiting_approval';
 
 export function RegistrationVerification({ 
   onComplete
@@ -106,8 +106,80 @@ export function RegistrationVerification({
     }
   };
 
+  // Vérifier l'approbation du sponsor
+  const checkSponsorApproval = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        // Pas de session active : on affiche simplement l'état d'attente si marqué côté client
+        const waitingStatus = sessionStorage.getItem('waitingForSponsorApproval');
+        const rejectionReason = sessionStorage.getItem('rejectionReason');
+
+        if (waitingStatus === 'rejected' && rejectionReason) {
+          setError(t('sponsorApprovalRejectedMessage').replace('{reason}', rejectionReason || t('noRejectionReason')));
+          setStep('error');
+        } else if (waitingStatus === 'true') {
+          setStep('waiting_approval');
+        } else {
+          setStep('intro');
+        }
+        return;
+      }
+
+      const { data: referralData } = await supabase
+        .from('referrals')
+        .select('sponsor_approved, rejection_reason')
+        .eq('referred_id', sessionData.session.user.id)
+        .maybeSingle();
+
+      if (referralData) {
+        const waitingStatus = sessionStorage.getItem('waitingForSponsorApproval');
+
+        if (waitingStatus === 'rejected' || (referralData.sponsor_approved === false && referralData.rejection_reason)) {
+          // Inscription refusée par le parrain
+          const rejectionReason = sessionStorage.getItem('rejectionReason') || referralData.rejection_reason || t('noRejectionReason');
+          setError(t('sponsorApprovalRejectedMessage').replace('{reason}', rejectionReason));
+          setStep('error');
+          toast.error(t('sponsorApprovalRejectedMessage').replace('{reason}', rejectionReason));
+          // Nettoyer le marquage client
+          sessionStorage.removeItem('waitingForSponsorApproval');
+          sessionStorage.removeItem('rejectionReason');
+          return;
+        }
+
+        if (!referralData.sponsor_approved) {
+          // En attente de validation du parrain
+          setStep('waiting_approval');
+          return;
+        }
+      }
+
+      // Si approuvé, continuer avec la vérification normale
+      return true;
+    } catch (err) {
+      console.error('Error checking sponsor approval:', err);
+      return false;
+    }
+  };
+
   // Check if returning from Veriff or check existing verification
   useEffect(() => {
+    // Vérifier d'abord si on est en attente d'approbation (depuis Register ou Login)
+    const waitingStatus = sessionStorage.getItem('waitingForSponsorApproval');
+
+    // Cas 1 : en attente ou rejet, on affiche directement le popup sans nécessiter de session
+    if (waitingStatus === 'true') {
+      setStep('waiting_approval');
+      return;
+    }
+
+    if (waitingStatus === 'rejected') {
+      const rejectionReason = sessionStorage.getItem('rejectionReason');
+      setError(t('sponsorApprovalRejectedMessage').replace('{reason}', rejectionReason || t('noRejectionReason')));
+      setStep('error');
+      return;
+    }
+
     const verificationResult = searchParams.get('verification');
     const token = searchParams.get('token');
     
@@ -118,7 +190,7 @@ export function RegistrationVerification({
       // Vérifier s'il existe une vérification en cours
       checkExistingVerification();
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   const checkVerificationStatus = async (token: string) => {
     try {
@@ -195,6 +267,13 @@ export function RegistrationVerification({
       }
 
       console.log('Session active, user:', sessionData.session.user.id);
+
+      // Vérifier si l'utilisateur a un code de parrainage et si l'approbation du sponsor est requise
+      const approvalCheck = await checkSponsorApproval();
+      if (approvalCheck === false) {
+        // En attente ou refusé - l'état a déjà été défini par checkSponsorApproval
+        return;
+      }
 
       const { data, error } = await supabase.functions.invoke('veriff-verification', {
         body: { 
@@ -384,6 +463,60 @@ export function RegistrationVerification({
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 {t('deleteAndRestartVerification')}
+              </Button>
+              
+              <Button
+                onClick={() => {
+                  supabase.auth.signOut().then(() => {
+                    navigate('/login', { replace: true });
+                  });
+                }}
+                variant="ghost"
+                className="w-full text-gold/60 hover:text-gold hover:bg-transparent"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                {t('backToLogin')}
+              </Button>
+            </div>
+          </CardContent>
+        );
+
+      case 'waiting_approval':
+        return (
+          <CardContent className="py-8 space-y-6">
+            <div className="text-center space-y-4">
+              <div className="mx-auto bg-orange-500/20 p-4 rounded-full w-fit">
+                <Clock className="w-12 h-12 text-orange-500" />
+              </div>
+              <h3 className="text-xl text-gold font-serif">{t('waitingForSponsorApproval')}</h3>
+              <p className="text-gold/60">
+                {t('sponsorApprovalPendingMessage')}
+              </p>
+            </div>
+
+            <Alert className="bg-orange-500/10 border-orange-500/30">
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <AlertDescription className="text-orange-300 text-sm">
+                {t('waitingForSponsorApproval')} {t('youWillBeNotified')}
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-3">
+              <Button
+                onClick={async () => {
+                  const approved = await checkSponsorApproval();
+                  if (approved === true) {
+                    sessionStorage.removeItem('waitingForSponsorApproval');
+                    setStep('intro');
+                    toast.success(t('sponsorApproved'));
+                  } else {
+                    toast.info(t('stillWaitingForApproval'));
+                  }
+                }}
+                className="w-full bg-gold text-black hover:bg-gold/90 font-medium"
+              >
+                <Loader2 className="w-4 h-4 mr-2" />
+                {t('checkApprovalStatus')}
               </Button>
               
               <Button

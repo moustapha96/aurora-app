@@ -29,6 +29,8 @@ const EditProfile = () => {
   const [uploading, setUploading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string>(""); // Store the uploaded URL separately
+  const [imageError, setImageError] = useState(false);
   const [identityVerified, setIdentityVerified] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const [accountNumber, setAccountNumber] = useState<string>("");
@@ -77,10 +79,23 @@ const EditProfile = () => {
     const handleAvatarUpdate = async (event: CustomEvent<{ avatarUrl: string; userId: string }>) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user && user.id === event.detail.userId) {
-        // Add cache-buster to ensure fresh image
-        const cleanUrl = event.detail.avatarUrl.split('?')[0];
-        const avatarUrlWithCache = `${cleanUrl}?t=${Date.now()}`;
-        setAvatarUrl(avatarUrlWithCache);
+        try {
+          const { cleanAvatarUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+          const cleanUrl = cleanAvatarUrl(event.detail.avatarUrl);
+          
+          // Store clean URL
+          setUploadedAvatarUrl(cleanUrl);
+          
+          // Add cache-buster for display only
+          const avatarUrlWithCache = getAvatarDisplayUrl(cleanUrl) || cleanUrl;
+          setAvatarUrl(avatarUrlWithCache);
+          setImageError(false);
+        } catch (error) {
+          // Fallback if import fails
+          const cleanUrl = event.detail.avatarUrl.split('?')[0];
+          setUploadedAvatarUrl(cleanUrl);
+          setAvatarUrl(`${cleanUrl}?t=${Date.now()}`);
+        }
       }
     };
 
@@ -90,9 +105,20 @@ const EditProfile = () => {
     };
   }, []);
 
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      // Revoke any blob URLs when component unmounts
+      if (avatarUrl && avatarUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarUrl);
+      }
+    };
+  }, [avatarUrl]);
+
   const loadProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+
       if (!user) {
         navigate("/login");
         return;
@@ -133,14 +159,26 @@ const EditProfile = () => {
         };
         setFormData(profileData);
         setInitialData(profileData);
-        // Add cache-buster to avatar URL to ensure fresh image
-        // Remove existing cache-buster if present, then add a new one
+        // Clean and store avatar URL using utility
         let avatarUrlWithCache = "";
         if (data.avatar_url) {
-          const cleanUrl = data.avatar_url.split('?')[0];
-          avatarUrlWithCache = `${cleanUrl}?t=${Date.now()}`;
+          try {
+            const { cleanAvatarUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+            const cleanUrl = cleanAvatarUrl(data.avatar_url);
+            setUploadedAvatarUrl(cleanUrl);
+            avatarUrlWithCache = getAvatarDisplayUrl(cleanUrl) || cleanUrl;
+          } catch (error) {
+            // Fallback
+            console.warn('Error processing avatar URL:', error);
+            const cleanUrl = data.avatar_url.split('?')[0];
+            setUploadedAvatarUrl(cleanUrl);
+            avatarUrlWithCache = `${cleanUrl}?t=${Date.now()}`;
+          }
+        } else {
+          setUploadedAvatarUrl("");
         }
         setAvatarUrl(avatarUrlWithCache);
+        setImageError(false); // Reset error state when loading new profile
         setIdentityVerified(data.identity_verified || false);
         setAccountNumber(data.account_number || "");
       }
@@ -160,6 +198,11 @@ const EditProfile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Revoke previous blob URL if it exists
+    if (avatarUrl && avatarUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(avatarUrl);
+    }
+
     setAvatarFile(file);
     setUploading(true);
     resetVerification();
@@ -176,12 +219,19 @@ const EditProfile = () => {
       // Trigger verification with base64
       const result = await verifyImage(base64);
       
-      // If verification passed, immediately upload and update profile
-      if (result?.isValid || (result?.hasFace && result?.isAppropriate)) {
+      // If verification passed or warning, immediately upload and update profile
+      if (result?.isValid || (result?.hasFace && result?.isAppropriate) || canProceed) {
         await uploadAndUpdateAvatar(file);
+      } else if (result === null) {
+        // Verification service unavailable - allow user to proceed but don't auto-upload
+        // User can still save manually
+        setUploading(false);
+        // Keep preview URL so user can see the image and save it manually
       } else {
-        // Revoke object URL if verification failed
+        // Verification failed - revoke preview and reset
         URL.revokeObjectURL(previewUrl);
+        setAvatarUrl(uploadedAvatarUrl ? `${uploadedAvatarUrl}?t=${Date.now()}` : "");
+        setAvatarFile(null);
         setUploading(false);
       }
     };
@@ -196,26 +246,15 @@ const EditProfile = () => {
         return;
       }
 
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/avatar.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) {
-        console.error('Error uploading avatar:', uploadError);
+      const { uploadAvatar, dispatchAvatarUpdate, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+      
+      const cleanAvatarUrl = await uploadAvatar(user.id, file);
+      
+      if (!cleanAvatarUrl) {
         toast.error(t('avatarUploadError'));
         setUploading(false);
         return;
       }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-      
-      // Save clean URL to database (without cache-buster)
-      const cleanAvatarUrl = publicUrl;
 
       // Update profile in database immediately with clean URL
       const { error: updateError } = await supabase
@@ -230,16 +269,23 @@ const EditProfile = () => {
         return;
       }
 
-      // Add cache-buster for display (but save clean URL to DB)
-      const displayAvatarUrl = `${cleanAvatarUrl}?t=${Date.now()}`;
-      setAvatarUrl(displayAvatarUrl);
-      setAvatarFile(null); // Clear the file since it's already uploaded
+      // Store the uploaded URL
+      setUploadedAvatarUrl(cleanAvatarUrl);
       
-      // Dispatch custom event to notify other components of avatar change
-      // Send clean URL so other components can add their own cache-buster
-      window.dispatchEvent(new CustomEvent('avatar-updated', { 
-        detail: { avatarUrl: cleanAvatarUrl, userId: user.id } 
-      }));
+      // Add cache-buster for display
+      const displayAvatarUrl = getAvatarDisplayUrl(cleanAvatarUrl) || cleanAvatarUrl;
+      setAvatarUrl(displayAvatarUrl);
+      setImageError(false);
+      
+      // Revoke the preview object URL if it exists
+      if (avatarUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarUrl);
+      }
+      
+      setAvatarFile(null);
+      
+      // Dispatch custom event for real-time sync
+      dispatchAvatarUpdate(cleanAvatarUrl, user.id);
       
       toast.success(t('profilePhotoUpdated'));
       setUploading(false);
@@ -259,28 +305,32 @@ const EditProfile = () => {
         return;
       }
 
-      let uploadedAvatarUrl = avatarUrl;
+      let finalAvatarUrl = uploadedAvatarUrl; // Use the already uploaded URL if available
 
-      // Upload avatar if a new file was selected
+      // Upload avatar if a new file was selected and not already uploaded
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `avatars/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, avatarFile, { upsert: true });
-
-        if (uploadError) {
-          console.error('Error uploading avatar:', uploadError);
+        const { uploadAvatar, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+        
+        finalAvatarUrl = await uploadAvatar(user.id, avatarFile);
+        
+        if (!finalAvatarUrl) {
           toast.error(t('avatarUploadError'));
-        } else {
-          const { data: urlData } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-          // Save clean URL (cache-buster will be added for display)
-          uploadedAvatarUrl = urlData.publicUrl;
+          setSaving(false);
+          return;
         }
+        
+        setUploadedAvatarUrl(finalAvatarUrl);
+        
+        // Revoke preview object URL if it exists
+        if (avatarUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(avatarUrl);
+        }
+        
+        // Update display URL with cache-buster
+        const displayAvatarUrl = getAvatarDisplayUrl(finalAvatarUrl) || finalAvatarUrl;
+        setAvatarUrl(displayAvatarUrl);
+        setImageError(false);
+        setAvatarFile(null);
       }
 
       // Calculate wealth in billions of euros
@@ -305,7 +355,7 @@ const EditProfile = () => {
           activity_domain: formData.activityDomain || null,
           country: formData.country || null,
           personal_quote: formData.personalQuote || null,
-          avatar_url: uploadedAvatarUrl || null,
+          avatar_url: finalAvatarUrl || null,
         })
         .eq('id', user.id);
 
@@ -324,21 +374,18 @@ const EditProfile = () => {
         }, { onConflict: 'user_id' });
 
       if (privateError) throw privateError;
-
-      // Update avatar URL with cache-buster for display
-      if (uploadedAvatarUrl) {
-        const displayAvatarUrl = `${uploadedAvatarUrl}?t=${Date.now()}`;
+      // Update avatar URL with cache-buster for display if we have a final URL
+      if (finalAvatarUrl) {
+        const displayAvatarUrl = `${finalAvatarUrl}?t=${Date.now()}`;
         setAvatarUrl(displayAvatarUrl);
-      }
-
-      // Dispatch avatar update event if avatar was changed
-      if (avatarFile && uploadedAvatarUrl) {
+        setUploadedAvatarUrl(finalAvatarUrl);
+        
+        // Dispatch avatar update event
         // Send clean URL so other components can add their own cache-buster
         window.dispatchEvent(new CustomEvent('avatar-updated', { 
-          detail: { avatarUrl: uploadedAvatarUrl, userId: user.id } 
+          detail: { avatarUrl: finalAvatarUrl, userId: user.id } 
         }));
       }
-
       toast.success(t('profileUpdated'));
       navigate("/member-card");
     } catch (error) {
@@ -403,19 +450,19 @@ const EditProfile = () => {
                   className="w-full h-full rounded-full border-2 border-gold overflow-hidden cursor-pointer group"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {avatarUrl ? (
+                  {avatarUrl && !imageError ? (
                     <img
                       src={avatarUrl}
                       alt={t('avatarPreview')}
                       className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
-                      onError={(e) => {
-                        // Si l'image ne charge pas, réinitialiser l'URL
-                        console.error('Error loading avatar image');
-                        setAvatarUrl("");
+                      onError={() => {
+                        // Marquer l'erreur mais ne pas supprimer l'URL immédiatement
+                        // Cela permet de réessayer si l'URL change
+                        setImageError(true);
                       }}
                       onLoad={() => {
-                        // Image chargée avec succès
-                        console.log('Avatar image loaded successfully');
+                        // Réinitialiser l'erreur si l'image charge avec succès
+                        setImageError(false);
                       }}
                     />
                   ) : (
