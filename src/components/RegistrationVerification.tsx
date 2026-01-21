@@ -132,6 +132,15 @@ export function RegistrationVerification({
         .eq('referred_id', sessionData.session.user.id)
         .maybeSingle();
 
+      // Vérifier si le profil existe déjà (utilisateur s'est déjà connecté au moins une fois)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, created_at')
+        .eq('id', sessionData.session.user.id)
+        .maybeSingle();
+      
+      const profileExists = !!profile;
+
       if (referralData) {
         const waitingStatus = sessionStorage.getItem('waitingForSponsorApproval');
 
@@ -147,11 +156,13 @@ export function RegistrationVerification({
           return;
         }
 
-        if (!referralData.sponsor_approved) {
-          // En attente de validation du parrain
+        // Si le profil existe déjà (utilisateur s'est déjà connecté), permettre l'accès même sans validation du sponsor
+        if (!referralData.sponsor_approved && !profileExists) {
+          // En attente de validation du parrain (seulement si première connexion)
           setStep('waiting_approval');
           return;
         }
+        // Si profileExists est true, on continue même si sponsor_approved n'est pas encore true
       }
 
       // Si approuvé, continuer avec la vérification normale

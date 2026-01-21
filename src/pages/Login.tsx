@@ -594,6 +594,9 @@ const Login = () => {
       // Les admins peuvent se connecter même sans vérification d'identité
       // account_active permet aussi de se connecter sans vérification Veriff
       const canAccess = profile?.identity_verified || profile?.account_active;
+      // Vérifier si le profil existe déjà (utilisateur s'est déjà connecté au moins une fois)
+      const profileExists = !!profile;
+      
       if (!canAccess && !isAdmin) {
         // D'abord, vérifier si le parrain a approuvé l'inscription
         const { data: referralData } = await supabase
@@ -616,8 +619,9 @@ const Login = () => {
             return;
           }
 
-          if (!referralData.sponsor_approved) {
-            // En attente de validation du parrain - rediriger vers la page de vérification
+          // Si le profil existe déjà (utilisateur s'est déjà connecté), permettre l'accès même sans validation du sponsor
+          if (!referralData.sponsor_approved && !profileExists) {
+            // En attente de validation du parrain - rediriger vers la page de vérification (seulement si première connexion)
             await supabase.auth.signOut();
             sessionStorage.setItem('waitingForSponsorApproval', 'true');
             sessionStorage.setItem('pendingVerificationEmail', username);
@@ -626,6 +630,7 @@ const Login = () => {
             navigate('/register?step=verification');
             return;
           }
+          // Si profileExists est true, on continue même si sponsor_approved n'est pas encore true
         }
 
         // Parrain a validé, maintenant vérifier le statut de la vérification d'identité
