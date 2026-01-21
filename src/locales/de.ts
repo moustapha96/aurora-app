@@ -178,7 +178,7 @@ export const de: Record<string, string> = {
   redirectedToVeriff: "Sie werden zu Veriff zur Verifizierung weitergeleitet.",
   dataConfidential: "Ihre Daten sind streng vertraulich.",
   estimatedDuration: "Geschätzte Dauer:",
-  verificationTakes: "Die Verifizierung dauert in der Regel",
+  verificationTakes: "Die Verifizierung dauert in der Regel und kann einige Minuten dauern. Halten Sie Ihren Ausweis bereit.",
   haveIdReady: "Minuten. Halten Sie Ihren Ausweis bereit.",
   veriffCertificationsTitle: "Veriff-Zertifizierungen",
   veriffCertificationsDescription: "Veriff verfügt über ISO/IEC 27001:2022 (inkl. 27017/27018), SOC 2 Type II, GDPR-Konformität und Cyber Essentials sowie UKDIATF für britische digitale Identitäten.",

@@ -231,7 +231,7 @@ export const ja: Record<string, string> = {
   redirectedToVeriff: "確認のために Veriff にリダイレクトされます。",
   dataConfidential: "あなたのデータは厳重に機密です。",
   estimatedDuration: "推定所要時間：",
-  verificationTakes: "確認には通常",
+  verificationTakes: "確認には通常となり、数分かかる場合があります。身分証明書を準備してください。",
   haveIdReady: "分かかります。身分証明書を準備してください。",
   veriffCertificationsTitle: "Veriff 認証",
   veriffCertificationsDescription: "Veriff は ISO/IEC 27001:2022（27017/27018 を含む）、SOC 2 Type II、GDPR コンプライアンス、Cyber Essentials、および英国のデジタル ID 用の UKDIATF を保持しています。",

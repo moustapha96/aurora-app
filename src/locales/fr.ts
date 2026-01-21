@@ -178,7 +178,7 @@ export const fr: Record<string, string> = {
   verificationDeclinedDesc: "Votre vérification a été refusée. Veuillez réessayer.",
   verificationResetSuccess: "Vérification réinitialisée pour",
   verificationResetError: "Erreur lors de la réinitialisation",
-  verifiedAccess: "Accès Vérifié",
+  verifiedAccess: "Accès Vérification",
   confidentialStep: "Étape confidentielle de vérification d'identité",
   whatYouNeed: "Ce dont vous avez besoin",
   cameraAccess: "Accès à la caméra",
@@ -186,8 +186,7 @@ export const fr: Record<string, string> = {
   redirectedToVeriff: "Vous serez redirigé vers Veriff pour la vérification.",
   dataConfidential: "Vos données sont strictement confidentielles.",
   estimatedDuration: "Durée estimée :",
-  verificationTakes: "La vérification prend généralement",
-  haveIdReady: "minutes. Ayez votre pièce d'identité prête.",
+  verificationTakes: "La vérification se fait à l'inscription et prend généralement quelques minutes.Ayer votre pièce d'identité prête.",
   veriffCertificationsTitle: "Certifications de Veriff",
   veriffCertificationsDescription: "Veriff détient ISO/IEC 27001:2022 (incl. 27017/27018), SOC 2 Type II, conformité GDPR et Cyber Essentials, plus UKDIATF pour identités digitales UK.",
 

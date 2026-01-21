@@ -179,7 +179,7 @@ export const ar: Record<string, string> = {
   redirectedToVeriff: "سيتم إعادة توجيهك إلى Veriff للتحقق.",
   dataConfidential: "بياناتك سرية تمامًا.",
   estimatedDuration: "المدة المقدرة:",
-  verificationTakes: "عادة ما يستغرق التحقق",
+  verificationTakes: "عادة ما يستغرق التحقق بالتسجيل ويمكن أن يستغرق بضع دقائق. احتفظ بوثيقة هويتك جاهزة.",
   haveIdReady: "دقائق. احتفظ بوثيقة هويتك جاهزة.",
   veriffCertificationsTitle: "شهادات Veriff",
   veriffCertificationsDescription: "تمتلك Veriff ISO/IEC 27001:2022 (بما في ذلك 27017/27018)، و SOC 2 Type II، والامتثال لـ GDPR و Cyber Essentials، بالإضافة إلى UKDIATF للهويات الرقمية في المملكة المتحدة.",
