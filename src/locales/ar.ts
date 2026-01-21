@@ -2494,6 +2494,8 @@ export const ar: Record<string, string> = {
   documentSavedSuccessfully: "تم حفظ المستند بنجاح",
   pleaseUploadIdFirst: "يرجى تحميل مستند الهوية أولاً",
   redirectingToVerification: "إعادة التوجيه إلى التحقق...",
+  redirectingToVeriff: "إعادة التوجيه إلى Veriff...",
+  notRedirectedWait: "إذا لم يتم إعادة توجيهك تلقائيًا، يرجى الانتظار بضع لحظات.",
   errorInitializingVerification: "خطأ في تهيئة التحقق",
   verifyIdentityToAccessAllFeatures: "تحقق من هويتك للوصول إلى جميع ميزات المنصة",
   identityVerifiedSuccessfully: "تم التحقق من هويتك بنجاح",

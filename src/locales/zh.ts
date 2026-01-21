@@ -2471,6 +2471,8 @@ export const zh: Record<string, string> = {
   documentSavedSuccessfully: "文档保存成功",
   pleaseUploadIdFirst: "请先上传您的身份证件",
   redirectingToVerification: "正在重定向到验证...",
+  redirectingToVeriff: "正在重定向到 Veriff...",
+  notRedirectedWait: "如果您没有被自动重定向，请稍等片刻。",
   errorInitializingVerification: "初始化验证时出错",
   identityVerification: "身份验证",
   verifyIdentityToAccessAllFeatures: "验证您的身份以访问平台的所有功能",

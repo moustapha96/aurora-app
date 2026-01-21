@@ -116,9 +116,18 @@ export const BusinessMainImage: React.FC<BusinessMainImageProps> = ({
       const fileExt = "jpg";
       const filePath = `${user.id}/business/main-image-${Date.now()}.${fileExt}`;
 
+      // Create proper File object with correct MIME type
+      const properFile = new File([compressedFile], `main-image.${fileExt}`, { 
+        type: 'image/jpeg', 
+        lastModified: Date.now() 
+      });
+
       const { error: uploadError } = await supabase.storage
         .from("personal-content")
-        .upload(filePath, compressedFile, { upsert: true });
+        .upload(filePath, properFile, { 
+          upsert: true,
+          contentType: 'image/jpeg'
+        });
 
       if (uploadError) throw uploadError;
 

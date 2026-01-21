@@ -2501,6 +2501,8 @@ export const es: Record<string, string> = {
   uploadError_verification: "Error al subir",
   pleaseUploadIdFirst: "Por favor, suba primero su documento de identidad",
   redirectingToVerification: "Redirigiendo a la verificación...",
+  redirectingToVeriff: "Redirigiendo a Veriff...",
+  notRedirectedWait: "Si no es redirigido automáticamente, por favor espere unos momentos.",
   errorInitializingVerification: "Error al inicializar la verificación",
   identityVerification: "Verificación de identidad",
   verifyIdentityToAccessAllFeatures: "Verifique su identidad para acceder a todas las funciones de la plataforma",

@@ -51,13 +51,30 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t('notAuthenticated'));
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'pdf';
       const fileName = `close-doc-${user.id}-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
+      
+      // Get correct MIME type for documents
+      const mimeTypes: Record<string, string> = {
+        'pdf': 'application/pdf',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png'
+      };
+      const contentType = mimeTypes[fileExt] || 'application/octet-stream';
+      
+      // Create proper File object with correct MIME type
+      const properFile = new File([file], file.name, { 
+        type: contentType, 
+        lastModified: Date.now() 
+      });
 
       const { error: uploadError } = await supabase.storage
         .from('family-documents')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, properFile, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
 

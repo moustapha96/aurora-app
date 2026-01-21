@@ -2534,6 +2534,8 @@ export const en: Record<string, string> = {
   verifying: "Verifying...",
   getResult: "Get result",
   launching: "Launching...",
+  redirectingToVeriff: "Redirecting to Veriff...",
+  notRedirectedWait: "If you are not redirected automatically, please wait a few moments.",
   startVerificationIdentity: "Start verification",
   deletingIdentity: "Deleting...",
   deleteAndRetry: "Delete and retry",

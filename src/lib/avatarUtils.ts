@@ -17,7 +17,11 @@ export const uploadAvatar = async (
     
     // Convert to PNG blob
     const pngBlob = await convertToPngBlob(imageSource);
-    console.log('[Avatar] Converted to PNG, size:', pngBlob.size);
+    console.log('[Avatar] Converted to PNG, size:', pngBlob.size, 'type:', pngBlob.type);
+
+    // IMPORTANT: upload a File (not a raw Blob) to ensure the storage service
+    // persists the correct mime-type metadata (otherwise it can end up as application/json).
+    const pngFile = new File([pngBlob], 'avatar.png', { type: 'image/png' });
     
     // Fixed path for consistency
     const filePath = `${userId}/avatar.png`;
@@ -27,13 +31,15 @@ export const uploadAvatar = async (
       .from('avatars')
       .remove([filePath]);
 
-    // Upload with upsert
+    // Upload with upsert - ensure proper content type for browser display
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, pngBlob, { 
+      .upload(filePath, pngFile, {
         upsert: true,
         contentType: 'image/png',
-        cacheControl: '0' // No cache to ensure fresh upload
+        // cacheControl impacts CDN headers; we still add a cache-buster for display.
+        // Keep it short to avoid stale avatars on some CDNs.
+        cacheControl: '60',
       });
 
     if (uploadError) {
@@ -57,13 +63,13 @@ export const uploadAvatar = async (
     const cleanUrl = cleanAvatarUrl(urlData.publicUrl);
     console.log('[Avatar] Final clean URL:', cleanUrl);
     
-    // Verify file exists by trying to access it
+    // Verify file exists and has correct Content-Type (helpful for debugging)
     try {
       const response = await fetch(cleanUrl + '?t=' + Date.now(), { method: 'HEAD' });
       if (!response.ok) {
         console.warn('[Avatar] File may not be accessible yet, status:', response.status);
       } else {
-        console.log('[Avatar] File verified accessible');
+        console.log('[Avatar] File verified accessible. content-type:', response.headers.get('content-type'));
       }
     } catch (e) {
       console.warn('[Avatar] Could not verify file accessibility:', e);

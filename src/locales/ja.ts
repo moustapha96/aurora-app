@@ -2485,6 +2485,8 @@ export const ja: Record<string, string> = {
   uploadError_verification: "アップロードエラー",
   pleaseUploadIdFirst: "まず身分証明書をアップロードしてください",
   redirectingToVerification: "検証にリダイレクト中...",
+  redirectingToVeriff: "Veriff にリダイレクト中...",
+  notRedirectedWait: "自動的にリダイレクトされない場合は、しばらくお待ちください。",
   errorInitializingVerification: "検証の初期化エラー",
   identityVerification: "身元確認",
   verifyIdentityToAccessAllFeatures: "身元を確認してプラットフォームのすべての機能にアクセス",

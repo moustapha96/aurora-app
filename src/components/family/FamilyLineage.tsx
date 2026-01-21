@@ -95,13 +95,29 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t('notAuthenticated'));
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `lineage-${user.id}-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
+      
+      // Get correct MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      
+      // Create proper File object with correct MIME type
+      const properFile = new File([file], file.name, { 
+        type: contentType, 
+        lastModified: Date.now() 
+      });
 
       const { error: uploadError } = await supabase.storage
         .from('personal-content')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, properFile, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
 
@@ -156,13 +172,22 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t('notAuthenticated'));
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'pdf';
       const fileName = `lineage-doc-${user.id}-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
+      
+      // Ensure proper MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+        'gif': 'image/gif', 'webp': 'image/webp', 'pdf': 'application/pdf',
+        'doc': 'application/msword', 'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      };
+      const contentType = mimeTypes[fileExt] || file.type || 'application/octet-stream';
+      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
 
       const { error: uploadError } = await supabase.storage
         .from('family-documents')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, properFile, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
 

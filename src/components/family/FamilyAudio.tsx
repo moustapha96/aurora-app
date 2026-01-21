@@ -102,10 +102,19 @@ export const FamilyAudio = ({ isOwnProfile }: FamilyAudioProps) => {
 
       const filePath = `${user.id}/${Date.now()}-${file.name}`;
       
+      // Ensure proper MIME type for audio files
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+      const mimeTypes: Record<string, string> = {
+        'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'ogg': 'audio/ogg',
+        'm4a': 'audio/mp4', 'aac': 'audio/aac', 'flac': 'audio/flac'
+      };
+      const contentType = mimeTypes[fileExt] || file.type || 'audio/mpeg';
+      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
+      
       // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('family-documents')
-        .upload(filePath, file);
+        .upload(filePath, properFile, { contentType });
 
       if (uploadError) throw uploadError;
 

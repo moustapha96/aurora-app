@@ -221,9 +221,15 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
     // Compresser l'image avant upload
     const compressedFile = await compressImage(file);
     
+    // Create proper File object with correct MIME type
+    const properFile = new File([compressedFile], file.name, { 
+      type: 'image/jpeg', 
+      lastModified: Date.now() 
+    });
+    
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('personal-content')
-      .upload(path, compressedFile, { upsert: true });
+      .upload(path, properFile, { upsert: true, contentType: 'image/jpeg' });
 
     if (uploadError) {
       console.error('Upload error:', uploadError);

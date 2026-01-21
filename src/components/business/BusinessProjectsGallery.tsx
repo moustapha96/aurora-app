@@ -180,9 +180,18 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
         const compressedFile = await compressImage(file);
         const filePath = `${user.id}/business/projects/${selectedProject.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
 
+        // Create proper File object with correct MIME type
+        const properFile = new File([compressedFile], 'project-image.jpg', { 
+          type: 'image/jpeg', 
+          lastModified: Date.now() 
+        });
+
         const { error: uploadError } = await supabase.storage
           .from("personal-content")
-          .upload(filePath, compressedFile, { upsert: true });
+          .upload(filePath, properFile, { 
+            upsert: true,
+            contentType: 'image/jpeg'
+          });
 
         if (uploadError) throw uploadError;
 

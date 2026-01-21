@@ -13,7 +13,7 @@ import {
   Download, 
   Loader2, 
   Eye,
-  File,
+  File as FileIcon,
   FileImage,
   FileSpreadsheet
 } from "lucide-react";
@@ -84,10 +84,21 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
       for (const file of Array.from(files)) {
         const filePath = `${user.id}/${Date.now()}-${file.name}`;
         
+        // Ensure proper MIME type
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+        const mimeTypes: Record<string, string> = {
+          'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+          'gif': 'image/gif', 'webp': 'image/webp', 'pdf': 'application/pdf',
+          'doc': 'application/msword', 'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'txt': 'text/plain'
+        };
+        const contentType = mimeTypes[fileExt] || file.type || 'application/octet-stream';
+        const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
+        
         // Upload to storage
         const { error: uploadError } = await supabase.storage
           .from('family-documents')
-          .upload(filePath, file);
+          .upload(filePath, properFile, { contentType });
 
         if (uploadError) throw uploadError;
 
@@ -205,7 +216,7 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
     if (type.startsWith('image/')) return <FileImage className="w-5 h-5" />;
     if (type.includes('spreadsheet') || type.includes('excel')) return <FileSpreadsheet className="w-5 h-5" />;
     if (type.includes('pdf')) return <FileText className="w-5 h-5" />;
-    return <File className="w-5 h-5" />;
+    return <FileIcon className="w-5 h-5" />;
   };
 
   const formatFileSize = (bytes: number) => {

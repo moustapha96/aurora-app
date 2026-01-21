@@ -114,9 +114,26 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
   };
 
   const uploadFile = async (file: File, path: string): Promise<string | null> => {
+    // Get correct MIME type
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const mimeTypes: Record<string, string> = {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'webp': 'image/webp'
+    };
+    const contentType = mimeTypes[fileExt] || 'image/jpeg';
+    
+    // Create proper File object with correct MIME type
+    const properFile = new File([file], file.name, { 
+      type: contentType, 
+      lastModified: Date.now() 
+    });
+
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('personal-content')
-      .upload(path, file, { upsert: true });
+      .upload(path, properFile, { upsert: true, contentType });
 
     if (uploadError) {
       console.error('Upload error:', uploadError);

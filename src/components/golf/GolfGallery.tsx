@@ -60,12 +60,28 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
 
     setUploading(true);
     try {
-      const fileExt = selectedFile.name.split('.').pop();
+      const fileExt = selectedFile.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${userId}/golf/${Date.now()}.${fileExt}`;
+      
+      // Get correct MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      
+      // Create proper File object with correct MIME type
+      const properFile = new File([selectedFile], selectedFile.name, { 
+        type: contentType, 
+        lastModified: Date.now() 
+      });
 
       const { error: uploadError } = await supabase.storage
         .from('personal-content')
-        .upload(fileName, selectedFile);
+        .upload(fileName, properFile, { contentType });
 
       if (uploadError) throw uploadError;
 

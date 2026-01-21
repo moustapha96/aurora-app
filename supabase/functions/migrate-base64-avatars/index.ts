@@ -28,21 +28,30 @@ Deno.serve(async (req) => {
     
     for (const profile of profiles || []) {
       try {
-        // Extract base64 data
-        const base64Data = profile.avatar_url.split(',')[1];
-        const mimeType = profile.avatar_url.match(/data:([^;]+);/)?.[1] || 'image/jpeg';
-        const extension = mimeType.split('/')[1];
+        // Extract base64 data - handle both formats
+        const base64Match = profile.avatar_url.match(/^data:image\/[^;]+;base64,(.+)$/);
+        if (!base64Match) {
+          console.error(`Invalid base64 format for user ${profile.id}`);
+          results.push({ id: profile.id, success: false, error: 'Invalid base64 format' });
+          continue;
+        }
+        const base64Data = base64Match[1];
 
-        // Convert base64 to blob
-        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        // Convert base64 to Uint8Array
+        const binaryString = atob(base64Data);
+        const binaryData = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          binaryData[i] = binaryString.charCodeAt(i);
+        }
         
-        // Upload to storage
-        const filePath = `${profile.id}/avatar.${extension}`;
+        // Upload to storage with explicit content type
+        const filePath = `${profile.id}/avatar.png`;
         const { error: uploadError } = await supabase.storage
           .from('avatars')
           .upload(filePath, binaryData, {
-            contentType: mimeType,
-            upsert: true
+            contentType: 'image/png',
+            upsert: true,
+            cacheControl: '3600'
           });
 
         if (uploadError) {

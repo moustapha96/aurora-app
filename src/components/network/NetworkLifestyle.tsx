@@ -109,12 +109,20 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t('notAuthenticated'));
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${user.id}/lifestyle/${Date.now()}.${fileExt}`;
+      
+      // Ensure proper MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+        'gif': 'image/gif', 'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
       
       const { error: uploadError } = await supabase.storage
         .from('personal-content')
-        .upload(fileName, file);
+        .upload(fileName, properFile, { contentType });
 
       if (uploadError) throw uploadError;
 
@@ -122,7 +130,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
         .from('personal-content')
         .getPublicUrl(fileName);
 
-      setFormData(prev => ({ ...prev, image_url: publicUrl }));
+      setFormData(prev => ({ ...prev, image_url: publicUrl + '?t=' + Date.now() }));
       toast.success(t('imageUploaded'));
     } catch (error) {
       console.error('Error uploading image:', error);

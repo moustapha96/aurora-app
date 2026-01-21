@@ -22,13 +22,14 @@ interface ReferredMember {
   sponsor_approved_at: string | null;
   rejection_reason: string | null;
   created_at: string;
+  // Le profil peut ne pas encore être créé au moment de l'inscription via lien
   referred_profile: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    avatar_url: string | null;
-    created_at: string;
-  };
+    id?: string;
+    first_name?: string;
+    last_name?: string;
+    avatar_url?: string | null;
+    created_at?: string;
+  } | null;
 }
 
 interface ReferralLink {
@@ -144,7 +145,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
         });
       }
 
-      // Pour chaque referral, charger le profil du membre parrainé
+      // Pour chaque referral, charger le profil du membre parrainé (s'il existe déjà)
       const transformed = await Promise.all(
         (referralsData || []).map(async (ref: any) => {
           const { data: refProfile, error: profileError } = await supabase
@@ -166,13 +167,14 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
             sponsor_approved_at: ref.sponsor_approved_at,
             rejection_reason: ref.rejection_reason,
             created_at: ref.created_at,
+            // On garde même si le profil n'existe pas encore : le parrain doit tout de même voir la demande
             referred_profile: refProfile || null
           };
         })
       );
 
-      // Filtrer les membres sans profil valide
-      setReferredMembers(transformed.filter(m => m.referred_profile !== null));
+      // Ne plus filtrer : inclure aussi les membres dont le profil n'est pas encore complété
+      setReferredMembers(transformed as ReferredMember[]);
 
       // Charger les liens de partage
       const { data: links, error: linksError } = await (supabase as any)
@@ -1142,18 +1144,24 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               </Card>
             )}
 
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button variant="outline" onClick={() => {
-                setNewDialogOpen(false);
-                setSearchEmail("");
-                setFoundUser(null);
-              }}>
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setNewDialogOpen(false);
+                  setSearchEmail("");
+                  setFoundUser(null);
+                }}
+                size="sm"
+                className="w-full sm:w-auto text-sm"
+              >
                 {t('cancel')}
               </Button>
               <Button
                 onClick={addReferral}
                 disabled={!foundUser || addingReferral}
-                className="bg-gold hover:bg-gold/90 text-primary-foreground"
+                size="sm"
+                className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-primary-foreground text-sm"
               >
                 {addingReferral ? (
                   <>
@@ -1263,14 +1271,20 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               </CardContent>
             </Card>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setApproveDialogOpen(false)}>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setApproveDialogOpen(false)}
+              size="sm"
+              className="w-full sm:w-auto text-sm"
+            >
               {t('cancel')}
             </Button>
             <Button
               onClick={approveMember}
               disabled={processingApproval}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              size="sm"
+              className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white text-sm"
             >
               {processingApproval ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ThumbsUp className="w-4 h-4 mr-2" />}
               {t('approveMember')}
@@ -1320,14 +1334,21 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               rows={3}
             />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setRejectDialogOpen(false); setRejectionReason(""); }}>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => { setRejectDialogOpen(false); setRejectionReason(""); }}
+              size="sm"
+              className="w-full sm:w-auto text-sm"
+            >
               {t('cancel')}
             </Button>
             <Button
               onClick={rejectMember}
               disabled={processingApproval}
               variant="destructive"
+              size="sm"
+              className="w-full sm:w-auto text-sm"
             >
               {processingApproval ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ThumbsDown className="w-4 h-4 mr-2" />}
               {t('rejectMember')}

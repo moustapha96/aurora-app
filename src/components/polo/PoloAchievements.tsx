@@ -118,13 +118,22 @@ const PoloAchievements: React.FC<PoloAchievementsProps> = ({ userId, achievement
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t('notAuthenticated'));
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'pdf';
       const fileName = `polo-achievement-${user.id}-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
+      
+      // Ensure proper MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+        'gif': 'image/gif', 'webp': 'image/webp', 'pdf': 'application/pdf',
+        'doc': 'application/msword', 'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      };
+      const contentType = mimeTypes[fileExt] || 'application/octet-stream';
+      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
 
       const { error: uploadError } = await supabase.storage
         .from('personal-content')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, properFile, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
       toast.success(t('poloHorseDocumentImported'));

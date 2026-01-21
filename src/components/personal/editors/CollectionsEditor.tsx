@@ -59,12 +59,28 @@ export const CollectionsEditor = ({ open, onOpenChange, entry, onSave, defaultCa
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error(t("notAuthenticated"));
 
-      const fileExt = file.name.split(".").pop();
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || 'jpg';
       const filePath = `${session.user.id}/collection-${Date.now()}.${fileExt}`;
+      
+      // Get correct MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      
+      // Create proper File object with correct MIME type
+      const properFile = new File([file], file.name, { 
+        type: contentType, 
+        lastModified: Date.now() 
+      });
 
       const { error: uploadError } = await supabase.storage
         .from("personal-content")
-        .upload(filePath, file);
+        .upload(filePath, properFile, { contentType });
 
       if (uploadError) throw uploadError;
 

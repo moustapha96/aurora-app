@@ -42,12 +42,28 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
   const handleUpload = async (slotType: SlotType, file: File) => {
     setUploading(slotType);
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${userId}/polo/${slotType}-${Date.now()}.${fileExt}`;
+      
+      // Get correct MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      
+      // Create proper File object with correct MIME type
+      const properFile = new File([file], file.name, { 
+        type: contentType, 
+        lastModified: Date.now() 
+      });
       
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file);
+        .upload(fileName, properFile, { contentType });
 
       if (uploadError) throw uploadError;
 
@@ -106,12 +122,28 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
   const handleAddAdditional = async (file: File) => {
     setUploading('additional');
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${userId}/polo/additional-${Date.now()}.${fileExt}`;
+      
+      // Get correct MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      
+      // Create proper File object with correct MIME type
+      const properFile = new File([file], file.name, { 
+        type: contentType, 
+        lastModified: Date.now() 
+      });
       
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file);
+        .upload(fileName, properFile, { contentType });
 
       if (uploadError) throw uploadError;
 

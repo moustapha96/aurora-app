@@ -120,12 +120,20 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t("notAuthenticated") || "Non authentifié");
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const filePath = `${user.id}/business/${moduleType}-thumbnail-${Date.now()}.${fileExt}`;
+      
+      // Ensure proper MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+        'gif': 'image/gif', 'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
 
       const { error: uploadError } = await supabase.storage
         .from('personal-content')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, properFile, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
 
@@ -219,12 +227,20 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
       const uploadedUrls: string[] = [];
 
       for (const file of validFiles) {
-        const fileExt = file.name.split('.').pop();
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
         const filePath = `${user.id}/business/${moduleType}-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+        
+        // Ensure proper MIME type
+        const mimeTypes: Record<string, string> = {
+          'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+          'gif': 'image/gif', 'webp': 'image/webp'
+        };
+        const contentType = mimeTypes[fileExt] || 'image/jpeg';
+        const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
 
         const { error: uploadError } = await supabase.storage
           .from('personal-content')
-          .upload(filePath, file, { upsert: true });
+          .upload(filePath, properFile, { upsert: true, contentType });
 
         if (uploadError) throw uploadError;
 
@@ -232,7 +248,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
           .from('personal-content')
           .getPublicUrl(filePath);
 
-        uploadedUrls.push(publicUrl);
+        uploadedUrls.push(publicUrl + '?t=' + Date.now());
       }
 
       const newImages = [...images, ...uploadedUrls];

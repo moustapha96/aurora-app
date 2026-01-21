@@ -2474,6 +2474,8 @@ export const pt: Record<string, string> = {
   verifying: "Verificando...",
   getResult: "Obter resultado",
   launching: "Iniciando...",
+  redirectingToVeriff: "Redirecionando para Veriff...",
+  notRedirectedWait: "Se você não for redirecionado automaticamente, aguarde alguns instantes.",
   startVerification_button: "Iniciar verificação",
   deleting_action: "Excluindo...",
   deleteAndRetry: "Excluir e tentar novamente",

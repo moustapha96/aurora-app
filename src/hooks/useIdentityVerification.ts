@@ -116,15 +116,24 @@ export function useIdentityVerification() {
       }
 
       // Create unique filename
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${user.id}/cni_${Date.now()}.${fileExt}`;
+      
+      // Ensure proper MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+        'gif': 'image/gif', 'webp': 'image/webp', 'pdf': 'application/pdf'
+      };
+      const contentType = mimeTypes[fileExt] || file.type || 'image/jpeg';
+      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
 
       // Upload to storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('identity-documents')
-        .upload(fileName, file, {
+        .upload(fileName, properFile, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true,
+          contentType
         });
 
       if (uploadError) {

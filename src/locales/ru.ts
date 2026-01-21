@@ -2468,6 +2468,8 @@ export const ru: Record<string, string> = {
    uploadError_verification: "Ошибка загрузки",
    pleaseUploadIdFirst: "Пожалуйста, сначала загрузите документ, удостоверяющий личность",
    redirectingToVerification: "Перенаправление на проверку...",
+   redirectingToVeriff: "Перенаправление в Veriff...",
+   notRedirectedWait: "Если вы не были перенаправлены автоматически, подождите несколько мгновений.",
    errorInitializingVerification: "Ошибка инициализации проверки",
    identityVerification: "Проверка личности",
    verifyIdentityToAccessAllFeatures: "Подтвердите свою личность для доступа ко всем функциям платформы",

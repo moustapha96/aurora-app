@@ -2506,6 +2506,8 @@ export const it: Record<string, string> = {
   uploadError_verification: "Errore durante il caricamento",
   pleaseUploadIdFirst: "Carica prima il tuo documento d'identità",
   redirectingToVerification: "Reindirizzamento alla verifica...",
+  redirectingToVeriff: "Reindirizzamento a Veriff...",
+  notRedirectedWait: "Se non viene reindirizzato automaticamente, attendere qualche istante.",
   errorInitializingVerification: "Errore durante l'inizializzazione della verifica",
   identityVerification: "Verifica identità",
   verifyIdentityToAccessAllFeatures: "Verifica la tua identità per accedere a tutte le funzionalità della piattaforma",

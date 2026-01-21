@@ -67,12 +67,28 @@ export const EditableImage = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      // Get correct MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      
+      // Create proper File object with correct MIME type
+      const properFile = new File([file], file.name, { 
+        type: contentType, 
+        lastModified: Date.now() 
+      });
 
       const { error: uploadError } = await supabase.storage
         .from(storageFolder)
-        .upload(filePath, file);
+        .upload(filePath, properFile, { contentType });
 
       if (uploadError) throw uploadError;
 

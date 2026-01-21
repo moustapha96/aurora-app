@@ -50,12 +50,20 @@ export const BoardEditor = ({ members, onUpdate }: BoardEditorProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${user.id}/board/${Date.now()}.${fileExt}`;
+      
+      // Ensure proper MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+        'gif': 'image/gif', 'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
 
       const { error: uploadError } = await supabase.storage
         .from('personal-content')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, properFile, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
 
@@ -63,7 +71,7 @@ export const BoardEditor = ({ members, onUpdate }: BoardEditorProps) => {
         .from('personal-content')
         .getPublicUrl(fileName);
 
-      setFormData({ ...formData, image_url: publicUrl });
+      setFormData({ ...formData, image_url: publicUrl + '?t=' + Date.now() });
       toast({ title: "Photo téléchargée" });
     } catch (error) {
       console.error(error);

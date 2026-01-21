@@ -62,12 +62,20 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${user.id}/commitments/${Date.now()}.${fileExt}`;
+      
+      // Ensure proper MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+        'gif': 'image/gif', 'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
 
       const { error: uploadError } = await supabase.storage
         .from('personal-content')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, properFile, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
 
@@ -75,7 +83,7 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
         .from('personal-content')
         .getPublicUrl(fileName);
 
-      setFormData({ ...formData, image_url: publicUrl });
+      setFormData({ ...formData, image_url: publicUrl + '?t=' + Date.now() });
       toast({ title: "Image téléchargée" });
     } catch (error) {
       console.error(error);

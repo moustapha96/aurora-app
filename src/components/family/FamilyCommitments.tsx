@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Calendar, Building, Trash2, Plus, Sparkles, FileUp, Loader2, Upload, X, Image as ImageIcon, File, Download, Eye } from "lucide-react";
+import { Heart, Calendar, Building, Trash2, Plus, Sparkles, FileUp, Loader2, Upload, X, Image as ImageIcon, File as FileIcon, Download, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -90,12 +90,28 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
       reader.readAsDataURL(file);
 
       // Upload vers Supabase Storage
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `commitments/${user.id}/${Date.now()}.${fileExt}`;
+      
+      // Get correct MIME type
+      const mimeTypes: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp'
+      };
+      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      
+      // Create proper File object with correct MIME type
+      const properFile = new File([file], file.name, { 
+        type: contentType, 
+        lastModified: Date.now() 
+      });
 
       const { error: uploadError } = await supabase.storage
         .from('personal-content')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, properFile, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
 
@@ -523,7 +539,7 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
                     {/* Document attaché - mode édition */}
                     {commitment.document_url && (
                       <div className="flex items-center gap-2 mt-2 p-2 bg-gold/5 rounded-lg border border-gold/10">
-                        <File className="w-4 h-4 text-gold" />
+                        <FileIcon className="w-4 h-4 text-gold" />
                         <span className="text-xs text-muted-foreground flex-1 truncate">
                           {commitment.document_url.split('/').pop()}
                         </span>
@@ -588,7 +604,7 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
                     {/* Document attaché - mode lecture */}
                     {commitment.document_url && (
                       <div className="flex items-center gap-2 mt-2 p-2 bg-gold/5 rounded-lg border border-gold/10">
-                        <File className="w-4 h-4 text-gold" />
+                        <FileIcon className="w-4 h-4 text-gold" />
                         <span className="text-xs text-muted-foreground flex-1 truncate">
                           {commitment.document_url.split('/').pop()}
                         </span>
@@ -741,7 +757,7 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
               
               {formData.document_url ? (
                 <div className="flex items-center gap-2 p-3 bg-gold/5 rounded-lg border border-gold/20">
-                  <File className="w-5 h-5 text-gold" />
+                  <FileIcon className="w-5 h-5 text-gold" />
                   <span className="text-sm text-foreground flex-1 truncate">
                     {formData.document_url.split('/').pop()}
                   </span>

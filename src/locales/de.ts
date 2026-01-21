@@ -2495,6 +2495,8 @@ export const de: Record<string, string> = {
   documentSavedSuccessfully: "Dokument erfolgreich gespeichert",
   pleaseUploadIdFirst: "Bitte laden Sie zuerst Ihr Ausweisdokument hoch",
   redirectingToVerification: "Weiterleitung zur Verifizierung...",
+  redirectingToVeriff: "Weiterleitung zu Veriff...",
+  notRedirectedWait: "Wenn Sie nicht automatisch weitergeleitet werden, warten Sie bitte einen Moment.",
   errorInitializingVerification: "Fehler beim Initialisieren der Verifizierung",
   verifyIdentityToAccessAllFeatures: "Verifizieren Sie Ihre Identität, um auf alle Plattformfunktionen zuzugreifen",
   identityVerifiedSuccessfully: "Ihre Identität wurde erfolgreich verifiziert",
