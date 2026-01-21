@@ -31,10 +31,14 @@ const EditProfile = () => {
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string>(""); // Store the uploaded URL separately
   const [imageError, setImageError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0); // Track retry attempts
   const [identityVerified, setIdentityVerified] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const [accountNumber, setAccountNumber] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Used to ignore the next 'avatar-updated' event fired by this screen itself
+  // (otherwise we regenerate a new cache-busted URL twice and the image can flicker).
+  const ignoreAvatarUpdatedForUrlRef = useRef<string | null>(null);
   const { verificationStatus, verificationResult, verifyImage, resetVerification, isVerifying, canProceed } = useProfileImageVerification();
   const [showAssociatedAccountsDialog, setShowAssociatedAccountsDialog] = useState(false);
   const [showAssociatedAccountForm, setShowAssociatedAccountForm] = useState(false);
@@ -82,12 +86,19 @@ const EditProfile = () => {
         try {
           const { cleanAvatarUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
           const cleanUrl = cleanAvatarUrl(event.detail.avatarUrl);
+
+          // If this screen just dispatched the event, ignore it to avoid a redundant
+          // cache-buster regeneration (which can cause a brief "disappear" on slow CDNs).
+          if (ignoreAvatarUpdatedForUrlRef.current === cleanUrl) {
+            ignoreAvatarUpdatedForUrlRef.current = null;
+            return;
+          }
           
           // Store clean URL
           setUploadedAvatarUrl(cleanUrl);
-          
           // Add cache-buster for display only
           const avatarUrlWithCache = getAvatarDisplayUrl(cleanUrl) || cleanUrl;
+          console.log('Avatar URL chargée:', { cleanUrl, displayUrl: avatarUrlWithCache, final: avatarUrlWithCache });
           setAvatarUrl(avatarUrlWithCache);
           setImageError(false);
         } catch (error) {
@@ -143,19 +154,34 @@ const EditProfile = () => {
         .eq('user_id', user.id)
         .maybeSingle();
 
+      // Decrypt sensitive private data
+      let decryptedPrivateData: typeof privateData = privateData;
+      if (privateData) {
+        try {
+          const { decryptValue } = await import('@/lib/encryption');
+          decryptedPrivateData = {
+            ...privateData,
+            mobile_phone: privateData.mobile_phone ? await decryptValue(privateData.mobile_phone) : privateData.mobile_phone,
+            wealth_amount: privateData.wealth_amount ? await decryptValue(privateData.wealth_amount) : privateData.wealth_amount,
+          };
+        } catch (e) {
+          console.warn('Decryption not available:', e);
+        }
+      }
+
       if (data) {
         const profileData = {
           firstName: data.first_name || "",
           lastName: data.last_name || "",
           honorificTitle: data.honorific_title || "",
-          mobilePhone: privateData?.mobile_phone || "",
+          mobilePhone: decryptedPrivateData?.mobile_phone || "",
           jobFunction: data.job_function || "",
           activityDomain: data.activity_domain || "",
           country: data.country || "",
           personalQuote: data.personal_quote || "",
-          wealthAmount: privateData?.wealth_amount || "",
-          wealthUnit: privateData?.wealth_unit || "Md",
-          wealthCurrency: privateData?.wealth_currency || "EUR",
+          wealthAmount: decryptedPrivateData?.wealth_amount || "",
+          wealthUnit: decryptedPrivateData?.wealth_unit || "Md",
+          wealthCurrency: decryptedPrivateData?.wealth_currency || "EUR",
         };
         setFormData(profileData);
         setInitialData(profileData);
@@ -166,7 +192,10 @@ const EditProfile = () => {
             const { cleanAvatarUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
             const cleanUrl = cleanAvatarUrl(data.avatar_url);
             setUploadedAvatarUrl(cleanUrl);
-            avatarUrlWithCache = getAvatarDisplayUrl(cleanUrl) || cleanUrl;
+            // Utiliser getAvatarDisplayUrl pour ajouter un cache-buster
+            const displayUrl = getAvatarDisplayUrl(cleanUrl);
+            avatarUrlWithCache = displayUrl || cleanUrl;
+            console.log('Avatar URL chargée:', { cleanUrl, displayUrl, final: avatarUrlWithCache });
           } catch (error) {
             // Fallback
             console.warn('Error processing avatar URL:', error);
@@ -206,6 +235,7 @@ const EditProfile = () => {
     setAvatarFile(file);
     setUploading(true);
     resetVerification();
+    setImageError(false);
     
     // Create object URL for preview (not base64 to avoid saving it accidentally)
     const previewUrl = URL.createObjectURL(file);
@@ -219,18 +249,28 @@ const EditProfile = () => {
       // Trigger verification with base64
       const result = await verifyImage(base64);
       
-      // If verification passed or warning, immediately upload and update profile
-      if (result?.isValid || (result?.hasFace && result?.isAppropriate) || canProceed) {
-        await uploadAndUpdateAvatar(file);
-      } else if (result === null) {
-        // Verification service unavailable - allow user to proceed but don't auto-upload
-        // User can still save manually
-        setUploading(false);
-        // Keep preview URL so user can see the image and save it manually
+      console.log('[EditProfile] Résultat vérification:', result);
+      
+      // Si vérification réussie OU warning OU service indisponible -> upload
+      const shouldUpload = result === null || // Service unavailable
+        result?.isValid || 
+        (result?.hasFace && result?.isAppropriate);
+      
+      if (shouldUpload) {
+        console.log('[EditProfile] Vérification OK, lancement upload...');
+        await uploadAndUpdateAvatar(file, previewUrl);
       } else {
         // Verification failed - revoke preview and reset
+        console.log('[EditProfile] Vérification échouée:', result?.reason);
         URL.revokeObjectURL(previewUrl);
-        setAvatarUrl(uploadedAvatarUrl ? `${uploadedAvatarUrl}?t=${Date.now()}` : "");
+        // Restaurer l'URL précédente si elle existe
+        if (uploadedAvatarUrl) {
+          const { getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+          const restoredUrl = getAvatarDisplayUrl(uploadedAvatarUrl) || uploadedAvatarUrl;
+          setAvatarUrl(restoredUrl);
+        } else {
+          setAvatarUrl("");
+        }
         setAvatarFile(null);
         setUploading(false);
       }
@@ -238,23 +278,34 @@ const EditProfile = () => {
     reader.readAsDataURL(file);
   };
 
-  const uploadAndUpdateAvatar = async (file: File) => {
+  const uploadAndUpdateAvatar = async (file: File, previewBlobUrl?: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.error('[EditProfile] Pas d\'utilisateur connecté');
         setUploading(false);
         return;
       }
 
       const { uploadAvatar, dispatchAvatarUpdate, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
       
+      console.log('[EditProfile] Début de l\'upload de l\'avatar pour:', user.id);
       const cleanAvatarUrl = await uploadAvatar(user.id, file);
       
       if (!cleanAvatarUrl) {
-        toast.error(t('avatarUploadError'));
+        console.error('[EditProfile] Échec de l\'upload de l\'avatar - voir logs ci-dessus');
+        toast.error(t('avatarUploadError') + ' - Vérifiez les permissions');
         setUploading(false);
+        // Révoquer le blob URL de preview si fourni
+        if (previewBlobUrl) {
+          URL.revokeObjectURL(previewBlobUrl);
+        }
+        // Afficher les initiales au lieu d'une image cassée
+        setImageError(true);
         return;
       }
+
+      console.log('[EditProfile] Avatar uploadé avec succès, URL propre:', cleanAvatarUrl);
 
       // Update profile in database immediately with clean URL
       const { error: updateError } = await supabase
@@ -263,36 +314,61 @@ const EditProfile = () => {
         .eq('id', user.id);
 
       if (updateError) {
-        console.error('Error updating avatar:', updateError);
+        console.error('Erreur lors de la mise à jour de l\'avatar dans la base:', updateError);
         toast.error(t('profileUpdateError'));
         setUploading(false);
+        // Révoquer le blob URL de preview si fourni
+        if (previewBlobUrl) {
+          URL.revokeObjectURL(previewBlobUrl);
+        }
         return;
       }
 
-      // Store the uploaded URL
+      console.log('Avatar mis à jour dans la base de données avec succès');
+
+      // Store the uploaded URL (clean, without cache-buster)
       setUploadedAvatarUrl(cleanAvatarUrl);
       
-      // Add cache-buster for display
-      const displayAvatarUrl = getAvatarDisplayUrl(cleanAvatarUrl) || cleanAvatarUrl;
-      setAvatarUrl(displayAvatarUrl);
-      setImageError(false);
+      // Révoquer le blob URL de preview avant de mettre à jour l'affichage
+      if (previewBlobUrl && previewBlobUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewBlobUrl);
+      }
       
-      // Revoke the preview object URL if it exists
-      if (avatarUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(avatarUrl);
+      // Add cache-buster for display
+      const displayAvatarUrl = getAvatarDisplayUrl(cleanAvatarUrl);
+      if (displayAvatarUrl) {
+        console.log('URL d\'affichage avec cache-buster:', displayAvatarUrl);
+        setAvatarUrl(displayAvatarUrl);
+        setImageError(false);
+
+        // IMPORTANT: ne pas régénérer un second cache-buster automatiquement.
+        // Cela déclenche un 2e téléchargement (souvent avant propagation CDN) et peut provoquer
+        // un "clignotement" (image OK puis onError => fallback initiales).
+        setRetryCount(0);
+      } else {
+        // Fallback si getAvatarDisplayUrl retourne null
+        console.warn('getAvatarDisplayUrl a retourné null, utilisation de l\'URL propre');
+        setAvatarUrl(cleanAvatarUrl);
+        setImageError(false);
+         setRetryCount(0);
       }
       
       setAvatarFile(null);
       
       // Dispatch custom event for real-time sync
+      ignoreAvatarUpdatedForUrlRef.current = cleanAvatarUrl;
       dispatchAvatarUpdate(cleanAvatarUrl, user.id);
       
       toast.success(t('profilePhotoUpdated'));
       setUploading(false);
     } catch (error) {
-      console.error('Error in uploadAndUpdateAvatar:', error);
+      console.error('Erreur dans uploadAndUpdateAvatar:', error);
       toast.error(t('photoUpdateError'));
       setUploading(false);
+      // Révoquer le blob URL de preview en cas d'erreur
+      if (previewBlobUrl && previewBlobUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewBlobUrl);
+      }
     }
   };
 
@@ -309,26 +385,35 @@ const EditProfile = () => {
 
       // Upload avatar if a new file was selected and not already uploaded
       if (avatarFile) {
+        console.log('Upload de l\'avatar lors de la sauvegarde...');
         const { uploadAvatar, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
         
-        finalAvatarUrl = await uploadAvatar(user.id, avatarFile);
+        const uploadedUrl = await uploadAvatar(user.id, avatarFile);
         
-        if (!finalAvatarUrl) {
+        if (!uploadedUrl) {
+          console.error('Échec de l\'upload de l\'avatar lors de la sauvegarde');
           toast.error(t('avatarUploadError'));
           setSaving(false);
           return;
         }
         
+        console.log('Avatar uploadé lors de la sauvegarde, URL:', uploadedUrl);
+        finalAvatarUrl = uploadedUrl;
         setUploadedAvatarUrl(finalAvatarUrl);
         
         // Revoke preview object URL if it exists
-        if (avatarUrl.startsWith('blob:')) {
-          URL.revokeObjectURL(avatarUrl);
+        const currentAvatarUrl = avatarUrl;
+        if (currentAvatarUrl && currentAvatarUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(currentAvatarUrl);
         }
         
         // Update display URL with cache-buster
-        const displayAvatarUrl = getAvatarDisplayUrl(finalAvatarUrl) || finalAvatarUrl;
-        setAvatarUrl(displayAvatarUrl);
+        const displayAvatarUrl = getAvatarDisplayUrl(finalAvatarUrl);
+        if (displayAvatarUrl) {
+          setAvatarUrl(displayAvatarUrl);
+        } else {
+          setAvatarUrl(finalAvatarUrl);
+        }
         setImageError(false);
         setAvatarFile(null);
       }
@@ -361,31 +446,57 @@ const EditProfile = () => {
 
       if (error) throw error;
 
+      // Encrypt sensitive data before saving
+      let encryptedPhone = formData.mobilePhone;
+      let encryptedWealth = displayAmount;
+      try {
+        const { encryptValue } = await import('@/lib/encryption');
+        if (formData.mobilePhone) {
+          encryptedPhone = await encryptValue(formData.mobilePhone);
+        }
+        if (displayAmount) {
+          encryptedWealth = await encryptValue(displayAmount);
+        }
+      } catch (e) {
+        console.warn('Encryption not available:', e);
+      }
+
       // Update private data (phone, wealth)
       const { error: privateError } = await supabase
         .from('profiles_private')
         .upsert({
           user_id: user.id,
-          mobile_phone: formData.mobilePhone,
+          mobile_phone: encryptedPhone,
           wealth_billions: wealthInBillions,
           wealth_currency: formData.wealthCurrency,
           wealth_unit: formData.wealthUnit,
-          wealth_amount: displayAmount,
+          wealth_amount: encryptedWealth,
         }, { onConflict: 'user_id' });
 
       if (privateError) throw privateError;
+      
       // Update avatar URL with cache-buster for display if we have a final URL
       if (finalAvatarUrl) {
-        const displayAvatarUrl = `${finalAvatarUrl}?t=${Date.now()}`;
-        setAvatarUrl(displayAvatarUrl);
-        setUploadedAvatarUrl(finalAvatarUrl);
+        const { getAvatarDisplayUrl, dispatchAvatarUpdate } = await import('@/lib/avatarUtils');
+        const displayAvatarUrl = getAvatarDisplayUrl(finalAvatarUrl);
         
-        // Dispatch avatar update event
-        // Send clean URL so other components can add their own cache-buster
-        window.dispatchEvent(new CustomEvent('avatar-updated', { 
-          detail: { avatarUrl: finalAvatarUrl, userId: user.id } 
-        }));
+        if (displayAvatarUrl) {
+          setAvatarUrl(displayAvatarUrl);
+        } else {
+          // Fallback si getAvatarDisplayUrl retourne null
+          setAvatarUrl(`${finalAvatarUrl}?t=${Date.now()}`);
+        }
+        
+        setUploadedAvatarUrl(finalAvatarUrl);
+        setImageError(false);
+        
+        // Dispatch avatar update event using the utility function
+        ignoreAvatarUpdatedForUrlRef.current = finalAvatarUrl;
+        dispatchAvatarUpdate(finalAvatarUrl, user.id);
+        
+        console.log('Profil mis à jour avec succès, avatar URL:', finalAvatarUrl);
       }
+      
       toast.success(t('profileUpdated'));
       navigate("/member-card");
     } catch (error) {
@@ -440,12 +551,12 @@ const EditProfile = () => {
         </div>
 
         {/* Form */}
-        <div className="space-y-6 bg-black/50 border border-gold/20 rounded-lg p-8">
+        <div className="space-y-6 bg-black/50 border border-gold/20 rounded-lg p-4 sm:p-6 md:p-8">
           {/* Avatar Upload */}
           <div className="space-y-4">
-            <Label className="text-gold/80">{t('profilePhoto')}</Label>
+            <Label className="text-gold/80 text-sm sm:text-base">{t('profilePhoto')}</Label>
             <div className="flex flex-col items-center gap-4">
-              <div className="relative w-32 h-32 sm:w-40 sm:h-40">
+              <div className="relative w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48">
                 <div
                   className="w-full h-full rounded-full border-2 border-gold overflow-hidden cursor-pointer group"
                   onClick={() => fileInputRef.current?.click()}
@@ -455,14 +566,31 @@ const EditProfile = () => {
                       src={avatarUrl}
                       alt={t('avatarPreview')}
                       className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
-                      onError={() => {
-                        // Marquer l'erreur mais ne pas supprimer l'URL immédiatement
-                        // Cela permet de réessayer si l'URL change
+                      loading="eager"
+                      crossOrigin="anonymous"
+                      onError={async () => {
+                        // Limite à une seule tentative de retry
+                        if (retryCount < 1 && uploadedAvatarUrl && !uploadedAvatarUrl.startsWith('blob:') && !uploadedAvatarUrl.startsWith('data:')) {
+                          try {
+                            const { getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+                            const retryUrl = getAvatarDisplayUrl(uploadedAvatarUrl);
+                            if (retryUrl) {
+                              console.log('🔄 Retry avec nouvelle URL:', retryUrl);
+                              setRetryCount(prev => prev + 1);
+                              setTimeout(() => setAvatarUrl(retryUrl), 300);
+                              return;
+                            }
+                          } catch (error) {
+                            console.error('Erreur retry avatar:', error);
+                          }
+                        }
+                        // Après retry ou si pas d'URL valide, afficher les initiales
+                        console.warn('⚠️ Avatar introuvable, affichage des initiales');
                         setImageError(true);
                       }}
                       onLoad={() => {
-                        // Réinitialiser l'erreur si l'image charge avec succès
                         setImageError(false);
+                        setRetryCount(0);
                       }}
                     />
                   ) : (
@@ -507,8 +635,8 @@ const EditProfile = () => {
                 />
               </div>
 
-              <div className="w-full space-y-2 text-center">
-                <p className="text-xs text-gold/60">{t('photoFormatsHint')}</p>
+              <div className="w-full space-y-2 text-center max-w-md mx-auto">
+                <p className="text-xs sm:text-sm text-gold/60">{t('photoFormatsHint')}</p>
                 
                 {/* Verification Status */}
                 {verificationStatus !== 'idle' && (
@@ -594,7 +722,7 @@ const EditProfile = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="firstName" className="text-gold/80">{t('firstName')}</Label>
+              <Label htmlFor="firstName" className="text-gold/80 text-sm sm:text-base">{t('firstName')}</Label>
               <Input
                 id="firstName"
                 value={formData.firstName}
@@ -607,7 +735,7 @@ const EditProfile = () => {
               />
             </div>
             <div>
-              <Label htmlFor="lastName" className="text-gold/80">{t('lastName')}</Label>
+              <Label htmlFor="lastName" className="text-gold/80 text-sm sm:text-base">{t('lastName')}</Label>
               <Input
                 id="lastName"
                 value={formData.lastName}
@@ -622,7 +750,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="honorificTitle" className="text-gold/80">{t('honorificTitleOptional')}</Label>
+            <Label htmlFor="honorificTitle" className="text-gold/80 text-sm sm:text-base">{t('honorificTitleOptional')}</Label>
             <Input
               id="honorificTitle"
               value={formData.honorificTitle}
@@ -636,7 +764,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="mobilePhone" className="text-gold/80">{t('mobileNumber')}</Label>
+            <Label htmlFor="mobilePhone" className="text-gold/80 text-sm sm:text-base">{t('mobileNumber')}</Label>
             <Input
               id="mobilePhone"
               value={formData.mobilePhone}
@@ -650,7 +778,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="jobFunction" className="text-gold/80">{t('jobFunctionOptional')}</Label>
+            <Label htmlFor="jobFunction" className="text-gold/80 text-sm sm:text-base">{t('jobFunctionOptional')}</Label>
             <Input
               id="jobFunction"
               value={formData.jobFunction}
@@ -664,7 +792,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="activityDomain" className="text-gold/80">{t('activityDomainOptional')}</Label>
+            <Label htmlFor="activityDomain" className="text-gold/80 text-sm sm:text-base">{t('activityDomainOptional')}</Label>
             <Select
               value={formData.activityDomain}
               onValueChange={(value) => setFormData({ ...formData, activityDomain: value })}
@@ -691,7 +819,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="country" className="text-gold/80">{t('countryOptional')}</Label>
+            <Label htmlFor="country" className="text-gold/80 text-sm sm:text-base">{t('countryOptional')}</Label>
             <Select
               value={formData.country}
               onValueChange={(value) => setFormData({ ...formData, country: value })}
@@ -718,7 +846,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label className="text-gold/80 mb-2 block">{t('wealthLevel')}</Label>
+            <Label className="text-gold/80 mb-2 block text-sm sm:text-base">{t('wealthLevel')}</Label>
             <div className="flex gap-2">
               <Input
                 type="number"
@@ -765,7 +893,7 @@ const EditProfile = () => {
           </div>
 
           <div>
-            <Label htmlFor="personalQuote" className="text-gold/80">{t('personalQuoteOptional')}</Label>
+            <Label htmlFor="personalQuote" className="text-gold/80 text-sm sm:text-base">{t('personalQuoteOptional')}</Label>
             <Textarea
               id="personalQuote"
               value={formData.personalQuote}
@@ -780,20 +908,27 @@ const EditProfile = () => {
           </div>
 
 
-          <div className="flex gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
             <Button
               variant="outline"
               onClick={() => navigate("/member-card")}
-              className="flex-1 border-gold/40 text-gold hover:bg-gold/10">
+              className="w-full sm:flex-1 border-gold/40 text-gold hover:bg-gold/10 text-sm sm:text-base"
+            >
               {t('cancel')}
-              
             </Button>
             <Button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 bg-gold text-black hover:bg-gold/90"
+              className="w-full sm:flex-1 bg-gold text-black hover:bg-gold/90 text-sm sm:text-base"
             >
-              {saving ? t('saving') : t('save')}
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t('saving')}
+                </>
+              ) : (
+                t('save')
+              )}
             </Button>
           </div>
         </div>

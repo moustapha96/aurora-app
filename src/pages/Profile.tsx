@@ -25,6 +25,7 @@ const Profile = () => {
   const [artworks, setArtworks] = useState<any[]>([]);
   const [destinations, setDestinations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   // Load profile data - reloads when returning to this page
@@ -75,7 +76,21 @@ const Profile = () => {
           .select('*')
           .eq('user_id', profileId)
           .maybeSingle();
-        setPrivateData(privData);
+        
+        // Decrypt sensitive data
+        if (privData) {
+          try {
+            const { decryptValue } = await import('@/lib/encryption');
+            const decrypted = {
+              ...privData,
+              mobile_phone: privData.mobile_phone ? await decryptValue(privData.mobile_phone) : privData.mobile_phone,
+              wealth_amount: privData.wealth_amount ? await decryptValue(privData.wealth_amount) : privData.wealth_amount,
+            };
+            setPrivateData(decrypted);
+          } catch {
+            setPrivateData(privData);
+          }
+        }
       }
 
       // Load business content
@@ -294,8 +309,14 @@ const Profile = () => {
         {/* Profile Header */}
         <div className="text-center mb-6 sm:mb-8">
           <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 rounded-full border-2 border-gold overflow-hidden relative">
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt={`${profile.first_name} ${profile.last_name}`} className="w-full h-full object-cover" />
+            {profile.avatar_url && !imageError ? (
+              <img 
+                src={profile.avatar_url} 
+                alt={`${profile.first_name} ${profile.last_name}`} 
+                className="w-full h-full object-cover"
+                onError={() => setImageError(true)}
+                onLoad={() => setImageError(false)}
+              />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-gold/20 to-gold/5 flex items-center justify-center">
                 <span className="text-3xl sm:text-4xl font-serif">{profile.first_name?.[0] || 'U'}</span>

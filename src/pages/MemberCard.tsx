@@ -24,6 +24,7 @@ const MemberCard = () => {
   const [profile, setProfile] = useState<any>(null);
   const [privateData, setPrivateData] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [connectionsCount, setConnectionsCount] = useState(0);
   const [businessContent, setBusinessContent] = useState<any>(null);
   const [familyContent, setFamilyContent] = useState<any>(null);
@@ -209,7 +210,20 @@ const MemberCard = () => {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    setPrivateData(privData);
+    // Decrypt sensitive data
+    if (privData) {
+      try {
+        const { decryptValue } = await import('@/lib/encryption');
+        const decrypted = {
+          ...privData,
+          mobile_phone: privData.mobile_phone ? await decryptValue(privData.mobile_phone) : privData.mobile_phone,
+          wealth_amount: privData.wealth_amount ? await decryptValue(privData.wealth_amount) : privData.wealth_amount,
+        };
+        setPrivateData(decrypted);
+      } catch {
+        setPrivateData(privData);
+      }
+    }
 
     // Si le profil n'existe pas, le créer
     if (!data) {
@@ -488,11 +502,13 @@ const MemberCard = () => {
                 className="w-full h-full rounded-full border-2 border-gold overflow-hidden cursor-pointer group"
                 onClick={() => fileInputRef.current?.click()}
               >
-                {profile.avatar_url ? (
+                {profile.avatar_url && !imageError ? (
                   <img
                     src={profile.avatar_url}
                     alt={t('avatarPreview')}
                     className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
+                    onError={() => setImageError(true)}
+                    onLoad={() => setImageError(false)}
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-gold/20 to-gold/5 flex items-center justify-center group-hover:from-gold/30 group-hover:to-gold/10 transition-all">

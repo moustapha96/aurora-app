@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { NetworkModule } from "./NetworkModule";
-import { Target, Plus, Trash2, Loader2, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+import { Target, Plus, Trash2, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+// import { Sparkles } from "lucide-react"; // Commenté car bouton suggestion désactivé
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
@@ -38,8 +41,12 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AmbitionItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
+  // const [isGenerating, setIsGenerating] = useState(false); // Commenté car bouton suggestion désactivé
+  const [expandedCategories, setExpandedCategories] = useState({
+    collaborations: true,
+    rencontres: false,
+    opportunites: false
+  });
   const [formData, setFormData] = useState({
     title: "",
     category: "",
@@ -52,8 +59,8 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
     setEditingItem(null);
   };
 
-  const handleCategoryClick = (category: CategoryType) => {
-    setSelectedCategory(prev => prev === category ? null : category);
+  const toggleCategory = (category: CategoryType) => {
+    setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
   };
 
   const handleAddToCategory = (category: CategoryType) => {
@@ -62,23 +69,23 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
     setIsDialogOpen(true);
   };
 
-  const handleAISuggest = async () => {
-    setIsGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('network-ai-suggest', {
-        body: { moduleType: 'ambitions', context: formData.title }
-      });
-      if (error) throw error;
-      if (data?.suggestion) {
-        setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success(t('poloAchievementSuggestionGenerated'));
-      }
-    } catch (error) {
-      toast.error(t('poloAchievementGenerationError'));
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  // const handleAISuggest = async () => {
+  //   setIsGenerating(true);
+  //   try {
+  //     const { data, error } = await supabase.functions.invoke('network-ai-suggest', {
+  //       body: { moduleType: 'ambitions', context: formData.title }
+  //     });
+  //     if (error) throw error;
+  //     if (data?.suggestion) {
+  //       setFormData(prev => ({ ...prev, description: data.suggestion }));
+  //       toast.success(t('poloAchievementSuggestionGenerated'));
+  //     }
+  //   } catch (error) {
+  //     toast.error(t('poloAchievementGenerationError'));
+  //   } finally {
+  //     setIsGenerating(false);
+  //   }
+  // };
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
@@ -173,80 +180,87 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
     }
   };
 
+  const getCategoryIcon = (category: CategoryType) => {
+    return Target; // Icône par défaut, peut être personnalisée par catégorie
+  };
+
   const renderCategorySection = (category: CategoryType) => {
     const items = getItemsByCategory(category);
     const label = getDisplayLabel(category);
+    const Icon = getCategoryIcon(category);
     
     return (
-      <div>
-        <button 
-          onClick={() => handleCategoryClick(category)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full group py-1"
-        >
-          {selectedCategory === category ? (
-            <ChevronDown className="w-3.5 h-3.5" />
-          ) : (
-            <ChevronRight className="w-3.5 h-3.5" />
-          )}
-          <span className="text-sm">{label}</span>
-          {items.length > 0 && (
-            <span className="text-xs text-muted-foreground">({items.length})</span>
-          )}
-        </button>
-        {selectedCategory === category && (
-          <div className="ml-5 mt-1 space-y-2">
-            {items.map((item) => (
-              <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <InlineEditableField
-                      value={item.title}
-                      onSave={(value) => handleInlineUpdate(item.id, "title", value)}
-                      placeholder={t('title')}
-                      disabled={!isEditable}
-                      className="font-medium text-sm text-foreground"
-                    />
-                    {item.timeline && (
-                      <span className="text-xs text-muted-foreground">{t('networkAmbitionTimeline')}: {item.timeline}</span>
-                    )}
-                    {isEditable ? (
-                      <InlineEditableField
-                        value={item.description || ""}
-                        onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                        placeholder={t('description')}
-                        multiline
-                        className="text-xs text-muted-foreground"
-                      />
-                    ) : item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
-                  </div>
-                  {isEditable && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
+      <div className="p-2.5 rounded-lg bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20">
+        <Collapsible open={expandedCategories[category]} onOpenChange={() => toggleCategory(category)}>
+          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
+            {expandedCategories[category] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            <Icon className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">{label}</span>
+            {items.length > 0 && (
+              <span className="text-xs text-muted-foreground ml-auto">({items.length})</span>
+            )}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pl-6 pt-2">
+            {items.length > 0 && (
+              <div className="space-y-1">
+                {items.map((item, index) => (
+                  <div key={item.id}>
+                    <div className="p-2 sm:p-3 bg-muted/30 rounded-lg group">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0 w-full sm:w-auto">
+                          <InlineEditableField
+                            value={item.title}
+                            onSave={(value) => handleInlineUpdate(item.id, "title", value)}
+                            placeholder={t('title')}
+                            disabled={!isEditable}
+                            className="font-medium text-sm text-foreground break-words"
+                          />
+                          {item.timeline && (
+                            <span className="text-xs text-muted-foreground block mt-1">{t('networkAmbitionTimeline')}: {item.timeline}</span>
+                          )}
+                          {isEditable ? (
+                            <InlineEditableField
+                              value={item.description || ""}
+                              onSave={(value) => handleInlineUpdate(item.id, "description", value)}
+                              placeholder={t('description')}
+                              multiline
+                              className="text-xs text-muted-foreground mt-1"
+                            />
+                          ) : item.description && <p className="text-xs text-muted-foreground line-clamp-2 mt-1 break-words">{item.description}</p>}
+                        </div>
+                        {isEditable && (
+                          <div className="flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                    {index < items.length - 1 && (
+                      <Separator className="w-full h-[2px]" />
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
             {isEditable && (
               <button 
                 onClick={() => handleAddToCategory(category)}
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
               >
-                <Plus className="w-3 h-3" />
-                <span>{t('add')}</span>
+                <Plus className="w-3.5 h-3.5" /> {t('add')}
               </button>
             )}
-          </div>
-        )}
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     );
   };
 
   return (
     <NetworkModule title={t('socialAmbitions')} icon={Target} moduleType="ambitions" isEditable={isEditable}>
-      <div className="space-y-2">
+      <div className="space-y-4">
         {renderCategorySection('collaborations')}
         {renderCategorySection('rencontres')}
         {renderCategorySection('opportunites')}
@@ -296,7 +310,7 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
                 className="text-sm min-h-[100px]"
               />
             </div>
-            <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4">
+            {/* <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4">
               <Button 
                 variant="outline" 
                 onClick={handleAISuggest} 
@@ -322,6 +336,22 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>
+            </div> */}
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                className="w-full sm:w-auto text-sm"
+              >
+                {t('cancel')}
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={isLoading}
+                className="w-full sm:w-auto text-sm"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
+              </Button>
             </div>
           </div>
         </DialogContent>

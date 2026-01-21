@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Separator } from "@/components/ui/separator";
 
 interface MediaItem {
   id: string;
@@ -483,7 +484,14 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
               {mediasData.length > 0 && (
                 <div className="space-y-1">
-                  {mediasData.map(renderMediaItem)}
+                  {mediasData.map((item, index) => (
+                    <div key={item.id}>
+                      {renderMediaItem(item)}
+                      {index < mediasData.length - 1 && (
+                        <Separator className="w-full  h-[2px]" />
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -518,7 +526,14 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
 
               {interventionsData.length > 0 && (
                 <div className="space-y-1">
-                  {interventionsData.map(renderMediaItem)}
+                  {interventionsData.map((item, index) => (
+                    <div key={item.id}>
+                      {renderMediaItem(item)}
+                      {index < interventionsData.length - 1 && (
+                        <Separator className="w-full  h-[2px]" />
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -626,7 +641,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
               </p>
               {socialLinks.length > 0 && (
                 <div className="space-y-2">
-                  {socialLinks.map(link => (
+                  {socialLinks.map((link, index) => (
                     <div key={link.id} className="flex items-center gap-2 py-1 group">
                       <span className="font-medium text-sm">
                         {getSocialPlatformLabel(link.platform)}
@@ -665,6 +680,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                       )}
                     </div>
                   ))}
+                 
                 </div>
               )}
               {isEditable && (

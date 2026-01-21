@@ -493,15 +493,30 @@ const Register = () => {
       }
 
       // Créer le profil privé (sans patrimoine pour les comptes liés)
+      // Encrypt sensitive data
+      let encryptedPhone = formData.mobile;
+      let encryptedWealth = isFamilyRegistration ? null : formData.wealthAmount;
+      try {
+        const { encryptValue } = await import('@/lib/encryption');
+        if (formData.mobile) {
+          encryptedPhone = await encryptValue(formData.mobile);
+        }
+        if (!isFamilyRegistration && formData.wealthAmount) {
+          encryptedWealth = await encryptValue(formData.wealthAmount);
+        }
+      } catch (e) {
+        console.warn('Encryption not available:', e);
+      }
+
       const { error: privateError } = await supabase
         .from('profiles_private')
         .insert({
           user_id: authData.user.id,
-          mobile_phone: formData.mobile,
+          mobile_phone: encryptedPhone,
           // Pas de patrimoine pour les comptes familiaux liés
           wealth_currency: isFamilyRegistration ? null : (formData.wealthCurrency || 'EUR'),
           wealth_unit: isFamilyRegistration ? null : formData.wealthUnit,
-          wealth_amount: isFamilyRegistration ? null : formData.wealthAmount,
+          wealth_amount: encryptedWealth,
         });
 
       if (privateError) {

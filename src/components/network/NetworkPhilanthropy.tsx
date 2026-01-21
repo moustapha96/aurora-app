@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface PhilanthropyItem {
   id: string;
@@ -26,6 +27,7 @@ interface NetworkPhilanthropyProps {
 }
 
 export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhilanthropyProps) => {
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<PhilanthropyItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,10 +59,10 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
       if (error) throw error;
       if (data?.suggestion) {
         setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success("Suggestion générée");
+        toast.success(t('networkModuleSuggestionGenerated'));
       }
     } catch (error) {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('networkModuleSuggestionError'));
     } finally {
       setIsGenerating(false);
     }
@@ -68,14 +70,14 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      toast.error("Le titre est requis");
+      toast.error(t('networkPhilanthropyTitleRequired'));
       return;
     }
 
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error("Unauthenticated");
 
       if (editingItem) {
         const { error } = await supabase
@@ -90,7 +92,7 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
           })
           .eq('id', editingItem.id);
         if (error) throw error;
-        toast.success("Engagement mis à jour");
+        toast.success(t('networkPhilanthropyUpdated'));
       } else {
         const { error } = await supabase
           .from('network_philanthropy')
@@ -103,7 +105,7 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
             description: formData.description
           });
         if (error) throw error;
-        toast.success("Engagement ajouté");
+        toast.success(t('networkPhilanthropyAdded'));
       }
 
       setIsDialogOpen(false);
@@ -111,7 +113,7 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
       onUpdate();
     } catch (error) {
       console.error('Error saving philanthropy:', error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('networkPhilanthropySaveError'));
     } finally {
       setIsLoading(false);
     }
@@ -121,10 +123,10 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
     try {
       const { error } = await supabase.from('network_philanthropy').delete().eq('id', id);
       if (error) throw error;
-      toast.success("Engagement supprimé");
+      toast.success(t('networkPhilanthropyDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('networkPhilanthropyDeleteError'));
     }
   };
 
@@ -138,12 +140,12 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
       onUpdate();
     } catch (error) {
       console.error("Update error:", error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('networkPhilanthropySaveError'));
     }
   };
 
   return (
-    <NetworkModule title="Philanthropie" icon={Heart} moduleType="philanthropy" isEditable={isEditable}>
+    <NetworkModule title={t('philanthropy')} icon={Heart} moduleType="philanthropy" isEditable={isEditable}>
       <div className="space-y-3">
         {data.map((item) => (
           <div key={item.id} className="p-3 bg-muted/30 rounded-lg group">
@@ -152,7 +154,7 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
                 <InlineEditableField
                   value={item.title}
                   onSave={(value) => handleInlineUpdate(item.id, "title", value)}
-                  placeholder="Titre"
+                  placeholder={t('title')}
                   disabled={!isEditable}
                   className="font-medium text-foreground"
                 />
@@ -165,7 +167,7 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
                   <InlineEditableField
                     value={item.description || ""}
                     onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                    placeholder="Description"
+                    placeholder={t('description')}
                     multiline
                     className="text-sm text-muted-foreground mt-1"
                   />
@@ -186,75 +188,105 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
 
         {data.length === 0 && (
           <p className="text-muted-foreground text-sm text-center py-4">
-            Aucun engagement philanthropique ajouté
+            {t('networkPhilanthropyNone')}
           </p>
         )}
 
         {isEditable && (
-          <Button variant="outline" className="w-full mt-3" onClick={handleOpenAdd}>
+          <Button variant="outline" className="w-full mt-3 text-sm" size="sm" onClick={handleOpenAdd}>
             <Plus className="w-4 h-4 mr-2" />
-            Ajouter
+            {t('add')}
           </Button>
         )}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{editingItem ? "Modifier" : "Ajouter"} un engagement</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
+              {editingItem ? t('networkPhilanthropyDialogEditTitle') : t('networkPhilanthropyDialogAddTitle')}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Titre *</Label>
+              <Label className="text-sm">{t('title')} *</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Ex: Fondation pour l'Éducation"
+                placeholder={t('networkPhilanthropyTitlePlaceholder') || "Ex: Fondation pour l'Éducation"}
+                className="text-sm"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Organisation</Label>
+                <Label className="text-sm">{t('networkPhilanthropyOrganizationLabel')}</Label>
                 <Input
                   value={formData.organization}
                   onChange={(e) => setFormData(prev => ({ ...prev, organization: e.target.value }))}
-                  placeholder="Ex: UNICEF"
+                  placeholder={t('networkPhilanthropyOrganizationPlaceholder') || "Ex: UNICEF"}
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label>Rôle</Label>
+                <Label className="text-sm">{t('networkPhilanthropyRoleLabel')}</Label>
                 <Input
                   value={formData.role}
                   onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                  placeholder="Ex: Mécène, Fondateur"
+                  placeholder={t('networkPhilanthropyRolePlaceholder') || "Ex: Mécène, Fondateur"}
+                  className="text-sm"
                 />
               </div>
             </div>
             <div>
-              <Label>Cause</Label>
+              <Label className="text-sm">{t('networkPhilanthropyCauseLabel')}</Label>
               <Input
                 value={formData.cause}
                 onChange={(e) => setFormData(prev => ({ ...prev, cause: e.target.value }))}
-                placeholder="Ex: Éducation, Santé, Environnement"
+                placeholder={t('networkPhilanthropyCausePlaceholder') || t('philanthropyEducationEnvironment')}
+                className="text-sm"
               />
             </div>
             <div>
-              <Label>Description</Label>
+              <Label className="text-sm">{t('description')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Description de votre engagement..."
+                placeholder={t('networkPhilanthropyDescriptionPlaceholder') || "Description de votre engagement..."}
+                rows={3}
+                className="text-sm min-h-[80px]"
               />
             </div>
-            <div className="flex justify-between pt-4">
-              <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                Suggestion Aurora
+            <div className="flex flex-col sm:flex-row justify-between gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={handleAISuggest}
+                disabled={isGenerating}
+                size="sm"
+                className="gap-2 w-full sm:w-auto text-sm"
+              >
+                {isGenerating ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                {t('networkModuleAISuggestButton')}
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
-                <Button onClick={handleSave} disabled={isLoading}>
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Valider"}
+              <div className="flex flex-col sm:flex-row gap-2 justify-end w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  size="sm"
+                  className="w-full sm:w-auto text-sm"
+                >
+                  {t('cancel')}
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={isLoading}
+                  size="sm"
+                  className="w-full sm:w-auto text-sm"
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>
             </div>

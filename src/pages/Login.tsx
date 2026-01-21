@@ -310,15 +310,30 @@ const Login = () => {
         }
 
         // Create private profile data (sensitive info)
+        // Encrypt sensitive data
+        let encryptedPhone = registrationData.mobile;
+        let encryptedWealth = registrationData.wealthAmount;
+        try {
+          const { encryptValue } = await import('@/lib/encryption');
+          if (registrationData.mobile) {
+            encryptedPhone = await encryptValue(registrationData.mobile);
+          }
+          if (registrationData.wealthAmount) {
+            encryptedWealth = await encryptValue(registrationData.wealthAmount);
+          }
+        } catch (e) {
+          console.warn('Encryption not available:', e);
+        }
+
         const { error: privateError } = await supabase
           .from('profiles_private')
           .insert({
             user_id: authData.user.id,
-            mobile_phone: registrationData.mobile,
+            mobile_phone: encryptedPhone,
             wealth_billions: wealthInBillions,
             wealth_currency: registrationData.wealthCurrency || 'EUR',
             wealth_unit: registrationData.wealthUnit || null,
-            wealth_amount: registrationData.wealthAmount || null,
+            wealth_amount: encryptedWealth,
           });
 
         if (privateError) {

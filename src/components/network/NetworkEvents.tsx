@@ -154,7 +154,7 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
     setIsGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('network-ai-suggest', {
-        body: { moduleType: 'events', context: formData.title || 'événement exclusif' }
+        body: { moduleType: 'events', context: formData.title || t('networkExclusiveEvent') }
       });
       if (error) throw error;
       
@@ -167,14 +167,14 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
           date: data.structuredData.date || prev.date,
           description: data.structuredData.description || prev.description
         }));
-        toast.success("Tous les champs ont été complétés par l'IA");
+        toast.success(t('networkEventsAISuggestCompletedAll'));
       } else if (data?.suggestion) {
         setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success("Description générée");
+        toast.success(t('networkEventsAISuggestDescriptionGenerated'));
       }
     } catch (error) {
       console.error('AI suggestion error:', error);
-      toast.error("Erreur lors de la génération");
+      toast.error(t('networkEventsAISuggestError'));
     } finally {
       setIsGenerating(false);
     }
@@ -182,14 +182,14 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      toast.error("Le titre est requis");
+      toast.error(t('networkEventsTitleRequired'));
       return;
     }
 
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error("Unauthenticated");
 
       if (editingItem) {
         const { error } = await supabase
@@ -204,7 +204,7 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
           })
           .eq('id', editingItem.id);
         if (error) throw error;
-        toast.success("Événement mis à jour");
+        toast.success(t('networkEventUpdated'));
       } else {
         const { error } = await supabase
           .from('network_events')
@@ -217,7 +217,7 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
             description: formData.description
           });
         if (error) throw error;
-        toast.success("Événement ajouté");
+        toast.success(t('networkEventAdded'));
       }
 
       setIsDialogOpen(false);
@@ -225,7 +225,7 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
       onUpdate();
     } catch (error) {
       console.error('Error saving event:', error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('networkEventSaveError'));
     } finally {
       setIsLoading(false);
     }
@@ -235,10 +235,10 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
     try {
       const { error } = await supabase.from('network_events').delete().eq('id', id);
       if (error) throw error;
-      toast.success("Événement supprimé");
+      toast.success(t('networkEventDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('networkEventDeleteError'));
     }
   };
 
@@ -345,60 +345,64 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingItem ? "Modifier" : "Ajouter"} un événement</DialogTitle>
+            <DialogTitle>
+              {editingItem ? t('networkEventDialogEditTitle') : t('networkEventDialogAddTitle')}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Titre *</Label>
+              <Label>{t('networkEventTitleLabel')}</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Ex: Gala de Charité Annuel"
+                placeholder={t('networkEventTitlePlaceholder')}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Type d'événement</Label>
+                <Label>{t('networkEventTypeLabel')}</Label>
                 <Input
                   value={formData.event_type}
                   onChange={(e) => setFormData(prev => ({ ...prev, event_type: e.target.value }))}
-                  placeholder="Ex: Gala, Conférence"
+                  placeholder={t('networkEventTypePlaceholder')}
                 />
               </div>
               <div>
-                <Label>Date</Label>
+                <Label>{t('networkEventDateLabel')}</Label>
                 <Input
                   value={formData.date}
                   onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  placeholder="Ex: 15 Juin 2024"
+                  placeholder={t('networkEventDatePlaceholder')}
                 />
               </div>
             </div>
             <div>
-              <Label>Lieu</Label>
+              <Label>{t('networkEventLocationLabel')}</Label>
               <Input
                 value={formData.location}
                 onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                placeholder="Ex: Hôtel de Crillon, Paris"
+                placeholder={t('networkEventLocationPlaceholder')}
               />
             </div>
             <div>
-              <Label>Description</Label>
+              <Label>{t('networkEventDescriptionLabel')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Description de l'événement..."
+                placeholder={t('networkEventDescriptionPlaceholder')}
               />
             </div>
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                Suggestion Aurora
+                {t('networkEventsAISuggestButton')}
               </Button>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isGenerating}>Annuler</Button>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isGenerating}>
+                  {t('cancel')}
+                </Button>
                 <Button onClick={handleSave} disabled={isLoading || isGenerating}>
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Valider"}
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>
             </div>

@@ -83,7 +83,21 @@ const Business = () => {
           .select('*')
           .eq('user_id', profileId)
           .maybeSingle();
-        setPrivateData(privData);
+        
+        // Decrypt sensitive data
+        if (privData) {
+          try {
+            const { decryptValue } = await import('@/lib/encryption');
+            const decrypted = {
+              ...privData,
+              mobile_phone: privData.mobile_phone ? await decryptValue(privData.mobile_phone) : privData.mobile_phone,
+              wealth_amount: privData.wealth_amount ? await decryptValue(privData.wealth_amount) : privData.wealth_amount,
+            };
+            setPrivateData(decrypted);
+          } catch {
+            setPrivateData(privData);
+          }
+        }
       }
 
       // Load business content

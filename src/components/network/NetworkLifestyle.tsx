@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { NetworkModule } from "./NetworkModule";
-import { Utensils, Plus, Pencil, Trash2, Loader2, Sparkles, Image, ChevronDown, ChevronRight } from "lucide-react";
+import { Utensils, Plus, Pencil, Trash2, Loader2, Image, ChevronDown, ChevronRight } from "lucide-react";
+// import { Sparkles } from "lucide-react"; // Commenté car bouton suggestion désactivé
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TruncatedText } from "@/components/ui/truncated-text";
@@ -37,12 +40,18 @@ const CATEGORY_LABELS: Record<CategoryType, string> = {
 };
 
 export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyleProps) => {
+
   const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LifestyleItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
+  // const [isGenerating, setIsGenerating] = useState(false); // Commenté car bouton suggestion désactivé
+  const [expandedCategories, setExpandedCategories] = useState({
+    gastronomie: true,
+    oenologie: false,
+    mode: false,
+    automobiles: false
+  });
   const [formData, setFormData] = useState({
     title: "",
     organization: "",
@@ -69,9 +78,8 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
     setEditingItem(null);
   };
 
-  const handleCategoryClick = (category: CategoryType) => {
-    // Toggle category expansion
-    setSelectedCategory(prev => prev === category ? null : category);
+  const toggleCategory = (category: CategoryType) => {
+    setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
   };
 
   const handleAddToCategory = (category: CategoryType) => {
@@ -122,23 +130,23 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
     }
   };
 
-  const handleAISuggest = async () => {
-    setIsGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('network-ai-suggest', {
-        body: { moduleType: 'lifestyle', context: `${formData.cause}: ${formData.title}` }
-      });
-      if (error) throw error;
-      if (data?.suggestion) {
-        setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success(t('suggestionGenerated'));
-      }
-    } catch (error) {
-      toast.error(t('generationError'));
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  // const handleAISuggest = async () => {
+  //   setIsGenerating(true);
+  //   try {
+  //     const { data, error } = await supabase.functions.invoke('network-ai-suggest', {
+  //       body: { moduleType: 'lifestyle', context: `${formData.cause}: ${formData.title}` }
+  //     });
+  //     if (error) throw error;
+  //     if (data?.suggestion) {
+  //       setFormData(prev => ({ ...prev, description: data.suggestion }));
+  //       toast.success(t('suggestionGenerated'));
+  //     }
+  //   } catch (error) {
+  //     toast.error(t('generationError'));
+  //   } finally {
+  //     setIsGenerating(false);
+  //   }
+  // };
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
@@ -219,216 +227,82 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
     }
   };
 
+  const getCategoryIcon = (category: CategoryType) => {
+    // Utiliser des icônes appropriées pour chaque catégorie
+    return Utensils; // Par défaut, on peut ajouter d'autres icônes si nécessaire
+  };
+
+  const getItemsByCategory = (category: CategoryType) => {
+    return data.filter(item => item.cause === category);
+  };
+
+  const renderCategorySection = (category: CategoryType, label: string) => {
+    const items = getItemsByCategory(category);
+    const Icon = getCategoryIcon(category);
+    
+    return (
+      <div className="p-2.5 rounded-lg bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20">
+        <Collapsible open={expandedCategories[category]} onOpenChange={() => toggleCategory(category)}>
+          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:text-primary transition-colors">
+            {expandedCategories[category] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            <Icon className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">{label}</span>
+            {items.length > 0 && (
+              <span className="text-xs text-muted-foreground ml-auto">({items.length})</span>
+            )}
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pl-6 pt-2">
+            {items.length > 0 && (
+              <div className="space-y-1">
+                {items.map((item, index) => (
+                  <div key={item.id}>
+                    <div className="p-2 sm:p-3 bg-muted/30 rounded-lg group">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0 w-full sm:w-auto">
+                          <h4 className="font-medium text-sm text-foreground break-words">{item.title}</h4>
+                          {item.organization && <TruncatedText text={item.organization} className="text-xs mt-1" />}
+                          {item.description && <TruncatedText text={item.description} maxLines={2} className="mt-1" />}
+                        </div>
+                        {isEditable && (
+                          <div className="flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEdit(item)}>
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {index < items.length - 1 && (
+                      <Separator className="w-full h-[2px]" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {isEditable && (
+              <button 
+                onClick={() => handleAddToCategory(category)}
+                className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> {t('add')}
+              </button>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+    );
+  };
+
   return (
     <NetworkModule title={t('lifestyleLuxury')} icon={Utensils} moduleType="lifestyle" isEditable={isEditable}>
-      <div className="space-y-2">
-        {/* Category: Gastronomie */}
-        <div>
-          <button 
-            onClick={() => handleCategoryClick('gastronomie')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full group py-1"
-          >
-            {selectedCategory === 'gastronomie' ? (
-              <ChevronDown className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5" />
-            )}
-            <span className="text-sm">{t('gastronomy')}</span>
-            {data.filter(item => item.cause === 'gastronomie').length > 0 && (
-              <span className="text-xs text-muted-foreground">({data.filter(item => item.cause === 'gastronomie').length})</span>
-            )}
-          </button>
-          {selectedCategory === 'gastronomie' && (
-            <div className="ml-5 mt-1 space-y-2">
-              {data.filter(item => item.cause === 'gastronomie').map((item) => (
-                <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm text-foreground">{item.title}</h4>
-                      {item.organization && <TruncatedText text={item.organization} className="text-xs" />}
-                      {item.description && <TruncatedText text={item.description} maxLines={2} />}
-                    </div>
-                    {isEditable && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEdit(item)}>
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isEditable && (
-                <button 
-                  onClick={() => handleAddToCategory('gastronomie')}
-                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>{t('add')}</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Category: Œnologie */}
-        <div>
-          <button 
-            onClick={() => handleCategoryClick('oenologie')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full group py-1"
-          >
-            {selectedCategory === 'oenologie' ? (
-              <ChevronDown className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5" />
-            )}
-            <span className="text-sm">{t('oenology')}</span>
-            {data.filter(item => item.cause === 'oenologie').length > 0 && (
-              <span className="text-xs text-muted-foreground">({data.filter(item => item.cause === 'oenologie').length})</span>
-            )}
-          </button>
-          {selectedCategory === 'oenologie' && (
-            <div className="ml-5 mt-1 space-y-2">
-              {data.filter(item => item.cause === 'oenologie').map((item) => (
-                <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm text-foreground">{item.title}</h4>
-                      {item.organization && <TruncatedText text={item.organization} className="text-xs" />}
-                      {item.description && <TruncatedText text={item.description} maxLines={2} />}
-                    </div>
-                    {isEditable && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEdit(item)}>
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isEditable && (
-                <button 
-                  onClick={() => handleAddToCategory('oenologie')}
-                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>{t('add')}</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Category: Mode */}
-        <div>
-          <button 
-            onClick={() => handleCategoryClick('mode')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full group py-1"
-          >
-            {selectedCategory === 'mode' ? (
-              <ChevronDown className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5" />
-            )}
-            <span className="text-sm">{t('fashionJewelryWatchmaking')}</span>
-            {data.filter(item => item.cause === 'mode').length > 0 && (
-              <span className="text-xs text-muted-foreground">({data.filter(item => item.cause === 'mode').length})</span>
-            )}
-          </button>
-          {selectedCategory === 'mode' && (
-            <div className="ml-5 mt-1 space-y-2">
-              {data.filter(item => item.cause === 'mode').map((item) => (
-                <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm text-foreground">{item.title}</h4>
-                      {item.organization && <TruncatedText text={item.organization} className="text-xs" />}
-                      {item.description && <TruncatedText text={item.description} maxLines={2} />}
-                    </div>
-                    {isEditable && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEdit(item)}>
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isEditable && (
-                <button 
-                  onClick={() => handleAddToCategory('mode')}
-                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>{t('add')}</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Category: Automobiles */}
-        <div>
-          <button 
-            onClick={() => handleCategoryClick('automobiles')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full group py-1"
-          >
-            {selectedCategory === 'automobiles' ? (
-              <ChevronDown className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5" />
-            )}
-            <span className="text-sm">{t('automobiles')}</span>
-            {data.filter(item => item.cause === 'automobiles').length > 0 && (
-              <span className="text-xs text-muted-foreground">({data.filter(item => item.cause === 'automobiles').length})</span>
-            )}
-          </button>
-          {selectedCategory === 'automobiles' && (
-            <div className="ml-5 mt-1 space-y-2">
-              {data.filter(item => item.cause === 'automobiles').map((item) => (
-                <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm text-foreground">{item.title}</h4>
-                      {item.organization && <TruncatedText text={item.organization} className="text-xs" />}
-                      {item.description && <TruncatedText text={item.description} maxLines={2} />}
-                    </div>
-                    {isEditable && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEdit(item)}>
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isEditable && (
-                <button 
-                  onClick={() => handleAddToCategory('automobiles')}
-                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>{t('add')}</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+      <div className="space-y-4">
+        {renderCategorySection('gastronomie', t('gastronomy'))}
+        {renderCategorySection('oenologie', t('oenology'))}
+        {renderCategorySection('mode', t('fashionJewelryWatchmaking'))}
+        {renderCategorySection('automobiles', t('automobiles'))}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -515,7 +389,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4">
+            {/* <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4">
               <Button 
                 variant="outline" 
                 onClick={handleAISuggest} 
@@ -541,6 +415,22 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>
+            </div> */}
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                className="w-full sm:w-auto text-sm"
+              >
+                {t('cancel')}
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={isLoading}
+                className="w-full sm:w-auto text-sm bg-gold text-black hover:bg-gold/90"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
+              </Button>
             </div>
           </div>
         </DialogContent>

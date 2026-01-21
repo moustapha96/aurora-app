@@ -13,32 +13,65 @@ export const uploadAvatar = async (
   imageSource: File | Blob | string
 ): Promise<string | null> => {
   try {
+    console.log('[Avatar] Starting upload for user:', userId);
+    
     // Convert to PNG blob
     const pngBlob = await convertToPngBlob(imageSource);
+    console.log('[Avatar] Converted to PNG, size:', pngBlob.size);
     
     // Fixed path for consistency
     const filePath = `${userId}/avatar.png`;
 
-    const { error: uploadError } = await supabase.storage
+    // First, try to delete existing file to avoid conflicts
+    await supabase.storage
+      .from('avatars')
+      .remove([filePath]);
+
+    // Upload with upsert
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, pngBlob, { 
         upsert: true,
-        contentType: 'image/png'
+        contentType: 'image/png',
+        cacheControl: '0' // No cache to ensure fresh upload
       });
 
     if (uploadError) {
-      console.error('Avatar upload error:', uploadError);
+      console.error('[Avatar] Upload error:', uploadError.message);
+      console.error('[Avatar] Error details:', uploadError);
       return null;
     }
 
-    const { data: { publicUrl } } = supabase.storage
+    console.log('[Avatar] Upload successful:', uploadData);
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
       .from('avatars')
       .getPublicUrl(filePath);
 
-    // Return clean URL without any query parameters
-    return cleanAvatarUrl(publicUrl);
+    if (!urlData?.publicUrl) {
+      console.error('[Avatar] Failed to get public URL');
+      return null;
+    }
+
+    const cleanUrl = cleanAvatarUrl(urlData.publicUrl);
+    console.log('[Avatar] Final clean URL:', cleanUrl);
+    
+    // Verify file exists by trying to access it
+    try {
+      const response = await fetch(cleanUrl + '?t=' + Date.now(), { method: 'HEAD' });
+      if (!response.ok) {
+        console.warn('[Avatar] File may not be accessible yet, status:', response.status);
+      } else {
+        console.log('[Avatar] File verified accessible');
+      }
+    } catch (e) {
+      console.warn('[Avatar] Could not verify file accessibility:', e);
+    }
+    
+    return cleanUrl;
   } catch (error) {
-    console.error('Error in uploadAvatar:', error);
+    console.error('[Avatar] Error in uploadAvatar:', error);
     return null;
   }
 };

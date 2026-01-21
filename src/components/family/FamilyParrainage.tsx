@@ -695,7 +695,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                 <Users className="h-6 w-6 text-gold" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{currentCount} / {maxReferrals}</p>
+                <p className="text-sm font-bold text-foreground">{currentCount} / {maxReferrals}</p>
                 <p className="text-sm text-muted-foreground">{t('referredMembers')}</p>
               </div>
             </div>
@@ -788,9 +788,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                       <span className="hidden sm:inline">{t('share')}</span>
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t('shareCodeHint')}
-                  </p>
+                
                 </div>
               </CardContent>
             </Card>
@@ -903,7 +901,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      {/* <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-muted-foreground">{t('clicks')}</p>
                           <p className="font-semibold text-foreground">{link.click_count}</p>
@@ -912,21 +910,21 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                           <p className="text-muted-foreground">{t('registrations')}</p>
                           <p className="font-semibold text-foreground">{link.registration_count}</p>
                         </div>
-                      </div>
+                      </div> */}
 
                       {isEditable && (
-                        <div className="flex items-center justify-between pt-2 border-t">
+                        <div className="flex items-center justify-between pt-2 ">
                           <div className="flex items-center gap-2">
-                            <Switch
+                            {/* <Switch
                               checked={link.is_active}
                               onCheckedChange={() => toggleLinkActive(link)}
                             />
                             <Label className="text-sm">
                               {link.is_active ? t('active') : t('inactive')}
-                            </Label>
+                            </Label> */}
                           </div>
                           <div className="flex gap-2">
-                            <Button
+                            {/* <Button
                               variant="outline"
                               size="sm"
                               onClick={() => shareLink(link)}
@@ -934,7 +932,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                             >
                               <Share2 className="h-3.5 w-3.5 sm:mr-1.5" />
                               <span className="hidden sm:inline">{t('share')}</span>
-                            </Button>
+                            </Button> */}
                             <Button
                               variant="ghost"
                               size="sm"

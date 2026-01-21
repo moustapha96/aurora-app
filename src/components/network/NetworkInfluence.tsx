@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { NetworkModule } from "./NetworkModule";
-import { TrendingUp, Plus, Trash2, Loader2, Sparkles, ChevronDown, ChevronRight, BarChart, Users, Building2 } from "lucide-react";
+import { TrendingUp, Plus, Trash2, Loader2, ChevronDown, ChevronRight, BarChart, Users, Building2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
@@ -73,10 +74,10 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
       if (error) throw error;
       if (data?.suggestion) {
         setFormData(prev => ({ ...prev, description: data.suggestion }));
-        toast.success("Suggestion générée");
+        toast.success(t('networkModuleSuggestionGenerated'));
       }
     } catch (error) {
-      toast.error("Erreur lors de la génération");
+      toast.error(t('networkModuleSuggestionError'));
     } finally {
       setIsGenerating(false);
     }
@@ -84,14 +85,14 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      toast.error("Le titre est requis");
+      toast.error(t('networkInfluenceTitleRequired'));
       return;
     }
 
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error("Unauthenticated");
 
       if (editingItem) {
         const { error } = await supabase
@@ -106,7 +107,7 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
           })
           .eq('id', editingItem.id);
         if (error) throw error;
-        toast.success("Influence mise à jour");
+        toast.success(t('networkInfluenceUpdated'));
       } else {
         const { error } = await supabase
           .from('network_influence')
@@ -119,7 +120,7 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
             description: formData.description
           });
         if (error) throw error;
-        toast.success("Influence ajoutée");
+        toast.success(t('networkInfluenceAdded'));
       }
 
       setIsDialogOpen(false);
@@ -127,7 +128,7 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
       onUpdate();
     } catch (error) {
       console.error('Error saving influence:', error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('networkInfluenceSaveError'));
     } finally {
       setIsLoading(false);
     }
@@ -137,10 +138,10 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
     try {
       const { error } = await supabase.from('network_influence').delete().eq('id', id);
       if (error) throw error;
-      toast.success("Influence supprimée");
+      toast.success(t('networkInfluenceDeleted'));
       onUpdate();
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(t('networkInfluenceDeleteError'));
     }
   };
 
@@ -154,7 +155,7 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
       onUpdate();
     } catch (error) {
       console.error("Update error:", error);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(t('networkInfluenceSaveError'));
     }
   };
 
@@ -193,39 +194,44 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
           </CollapsibleTrigger>
           <CollapsibleContent className="pl-6 pt-2">
             {items.length > 0 && (
-              <div className="space-y-2">
-                {items.map((item) => (
-                  <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <InlineEditableField
-                          value={item.title}
-                          onSave={(value) => handleInlineUpdate(item.id, "title", value)}
-                          placeholder="Titre"
-                          disabled={!isEditable}
-                          className="font-medium text-sm text-foreground"
-                        />
-                        {item.metric && item.value && (
-                          <span className="text-xs text-muted-foreground">{item.metric}: {item.value}</span>
-                        )}
-                        {isEditable ? (
+              <div className="space-y-1">
+                {items.map((item, index) => (
+                  <div key={item.id}>
+                    <div className="p-2 sm:p-3 bg-muted/30 rounded-lg group">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0 w-full sm:w-auto">
                           <InlineEditableField
-                            value={item.description || ""}
-                            onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                            placeholder="Description"
-                            multiline
-                            className="text-xs text-muted-foreground"
+                            value={item.title}
+                            onSave={(value) => handleInlineUpdate(item.id, "title", value)}
+                            placeholder={t('title')}
+                            disabled={!isEditable}
+                            className="font-medium text-sm text-foreground break-words"
                           />
-                        ) : item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
-                      </div>
-                      {isEditable && (
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                          {item.metric && item.value && (
+                            <span className="text-xs text-muted-foreground block mt-1">{item.metric}: {item.value}</span>
+                          )}
+                          {isEditable ? (
+                            <InlineEditableField
+                              value={item.description || ""}
+                              onSave={(value) => handleInlineUpdate(item.id, "description", value)}
+                              placeholder={t('description')}
+                              multiline
+                              className="text-xs text-muted-foreground mt-1"
+                            />
+                          ) : item.description && <p className="text-xs text-muted-foreground line-clamp-2 mt-1 break-words">{item.description}</p>}
                         </div>
-                      )}
+                        {isEditable && (
+                          <div className="flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    {index < items.length - 1 && (
+                      <Separator className="w-full h-[2px]" />
+                    )}
                   </div>
                 ))}
               </div>
@@ -257,65 +263,113 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{editingItem ? "Modifier" : "Ajouter"} une influence</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{editingItem ? t('edit') : t('add')} {t('anInfluence') || "une influence"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Titre *</Label>
+              <Label className="text-sm">{t('title')} *</Label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Ex: Réseau LinkedIn"
+                placeholder={t('influenceTitlePlaceholder') || "Ex: Réseau LinkedIn"}
+                className="text-sm"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Catégorie</Label>
+                <Label className="text-sm">{t('category')}</Label>
                 <Input
                   value={formData.category}
                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  placeholder="Ex: Réseaux sociaux"
+                  placeholder={t('influenceCategoryPlaceholder') || "Ex: Réseaux sociaux"}
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label>Métrique</Label>
+                <Label className="text-sm">{t('metric')}</Label>
                 <Input
                   value={formData.metric}
                   onChange={(e) => setFormData(prev => ({ ...prev, metric: e.target.value }))}
-                  placeholder="Ex: Followers"
+                  placeholder={t('influenceMetricPlaceholder') || "Ex: Followers"}
+                  className="text-sm"
                 />
               </div>
             </div>
             <div>
-              <Label>Valeur</Label>
+              <Label className="text-sm">{t('value')}</Label>
               <Input
                 value={formData.value}
                 onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
-                placeholder="Ex: 50K+"
+                placeholder={t('influenceValuePlaceholder') || "Ex: 50K+"}
+                className="text-sm"
               />
             </div>
             <div>
-              <Label>Description</Label>
+              <Label className="text-sm">{t('description')}</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Description de votre influence..."
+                placeholder={t('influenceDescriptionPlaceholder') || "Description de votre influence..."}
+                rows={3}
+                className="text-sm min-h-[80px]"
               />
             </div>
-            <div className="flex justify-between pt-4">
-              <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                Suggestion Aurora
+            <div className="flex flex-col sm:flex-row justify-between gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={handleAISuggest}
+                disabled={isGenerating}
+                size="sm"
+                className="gap-2 w-full sm:w-auto text-sm"
+              >
+                {isGenerating ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                {t('networkModuleAISuggestButton')}
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
-                <Button onClick={handleSave} disabled={isLoading}>
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Valider"}
+              <div className="flex flex-col sm:flex-row gap-2 justify-end w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  size="sm"
+                  className="w-full sm:w-auto text-sm"
+                >
+                  {t('cancel')}
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={isLoading}
+                  size="sm"
+                  className="w-full sm:w-auto text-sm"
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                 </Button>
               </div>
             </div>
+            {/* Ancien footer conservé pour référence, mais désormais géré par le bloc ci-dessus
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                size="sm"
+                className="w-full sm:w-auto text-sm"
+              >
+                {t('cancel')}
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={isLoading}
+                size="sm"
+                className="w-full sm:w-auto text-sm"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
+              </Button>
+            </div>
+            */}
           </div>
         </DialogContent>
       </Dialog>

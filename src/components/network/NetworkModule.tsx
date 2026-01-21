@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Loader2, Plus, LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface NetworkModuleProps {
   title: string;
@@ -30,6 +31,7 @@ export const NetworkModule = ({
   onContentUpdate,
   showTextEditor = false
 }: NetworkModuleProps) => {
+  const { t } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(content || "");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -46,9 +48,9 @@ export const NetworkModule = ({
       try {
         await onContentUpdate(editContent);
         setIsEditing(false);
-        toast.success("Contenu mis à jour");
+        toast.success(t('networkModuleContentUpdated'));
       } catch (error) {
-        toast.error("Erreur lors de la sauvegarde");
+        toast.error(t('networkModuleSaveError'));
       } finally {
         setIsSaving(false);
       }
@@ -65,11 +67,11 @@ export const NetworkModule = ({
       if (error) throw error;
       if (data?.suggestion) {
         setEditContent(data.suggestion);
-        toast.success("Suggestion générée");
+        toast.success(t('networkModuleSuggestionGenerated'));
       }
     } catch (error) {
       console.error('Error generating suggestion:', error);
-      toast.error("Erreur lors de la génération");
+      toast.error(t('networkModuleSuggestionError'));
     } finally {
       setIsGenerating(false);
     }
@@ -103,29 +105,40 @@ export const NetworkModule = ({
                   <Textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
-                    placeholder={`Décrivez votre ${title.toLowerCase()}...`}
+                    placeholder={t('networkModuleDescribe').replace('{title}', title.toLowerCase())}
                     className="min-h-[200px]"
                   />
-                  <div className="flex justify-between">
+                  <div className="flex flex-col sm:flex-row justify-between gap-2">
                     <Button
                       variant="outline"
                       onClick={handleAISuggest}
                       disabled={isGenerating}
-                      className="gap-2"
+                      size="sm"
+                      className="gap-2 w-full sm:w-auto text-sm"
                     >
                       {isGenerating ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <Sparkles className="w-4 h-4" />
                       )}
-                      Suggestion Aurora
+                      {t('networkModuleAISuggestButton')}
                     </Button>
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setIsEditing(false)}>
-                        Annuler
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsEditing(false)}
+                        size="sm"
+                        className="w-full sm:w-auto text-sm"
+                      >
+                        {t('cancel')}
                       </Button>
-                      <Button onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Valider"}
+                      <Button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        size="sm"
+                        className="w-full sm:w-auto text-sm"
+                      >
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
                       </Button>
                     </div>
                   </div>
@@ -138,7 +151,7 @@ export const NetworkModule = ({
       <CardContent>
         {children || (
           <p className="text-muted-foreground text-sm">
-            {content || "Aucun contenu. Cliquez sur + pour ajouter."}
+            {content || t('networkModuleNoContent')}
           </p>
         )}
       </CardContent>
