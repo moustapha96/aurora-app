@@ -550,6 +550,11 @@ const Register = () => {
             .maybeSingle();
 
           if (sponsorProfile) {
+            // Si inscription via lien de parrainage → validation manuelle requise
+            // Si inscription via code manuel → auto-approbation
+            const requiresSponsorApproval = Boolean(usedReferralLink);
+            const autoApproved = !requiresSponsorApproval;
+            
             const { error: referralError } = await supabase
               .from('referrals')
               .insert({
@@ -557,7 +562,8 @@ const Register = () => {
                 referred_id: authData.user.id,
                 referral_code: formData.referralCode,
                 status: 'pending',
-                sponsor_approved: false
+                sponsor_approved: autoApproved,
+                sponsor_approved_at: autoApproved ? new Date().toISOString() : null
               });
 
             if (referralError) {

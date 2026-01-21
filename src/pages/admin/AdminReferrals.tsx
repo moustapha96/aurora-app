@@ -4,9 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminPagination } from "@/components/ui/admin-pagination";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { 
@@ -19,7 +27,11 @@ import {
   ExternalLink,
   Copy,
   Check,
-  Trash2
+  Trash2,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -66,7 +78,11 @@ interface Referral {
   referred_id: string;
   referral_code: string;
   status: string;
+  sponsor_approved: boolean | null;
+  sponsor_approved_at: string | null;
+  rejection_reason: string | null;
   created_at: string;
+  updated_at: string;
   sponsor?: {
     first_name: string;
     last_name: string;
@@ -87,11 +103,18 @@ const AdminReferrals = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  
+  // Rejection dialog
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [referralToReject, setReferralToReject] = useState<Referral | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   
   // Pagination states
   const [linksPage, setLinksPage] = useState(1);
   const [linkedPage, setLinkedPage] = useState(1);
   const [referralsPage, setReferralsPage] = useState(1);
+  const [pendingPage, setPendingPage] = useState(1);
   const pageSize = 10;
 
   // Stats
@@ -102,7 +125,9 @@ const AdminReferrals = () => {
     totalRegistrations: 0,
     linkedAccounts: 0,
     pendingReferrals: 0,
-    confirmedReferrals: 0
+    confirmedReferrals: 0,
+    pendingApproval: 0,
+    rejectedReferrals: 0
   });
 
   useEffect(() => {
@@ -200,7 +225,15 @@ const AdminReferrals = () => {
 
         const pending = referralsData.filter(r => r.status === 'pending').length;
         const confirmed = referralsData.filter(r => r.status === 'confirmed').length;
-        setStats(prev => ({ ...prev, pendingReferrals: pending, confirmedReferrals: confirmed }));
+        const pendingApproval = referralsData.filter(r => r.sponsor_approved === null || r.sponsor_approved === false).length;
+        const rejected = referralsData.filter(r => r.sponsor_approved === false && r.rejection_reason).length;
+        setStats(prev => ({ 
+          ...prev, 
+          pendingReferrals: pending, 
+          confirmedReferrals: confirmed,
+          pendingApproval,
+          rejectedReferrals: rejected
+        }));
       }
 
     } catch (error) {
@@ -208,6 +241,96 @@ const AdminReferrals = () => {
       toast.error(t('adminReferralsLoadError'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Approve a referral (as admin)
+  const handleApproveReferral = async (referral: Referral) => {
+    setProcessingId(referral.id);
+    try {
+      const { error } = await supabase
+        .from('referrals')
+        .update({
+          sponsor_approved: true,
+          sponsor_approved_at: new Date().toISOString(),
+          rejection_reason: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', referral.id);
+
+      if (error) throw error;
+
+      toast.success(t('adminReferralApproved'));
+      loadData();
+    } catch (error) {
+      console.error('Error approving referral:', error);
+      toast.error(t('adminReferralApproveError'));
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Reject a referral (as admin)
+  const handleRejectReferral = async () => {
+    if (!referralToReject) return;
+    
+    setProcessingId(referralToReject.id);
+    try {
+      const { error } = await supabase
+        .from('referrals')
+        .update({
+          sponsor_approved: false,
+          sponsor_approved_at: new Date().toISOString(),
+          rejection_reason: rejectionReason || t('adminReferralRejectedByAdmin'),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', referralToReject.id);
+
+      if (error) throw error;
+
+      toast.success(t('adminReferralRejected'));
+      setShowRejectDialog(false);
+      setReferralToReject(null);
+      setRejectionReason("");
+      loadData();
+    } catch (error) {
+      console.error('Error rejecting referral:', error);
+      toast.error(t('adminReferralRejectError'));
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Open rejection dialog
+  const openRejectDialog = (referral: Referral) => {
+    setReferralToReject(referral);
+    setRejectionReason("");
+    setShowRejectDialog(true);
+  };
+
+  // Reset a rejected referral to pending
+  const handleResetReferral = async (referral: Referral) => {
+    setProcessingId(referral.id);
+    try {
+      const { error } = await supabase
+        .from('referrals')
+        .update({
+          sponsor_approved: null,
+          sponsor_approved_at: null,
+          rejection_reason: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', referral.id);
+
+      if (error) throw error;
+
+      toast.success(t('adminReferralReset'));
+      loadData();
+    } catch (error) {
+      console.error('Error resetting referral:', error);
+      toast.error(t('adminReferralResetError'));
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -282,10 +405,23 @@ const AdminReferrals = () => {
     referral.referral_code?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Pending approval referrals (sponsor_approved is null or false with no rejection)
+  const pendingApprovalReferrals = referrals.filter(r => 
+    r.sponsor_approved === null || (r.sponsor_approved === false && !r.rejection_reason)
+  );
+
+  const filteredPendingApproval = pendingApprovalReferrals.filter(referral =>
+    referral.sponsor?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    referral.sponsor?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    referral.referred?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    referral.referred?.last_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // Pagination
   const paginatedLinks = filteredLinks.slice((linksPage - 1) * pageSize, linksPage * pageSize);
   const paginatedLinked = filteredLinked.slice((linkedPage - 1) * pageSize, linkedPage * pageSize);
   const paginatedReferrals = filteredReferrals.slice((referralsPage - 1) * pageSize, referralsPage * pageSize);
+  const paginatedPendingApproval = filteredPendingApproval.slice((pendingPage - 1) * pageSize, pendingPage * pageSize);
 
   if (loading) {
     return (
@@ -352,22 +488,31 @@ const AdminReferrals = () => {
             <p className="text-xs text-muted-foreground">{t('adminReferralsLinkedAccounts')}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={stats.pendingApproval > 0 ? "border-amber-500 bg-amber-500/5" : ""}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-yellow-500 border-yellow-500">{t('adminReferralsPending')}</Badge>
-              <span className="text-2xl font-bold">{stats.pendingReferrals}</span>
+              <Clock className="w-4 h-4 text-amber-500" />
+              <span className="text-2xl font-bold">{stats.pendingApproval}</span>
             </div>
-            <p className="text-xs text-muted-foreground">{t('adminReferralsTabReferrals')}</p>
+            <p className="text-xs text-muted-foreground">{t('adminReferralsPendingApproval')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-green-500 border-green-500">{t('adminReferralsConfirmed')}</Badge>
+              <CheckCircle className="w-4 h-4 text-green-500" />
               <span className="text-2xl font-bold">{stats.confirmedReferrals}</span>
             </div>
-            <p className="text-xs text-muted-foreground">{t('adminReferralsTabReferrals')}</p>
+            <p className="text-xs text-muted-foreground">{t('adminReferralsConfirmed')}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <XCircle className="w-4 h-4 text-red-500" />
+              <span className="text-2xl font-bold">{stats.rejectedReferrals}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{t('adminReferralsRejected')}</p>
           </CardContent>
         </Card>
       </div>
@@ -384,12 +529,131 @@ const AdminReferrals = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="links" className="space-y-4">
-        <TabsList>
+      <Tabs defaultValue="pending" className="space-y-4">
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="pending" className="gap-2">
+            {filteredPendingApproval.length > 0 && (
+              <span className="bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                {filteredPendingApproval.length}
+              </span>
+            )}
+            {t('adminReferralsTabPending')}
+          </TabsTrigger>
           <TabsTrigger value="links">{t('adminReferralsTabLinks')} ({filteredLinks.length})</TabsTrigger>
           <TabsTrigger value="linked">{t('adminReferralsTabLinked')} ({filteredLinked.length})</TabsTrigger>
           <TabsTrigger value="referrals">{t('adminReferralsTabReferrals')} ({filteredReferrals.length})</TabsTrigger>
         </TabsList>
+
+        {/* Pending Approval Tab */}
+        <TabsContent value="pending">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-500" />
+                {t('adminReferralsPendingApprovalTitle')}
+              </CardTitle>
+              <CardDescription>{t('adminReferralsPendingApprovalDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {filteredPendingApproval.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
+                  <p className="text-muted-foreground">{t('adminReferralsNoPending')}</p>
+                </div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('adminReferralsTableCandidate')}</TableHead>
+                        <TableHead>{t('adminReferralsTableSponsor')}</TableHead>
+                        <TableHead>{t('adminReferralsReferralsTableCodeUsed')}</TableHead>
+                        <TableHead>{t('adminReferralsTableStatus')}</TableHead>
+                        <TableHead>{t('adminReferralsReferralsTableDate')}</TableHead>
+                        <TableHead className="text-right">{t('adminReferralsTableActions')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedPendingApproval.map((referral) => (
+                        <TableRow key={referral.id} className="bg-amber-500/5">
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">
+                                {referral.referred ? `${referral.referred.first_name} ${referral.referred.last_name}` : '-'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">@{referral.referred?.username}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">
+                                {referral.sponsor ? `${referral.sponsor.first_name} ${referral.sponsor.last_name}` : '-'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">@{referral.sponsor?.username}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                              {referral.referral_code}
+                            </code>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className="bg-amber-500/20 text-amber-600">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {t('adminReferralAwaitingApproval')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs">{formatDate(referral.created_at)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => handleApproveReferral(referral)}
+                                disabled={processingId === referral.id}
+                              >
+                                {processingId === referral.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    {t('adminReferralApprove')}
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => openRejectDialog(referral)}
+                                disabled={processingId === referral.id}
+                              >
+                                <XCircle className="w-4 h-4 mr-1" />
+                                {t('adminReferralReject')}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {filteredPendingApproval.length > pageSize && (
+                    <AdminPagination
+                      currentPage={pendingPage}
+                      totalPages={Math.ceil(filteredPendingApproval.length / pageSize)}
+                      totalItems={filteredPendingApproval.length}
+                      pageSize={pageSize}
+                      onPageChange={setPendingPage}
+                      onPageSizeChange={() => {}}
+                      startIndex={(pendingPage - 1) * pageSize + 1}
+                      endIndex={Math.min(pendingPage * pageSize, filteredPendingApproval.length)}
+                    />
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Links Tab */}
         <TabsContent value="links">
@@ -555,8 +819,10 @@ const AdminReferrals = () => {
                     <TableHead>{t('adminReferralsReferralsTableSponsor')}</TableHead>
                     <TableHead>{t('adminReferralsReferralsTableReferred')}</TableHead>
                     <TableHead>{t('adminReferralsReferralsTableCodeUsed')}</TableHead>
+                    <TableHead>{t('adminReferralsTableApprovalStatus')}</TableHead>
                     <TableHead>{t('adminReferralsReferralsTableStatus')}</TableHead>
                     <TableHead>{t('adminReferralsReferralsTableDate')}</TableHead>
+                    <TableHead>{t('adminReferralsTableActions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -574,6 +840,24 @@ const AdminReferrals = () => {
                         </code>
                       </TableCell>
                       <TableCell>
+                        {referral.sponsor_approved === true ? (
+                          <Badge className="bg-green-500/20 text-green-600">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            {t('adminReferralApprovedStatus')}
+                          </Badge>
+                        ) : referral.sponsor_approved === false && referral.rejection_reason ? (
+                          <Badge className="bg-red-500/20 text-red-600">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            {t('adminReferralRejectedStatus')}
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-amber-500/20 text-amber-600">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {t('adminReferralAwaitingApproval')}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         {referral.status === 'confirmed' ? (
                           <Badge className="bg-green-500/20 text-green-500">{t('adminReferralsReferralsStatusConfirmed')}</Badge>
                         ) : referral.status === 'pending' ? (
@@ -583,6 +867,48 @@ const AdminReferrals = () => {
                         )}
                       </TableCell>
                       <TableCell className="text-xs">{formatDate(referral.created_at)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {referral.sponsor_approved !== true && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleApproveReferral(referral)}
+                              disabled={processingId === referral.id}
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              {processingId === referral.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4" />
+                              )}
+                            </Button>
+                          )}
+                          {referral.sponsor_approved !== false && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openRejectDialog(referral)}
+                              disabled={processingId === referral.id}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {referral.sponsor_approved === false && referral.rejection_reason && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleResetReferral(referral)}
+                              disabled={processingId === referral.id}
+                              className="text-amber-600 hover:text-amber-700"
+                              title={t('adminReferralResetTooltip')}
+                            >
+                              <Clock className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -603,6 +929,48 @@ const AdminReferrals = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Rejection Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('adminReferralRejectTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t('adminReferralRejectDescription')}
+              {referralToReject && (
+                <span className="font-medium text-foreground">
+                  {' '}{referralToReject.referred?.first_name} {referralToReject.referred?.last_name}
+                </span>
+              )}
+            </p>
+            <Textarea
+              placeholder={t('adminReferralRejectReasonPlaceholder')}
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRejectReferral}
+              disabled={processingId === referralToReject?.id}
+            >
+              {processingId === referralToReject?.id ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <XCircle className="w-4 h-4 mr-2" />
+              )}
+              {t('adminReferralConfirmReject')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     </AdminLayout>
   );
