@@ -1574,8 +1574,29 @@ export const ru: Record<string, string> = {
    marketplaceOwnerInfo: "Владелец",
    marketplaceAccountNumber: "№ счёта",
    marketplaceUpdateStatus: "Обновить статус",
-   marketplaceArticles: "недвижимость",
+   marketplaceArticles: "товар",
    marketplaceArticlesPlural: "товаров",
+   marketplaceItems: "Товары",
+   marketplacePayments: "Платежи",
+   paymentStatus: "Статус платежа",
+   paymentAllStatuses: "Все статусы",
+   paymentStatusCompleted: "Завершён",
+   paymentStatusPending: "Ожидает",
+   paymentStatusFailed: "Неудачный",
+   paymentStatusRefunded: "Возврат",
+   paymentStatusActive: "Активный",
+   paymentStatusSold: "Продано",
+   paymentStatusExpired: "Истёк",
+   paymentStatusCancelled: "Отменён",
+   paymentItem: "Товар",
+   paymentAmount: "Сумма",
+   paymentBuyer: "Покупатель",
+   paymentSeller: "Продавец",
+   paymentDate: "Дата",
+   paymentCompletedAt: "Дата платежа",
+   noPaymentsFound: "Платежи не найдены",
+   unknownUser: "Неизвестный пользователь",
+   unknownItem: "Неизвестный товар",
 
    // Additional Settings
    biometricAuthSettings: "Биометрическая аутентификация",
@@ -1680,6 +1701,7 @@ export const ru: Record<string, string> = {
    processing: "Обработка...",
    pay: "Оплатить",
    paymentError: "Ошибка платежа",
+   redirectingToPayment: "Вы будете перенаправлены на защищённую страницу оплаты Stripe",
    stripeNotConfigured: "Stripe не настроен. Пожалуйста, свяжитесь с администратором.",
  
    // Messaging
@@ -2043,6 +2065,8 @@ export const ru: Record<string, string> = {
    imageUploadError: "Ошибка при загрузке изображения",
    imagePreview: "Предпросмотр",
    clickToUploadImage: "Нажмите, чтобы загрузить изображение",
+   attachDocument: "Прикрепленный документ",
+   clickToUploadDocument: "Нажмите, чтобы прикрепить документ (PDF, Word...)",
    pleaseSelectAnImage: "Пожалуйста, выберите изображение",
    maxFileSize: "Максимальный размер: 5MB",
    imageEditor: "Изображение",
@@ -2634,14 +2658,6 @@ export const ru: Record<string, string> = {
    deleteThisMember: "Удалить этого члена?",
    memberDeleted: "Член удален",
 
-   // Family Commitments Dialog
-   addCommitment: "Добавить обязательство",
-   commitmentAdded: "Обязательство добавлено",
-   deleteThisCommitment: "Удалить это обязательство?",
-   commitmentDeleted: "Обязательство удалено",
-   pleaseIndicateTitleFirst: "Пожалуйста, сначала укажите название",
-   philanthropyEducationEnvironment: "Филантропия, Образование, Окружающая среда...",
-   startYear: "Год начала",
 
   // Business Images
   businessMainImage: "Основное бизнес-изображение",
@@ -2714,5 +2730,31 @@ export const ru: Record<string, string> = {
   approve: "Одобрить",
   reject: "Отклонить",
   businessImageFormatNotAllowed: "Формат изображения не разрешен. Используйте PNG, JPEG или JPG.",
+  
+  // Family Commitments Dialog
+  addCommitment: "Добавить обязательство",
+  editCommitment: "Редактировать обязательство",
+  commitmentAdded: "Обязательство добавлено",
+  deleteThisCommitment: "Удалить это обязательство?",
+  commitmentDeleted: "Обязательство удалено",
+  pleaseIndicateTitleFirst: "Сначала укажите название",
+  philanthropyEducationEnvironment: "Благотворительность, Образование, Окружающая среда...",
+  commitmentTitleLabel: "Название / Имя обязательства",
+  commitmentTitlePlaceholder: "Семейный фонд, Меценатство...",
+  commitmentDescriptionPlaceholder: "Цели, действия, влияние...",
+  organizationPlaceholder: "Фонд, НКО...",
+  selectCategoryCommitment: "Выбрать...",
+  changeImage: "Изменить изображение",
+  addImageCommitment: "Добавить изображение",
+  startYear: "Год начала",
+  
+  // Commitment Categories
+  categoryPhilanthropy: "Благотворительность",
+  categoryEducation: "Образование",
+  categoryHealth: "Здоровье",
+  categoryEnvironment: "Окружающая среда",
+  categoryCultureArts: "Культура и искусство",
+  categorySocial: "Социальное",
+  categorySport: "Спорт",
+  categoryOther: "Другое",
 }
-

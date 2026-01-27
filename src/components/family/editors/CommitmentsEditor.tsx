@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Loader2, Upload, Image, Sparkles, FileUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Upload, Image, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Commitment {
   id?: string;
@@ -24,19 +25,20 @@ interface CommitmentsEditorProps {
   onUpdate: () => void;
 }
 
-const CATEGORIES = [
-  "Philanthropie",
-  "Éducation",
-  "Santé",
-  "Environnement",
-  "Culture & Arts",
-  "Social",
-  "Sport",
-  "Autre"
+const CATEGORY_KEYS = [
+  "categoryPhilanthropy",
+  "categoryEducation",
+  "categoryHealth",
+  "categoryEnvironment",
+  "categoryCultureArts",
+  "categorySocial",
+  "categorySport",
+  "categoryOther"
 ];
 
 export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorProps) => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [editingCommitment, setEditingCommitment] = useState<Commitment | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,17 +67,16 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${user.id}/commitments/${Date.now()}.${fileExt}`;
       
-      // Ensure proper MIME type
       const mimeTypes: Record<string, string> = {
         'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
         'gif': 'image/gif', 'webp': 'image/webp'
       };
       const contentType = mimeTypes[fileExt] || 'image/jpeg';
-      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
+      const typedBlob = new Blob([file], { type: contentType });
 
       const { error: uploadError } = await supabase.storage
         .from('personal-content')
-        .upload(fileName, properFile, { upsert: true, contentType });
+        .upload(fileName, typedBlob, { upsert: true, contentType });
 
       if (uploadError) throw uploadError;
 
@@ -84,10 +85,10 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
         .getPublicUrl(fileName);
 
       setFormData({ ...formData, image_url: publicUrl + '?t=' + Date.now() });
-      toast({ title: "Image téléchargée" });
+      toast({ title: t('imageUploaded') || "Image téléchargée" });
     } catch (error) {
       console.error(error);
-      toast({ title: "Erreur lors du téléchargement", variant: "destructive" });
+      toast({ title: t('uploadError') || "Erreur lors du téléchargement", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -121,7 +122,7 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
 
   const handleSave = async () => {
     if (!formData.title) {
-      toast({ title: "Veuillez indiquer un titre", variant: "destructive" });
+      toast({ title: t('titleRequired') || "Veuillez indiquer un titre", variant: "destructive" });
       return;
     }
 
@@ -157,32 +158,32 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
           });
       }
 
-      toast({ title: editingCommitment ? "Modifié avec succès" : "Ajouté avec succès" });
+      toast({ title: editingCommitment ? t('modifiedSuccess') : t('addedSuccess') });
       setIsOpen(false);
       onUpdate();
     } catch (error) {
       console.error(error);
-      toast({ title: "Erreur", variant: "destructive" });
+      toast({ title: t('error'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Supprimer cet engagement ?")) return;
+    if (!confirm(t('deleteConfirmation') || "Supprimer cet engagement ?")) return;
     
     try {
       await supabase.from('family_commitments').delete().eq('id', id);
-      toast({ title: "Supprimé" });
+      toast({ title: t('deleted') });
       onUpdate();
     } catch (error) {
-      toast({ title: "Erreur", variant: "destructive" });
+      toast({ title: t('error'), variant: "destructive" });
     }
   };
 
   const handleAISuggest = async () => {
     if (!formData.title) {
-      toast({ title: "Veuillez d'abord indiquer le titre", variant: "destructive" });
+      toast({ title: t('titleRequiredForAI') || "Veuillez d'abord indiquer le titre", variant: "destructive" });
       return;
     }
     setIsGenerating(true);
@@ -200,11 +201,11 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
       if (error) throw error;
       if (data?.suggestion) {
         setFormData({ ...formData, description: data.suggestion });
-        toast({ title: "Suggestion générée" });
+        toast({ title: t('suggestionGenerated') || "Suggestion générée" });
       }
     } catch (error) {
       console.error(error);
-      toast({ title: "Erreur lors de la génération", variant: "destructive" });
+      toast({ title: t('generationError') || "Erreur lors de la génération", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
@@ -213,10 +214,10 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h4 className="text-sm font-medium text-muted-foreground">Engagements familiaux</h4>
+        <h4 className="text-sm font-medium text-muted-foreground">{t('familyCommitments')}</h4>
         <Button size="sm" onClick={openNewDialog} className="bg-gold text-black hover:bg-gold/90">
           <Plus className="w-4 h-4 sm:mr-1" />
-          <span className="hidden sm:inline">Ajouter</span>
+          <span className="hidden sm:inline">{t('add')}</span>
         </Button>
       </div>
 
@@ -242,24 +243,38 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
       )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
-          <DialogHeader>
-            <DialogTitle>{editingCommitment ? "Modifier" : "Ajouter"} un engagement</DialogTitle>
+        <DialogContent className="w-[95vw] max-w-md mx-auto max-h-[85vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-gold text-base sm:text-lg">
+              {editingCommitment ? t('editCommitment') : t('addCommitment')}
+            </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
-            {/* Image upload */}
-            <div className="flex flex-col items-center gap-3">
-              <div 
-                className="w-32 h-20 rounded-lg bg-muted flex items-center justify-center overflow-hidden cursor-pointer border-2 border-dashed border-border hover:border-gold transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {formData.image_url ? (
+          <div className="space-y-3 sm:space-y-4">
+            {/* Image upload - simplified & responsive */}
+            <div 
+              className="relative w-full h-32 sm:h-40 rounded-lg bg-muted/50 flex items-center justify-center overflow-hidden cursor-pointer border-2 border-dashed border-border hover:border-gold/60 transition-colors group"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {formData.image_url ? (
+                <>
                   <img src={formData.image_url} alt="Image" className="w-full h-full object-cover" />
-                ) : (
-                  <Image className="w-8 h-8 text-muted-foreground" />
-                )}
-              </div>
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-white" />
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  {isUploading ? (
+                    <Loader2 className="w-8 h-8 animate-spin text-gold" />
+                  ) : (
+                    <>
+                      <Image className="w-8 h-8" />
+                      <span className="text-xs">{t('addImageCommitment')}</span>
+                    </>
+                  )}
+                </div>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -267,112 +282,93 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
                 onChange={handleImageUpload}
                 className="hidden"
               />
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-              >
-                {isUploading ? <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" /> : <Upload className="w-4 h-4 sm:mr-2" />}
-                <span className="hidden sm:inline">{formData.image_url ? "Changer l'image" : "Ajouter une image"}</span>
-              </Button>
             </div>
 
             <div>
-              <Label>Titre / Nom de l'engagement *</Label>
+              <Label className="text-sm">{t('commitmentTitleLabel')} *</Label>
               <Input 
                 value={formData.title} 
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                placeholder="Fondation familiale, Mécénat..."
+                placeholder={t('commitmentTitlePlaceholder')}
+                className="mt-1"
               />
             </div>
             
             <div>
-              <Label>Catégorie</Label>
+              <Label className="text-sm">{t('category')}</Label>
               <Select value={formData.category} onValueChange={(v) => setFormData({...formData, category: v})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner..." />
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder={t('selectCategory')} />
                 </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                <SelectContent className="bg-[#1a1a1a] border-gold/30">
+                  {CATEGORY_KEYS.map((key) => (
+                    <SelectItem key={key} value={t(key)}>{t(key)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label>Organisation</Label>
+                <Label className="text-sm">{t('organization')}</Label>
                 <Input 
                   value={formData.organization} 
                   onChange={(e) => setFormData({...formData, organization: e.target.value})}
-                  placeholder="Fondation, ONG..."
+                  placeholder={t('organizationPlaceholder')}
+                  className="mt-1"
                 />
               </div>
               <div>
-                <Label>Depuis</Label>
+                <Label className="text-sm">{t('since')}</Label>
                 <Input 
                   value={formData.start_year} 
                   onChange={(e) => setFormData({...formData, start_year: e.target.value})}
                   placeholder="2015"
+                  className="mt-1"
                 />
               </div>
             </div>
             
             <div>
               <div className="flex items-center justify-between mb-1">
-                <Label>Description</Label>
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => document.getElementById('import-doc-commitments')?.click()}
-                    className="text-muted-foreground hover:text-foreground h-6 px-2"
-                  >
-                    <FileUp className="w-3 h-3 mr-1" />
-                    Importer
-                  </Button>
-                  <input
-                    id="import-doc-commitments"
-                    type="file"
-                    accept=".pdf,.doc,.docx,.txt"
-                    className="hidden"
-                    onChange={() => toast({ title: "Document importé - Analyse en cours..." })}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleAISuggest}
-                    disabled={isGenerating || !formData.title}
-                    className="text-gold hover:text-gold/80 h-6 px-2"
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-3 h-3 mr-1" />
-                    )}
-                    IA
-                  </Button>
-                </div>
+                <Label className="text-sm">{t('description')}</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleAISuggest}
+                  disabled={isGenerating || !formData.title}
+                  className="text-gold hover:text-gold/80 h-6 px-2 text-xs"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3 h-3 mr-1" />
+                  )}
+                  {t('ai')}
+                </Button>
               </div>
               <Textarea 
                 value={formData.description} 
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="Objectifs, actions, impact..."
-                rows={4}
+                placeholder={t('commitmentDescriptionPlaceholder')}
+                rows={3}
+                className="resize-none"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOpen(false)}>Annuler</Button>
-            <Button onClick={handleSave} disabled={isLoading || isUploading} className="bg-gold text-black hover:bg-gold/90">
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-3">
+            <Button variant="outline" onClick={() => setIsOpen(false)} className="w-full sm:w-auto">
+              {t('cancel')}
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              disabled={isLoading || isUploading} 
+              className="bg-gold text-black hover:bg-gold/90 w-full sm:w-auto"
+            >
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Valider
+              {t('validate')}
             </Button>
           </DialogFooter>
         </DialogContent>

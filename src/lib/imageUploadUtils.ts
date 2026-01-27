@@ -99,16 +99,18 @@ export const uploadToStorage = async ({
   cacheControl = '3600',
 }: UploadOptions): Promise<UploadResult> => {
   try {
-    // Ensure we have a proper File object with correct MIME type
+    // Ensure we have the correct MIME type
     const fileName = file instanceof File ? file.name : path.split('/').pop() || 'file';
-    const properFile = ensureFileWithMimeType(file, fileName);
-    const contentType = properFile.type;
+    const contentType = getMimeType(fileName);
+    
+    // Create a properly typed Blob to ensure content-type is set correctly
+    const typedBlob = new Blob([file], { type: contentType });
 
-    console.log('[Upload] Uploading to', bucket, path, 'type:', contentType);
+    console.log('[Upload] Uploading to', bucket, path, 'type:', contentType, 'size:', typedBlob.size);
 
     const { data, error } = await supabase.storage
       .from(bucket)
-      .upload(path, properFile, {
+      .upload(path, typedBlob, {
         upsert,
         contentType,
         cacheControl,

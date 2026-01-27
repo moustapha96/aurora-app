@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import { PageHeaderBackButton } from "@/components/BackButton";
 import { LinkedAccountGuard } from "@/components/LinkedAccountGuard";
 import { MarketplaceItemCard, MarketplaceItemForm } from "@/components/marketplace";
 import { useMarketplace, MARKETPLACE_CATEGORIES } from "@/hooks/useMarketplace";
+import { toast } from "sonner";
 import { 
   Watch, Palette, Plane, Gem, Home, Wine, Package, Crown, 
   Plus, Loader2, ShoppingBag, Store
@@ -16,6 +18,7 @@ import {
 
 const MarketplaceContent = () => {
   const { t } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { 
     items, 
     myItems, 
@@ -33,6 +36,18 @@ const MarketplaceContent = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+
+  // Handle payment success redirect (e.g., from 3D Secure)
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    if (paymentStatus === 'success') {
+      toast.success(t('paymentSuccess'));
+      // Remove the query parameter from URL
+      setSearchParams({}, { replace: true });
+      // Refresh items to show updated status
+      fetchItems(selectedCategory === 'all' ? undefined : selectedCategory);
+    }
+  }, [searchParams, setSearchParams, t, fetchItems, selectedCategory]);
 
   const categoryIcons: Record<string, any> = {
     'immobilier': Home,

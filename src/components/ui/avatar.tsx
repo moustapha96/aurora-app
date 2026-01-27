@@ -15,12 +15,37 @@ const Avatar = React.forwardRef<
 ));
 Avatar.displayName = AvatarPrimitive.Root.displayName;
 
+interface AvatarImageProps extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image> {
+  /** Add cache-buster to URL automatically */
+  withCacheBuster?: boolean;
+}
+
 const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image ref={ref} className={cn("aspect-square h-full w-full", className)} {...props} />
-));
+  AvatarImageProps
+>(({ className, src, withCacheBuster = true, ...props }, ref) => {
+  // Process the src to add cache-buster if needed
+  const processedSrc = React.useMemo(() => {
+    if (!src) return undefined;
+    // Skip base64 images
+    if (src.startsWith('data:')) return src;
+    // Skip if already has cache-buster and withCacheBuster is true
+    if (withCacheBuster && !src.includes('?t=') && !src.includes('&t=')) {
+      const separator = src.includes('?') ? '&' : '?';
+      return `${src}${separator}t=${Date.now()}`;
+    }
+    return src;
+  }, [src, withCacheBuster]);
+
+  return (
+    <AvatarPrimitive.Image 
+      ref={ref} 
+      className={cn("aspect-square h-full w-full object-cover", className)} 
+      src={processedSrc}
+      {...props} 
+    />
+  );
+});
 AvatarImage.displayName = AvatarPrimitive.Image.displayName;
 
 const AvatarFallback = React.forwardRef<

@@ -86,7 +86,16 @@ export const MarketplaceItemCard = ({
                 src={allImages[0]}
                 alt={item.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  target.style.display = 'none';
+                  const fallback = target.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
               />
+              <div className="hidden w-full h-full items-center justify-center absolute inset-0 bg-muted">
+                <Package className="w-12 h-12 text-muted-foreground/30" />
+              </div>
               {allImages.length > 1 && (
                 <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
                   +{allImages.length - 1}
@@ -151,6 +160,10 @@ export const MarketplaceItemCard = ({
                     src={allImages[currentImageIndex]}
                     alt={`${item.title} - ${currentImageIndex + 1}`}
                     className="w-full h-full object-contain"
+                    onError={(e) => {
+                      console.error('[Marketplace] Image load error:', allImages[currentImageIndex]);
+                      e.currentTarget.src = '/placeholder.svg';
+                    }}
                   />
                 </div>
                 

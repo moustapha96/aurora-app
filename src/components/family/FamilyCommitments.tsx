@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { uploadImage } from "@/lib/imageUploadUtils";
 
 interface Commitment {
   id?: string;
@@ -89,39 +90,13 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
       };
       reader.readAsDataURL(file);
 
-      // Upload vers Supabase Storage
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `commitments/${user.id}/${Date.now()}.${fileExt}`;
-      
-      // Get correct MIME type
-      const mimeTypes: Record<string, string> = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp'
-      };
-      const contentType = mimeTypes[fileExt] || 'image/jpeg';
-      
-      // Create proper File object with correct MIME type
-      const properFile = new File([file], file.name, { 
-        type: contentType, 
-        lastModified: Date.now() 
-      });
+      // Upload (standardisé) - le chemin DOIT commencer par user.id pour la policy de stockage
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const storagePath = `${user.id}/commitments/${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('personal-content')
-        .upload(fileName, properFile, { upsert: true, contentType });
+      const imageUrl = await uploadImage("personal-content", storagePath, file);
+      if (!imageUrl) throw new Error(t("imageUploadError") || "Erreur lors du téléchargement de l'image");
 
-      if (uploadError) throw uploadError;
-
-      // Obtenir l'URL publique
-      const { data: { publicUrl } } = supabase.storage
-        .from('personal-content')
-        .getPublicUrl(fileName);
-
-      // Ajouter un cache-buster pour forcer le rafraîchissement
-      const imageUrl = `${publicUrl}?t=${Date.now()}`;
       setFormData({ ...formData, image_url: imageUrl });
 
       toast.success(t("imageUploaded") || "Image téléchargée avec succès");
@@ -751,6 +726,26 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
                   <p className="text-xs text-muted-foreground">
                     {t("maxFileSize") || "Taille max: 5MB"}
                   </p>
+                </div>
+              )}
+
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
+              />
+
+              {uploadingImage && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{t("uploading") || "Téléchargement..."}</span>
+                </div>
+              )}
+            </div>
+
             {/* Document Upload */}
             <div className="space-y-1.5 sm:space-y-2">
               <Label className="text-xs sm:text-sm font-medium">{t("attachDocument") || "Document joint"}</Label>
@@ -791,25 +786,6 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
               />
 
               {uploadingDocument && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{t("uploading") || "Téléchargement..."}</span>
-                </div>
-              )}
-            </div>
-          </div>
-              )}
-
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-                disabled={uploadingImage}
-              />
-
-              {uploadingImage && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>{t("uploading") || "Téléchargement..."}</span>

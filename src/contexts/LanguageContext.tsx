@@ -1,13 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import { translations } from '@/locales'
-import type { Language } from '@/types/language'
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { translations } from '@/locales';
+import type { Language } from '@/types/language';
 
-export type { Language }
+export type { Language };
 
 interface LanguageContextType {
-  language: Language
-  setLanguage: (lang: Language) => void
-  t: (key: string) => string
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: string) => string;
 }
 
 export const languages = [
@@ -21,49 +21,77 @@ export const languages = [
   { code: 'zh' as Language, name: '中文', flag: '🇨🇳' },
   { code: 'ja' as Language, name: '日本語', flag: '🇯🇵' },
   { code: 'ru' as Language, name: 'Русский', flag: '🇷🇺' },
-]
+];
 
-// Contexte avec valeurs par défaut pour éviter tout fallback/bruit console
-const defaultLanguage: Language = 'fr'
+const defaultLanguage: Language = 'fr';
+
+const getTranslation = (key: string, lang: Language): string => {
+  return translations[lang]?.[key] || translations[defaultLanguage]?.[key] || translations['en']?.[key] || key;
+};
 
 const defaultLanguageContext: LanguageContextType = {
   language: defaultLanguage,
   setLanguage: () => {},
-  t: (key: string) => translations[defaultLanguage]?.[key] || translations['en']?.[key] || key
+  t: (key: string) => getTranslation(key, defaultLanguage),
+};
+
+const LanguageContext = createContext<LanguageContextType>(defaultLanguageContext);
+
+const getInitialLanguage = (): Language => {
+  if (typeof window === 'undefined') return defaultLanguage;
+  
+  try {
+    const saved = localStorage.getItem('aurora-language') as Language;
+    if (saved && translations[saved]) return saved;
+    
+    const browserLang = navigator.language.split('-')[0] as Language;
+    if (translations[browserLang]) return browserLang;
+  } catch (e) {
+    // localStorage might not be available
+  }
+  
+  return defaultLanguage;
+};
+
+interface LanguageProviderProps {
+  children: ReactNode;
 }
 
-const LanguageContext = createContext<LanguageContextType>(defaultLanguageContext)
-
-export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('aurora-language') as Language
-      if (saved && translations[saved]) return saved
-      const browserLang = navigator.language.split('-')[0] as Language
-      if (translations[browserLang]) return browserLang
-    }
-    return defaultLanguage
-  })
+export function LanguageProvider({ children }: LanguageProviderProps) {
+  const [language, setLanguageState] = useState<Language>(getInitialLanguage);
 
   useEffect(() => {
-    localStorage.setItem('aurora-language', language)
-  }, [language])
+    try {
+      localStorage.setItem('aurora-language', language);
+    } catch (e) {
+      // localStorage might not be available
+    }
+  }, [language]);
 
   const setLanguage = (lang: Language) => {
-    setLanguageState(lang)
-  }
+    if (translations[lang]) {
+      setLanguageState(lang);
+    }
+  };
 
   const t = (key: string): string => {
-    return translations[language]?.[key] || translations[defaultLanguage]?.[key] || translations['en']?.[key] || key
-  }
+    return getTranslation(key, language);
+  };
+
+  const value: LanguageContextType = {
+    language,
+    setLanguage,
+    t,
+  };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
-  )
+  );
 }
 
-export const useLanguage = () => {
-  return useContext(LanguageContext)
+export function useLanguage(): LanguageContextType {
+  const context = useContext(LanguageContext);
+  return context;
 }

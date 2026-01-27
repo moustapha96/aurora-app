@@ -1579,6 +1579,27 @@ export const zh: Record<string, string> = {
   marketplaceUpdateStatus: "更新状态",
   marketplaceArticles: "物品",
   marketplaceArticlesPlural: "物品",
+  marketplaceItems: "物品",
+  marketplacePayments: "付款",
+  paymentStatus: "付款状态",
+  paymentAllStatuses: "所有状态",
+  paymentStatusCompleted: "已完成",
+  paymentStatusPending: "待处理",
+  paymentStatusFailed: "失败",
+  paymentStatusRefunded: "已退款",
+  paymentStatusActive: "活跃",
+  paymentStatusSold: "已售",
+  paymentStatusExpired: "已过期",
+  paymentStatusCancelled: "已取消",
+  paymentItem: "物品",
+  paymentAmount: "金额",
+  paymentBuyer: "买家",
+  paymentSeller: "卖家",
+  paymentDate: "日期",
+  paymentCompletedAt: "付款日期",
+  noPaymentsFound: "未找到付款记录",
+  unknownUser: "未知用户",
+  unknownItem: "未知物品",
 
 
   // Connections page
@@ -1673,6 +1694,7 @@ export const zh: Record<string, string> = {
   processing: "处理中...",
   pay: "支付",
   paymentError: "支付错误",
+  redirectingToPayment: "您将被重定向到 Stripe 安全支付页面",
   stripeNotConfigured: "Stripe 未配置。请联系管理员。",
 
   // Messaging
@@ -2035,6 +2057,8 @@ export const zh: Record<string, string> = {
   imageUploadError: "上传图片时出错",
   imagePreview: "预览",
   clickToUploadImage: "点击上传图片",
+  attachDocument: "附加文档",
+  clickToUploadDocument: "点击附加文档 (PDF, Word...)",
   pleaseSelectAnImage: "请选择一张图片",
   maxFileSize: "最大大小: 5MB",
   imageEditor: "图片",
@@ -2636,14 +2660,6 @@ export const zh: Record<string, string> = {
   deleteThisMember: "删除此成员？",
   memberDeleted: "成员已删除",
 
-  // Family Commitments Dialog
-  addCommitment: "添加承诺",
-  commitmentAdded: "承诺已添加",
-  deleteThisCommitment: "删除此承诺？",
-  commitmentDeleted: "承诺已删除",
-  pleaseIndicateTitleFirst: "请先输入标题",
-  philanthropyEducationEnvironment: "慈善、教育、环境...",
-  startYear: "开始年份",
 
   // Business Images
   businessMainImage: "主要商业图片",
@@ -2716,4 +2732,31 @@ export const zh: Record<string, string> = {
   approve: "批准",
   reject: "拒绝",
   businessImageFormatNotAllowed: "不允许的图片格式。请使用 PNG、JPEG 或 JPG。",
+  
+  // Family Commitments Dialog
+  addCommitment: "添加承诺",
+  editCommitment: "编辑承诺",
+  commitmentAdded: "承诺已添加",
+  deleteThisCommitment: "删除此承诺？",
+  commitmentDeleted: "承诺已删除",
+  pleaseIndicateTitleFirst: "请先输入标题",
+  philanthropyEducationEnvironment: "慈善、教育、环境...",
+  commitmentTitleLabel: "标题 / 承诺名称",
+  commitmentTitlePlaceholder: "家族基金会、赞助...",
+  commitmentDescriptionPlaceholder: "目标、行动、影响...",
+  organizationPlaceholder: "基金会、非政府组织...",
+  selectCategoryCommitment: "选择...",
+  changeImage: "更换图片",
+  addImageCommitment: "添加图片",
+  startYear: "开始年份",
+  
+  // Commitment Categories
+  categoryPhilanthropy: "慈善",
+  categoryEducation: "教育",
+  categoryHealth: "健康",
+  categoryEnvironment: "环境",
+  categoryCultureArts: "文化与艺术",
+  categorySocial: "社会",
+  categorySport: "体育",
+  categoryOther: "其他",
 }

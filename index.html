@@ -101,6 +101,38 @@
             definePolyfill(window, 'documentPictureInPicture', polyfill);
           }
           
+          // Définir aussi sur window.self pour les contextes de workers/iframes
+          if (typeof window !== 'undefined' && typeof window.self !== 'undefined' && window.self !== window) {
+            definePolyfill(window.self, 'documentPictureInPicture', polyfill);
+          }
+          
+          // Définir aussi sur globalThis pour une accessibilité maximale
+          // IMPORTANT: Définir directement la valeur, pas un getter, pour éviter la récursion
+          if (typeof globalThis !== 'undefined') {
+            try {
+              // Vérifier si globalThis a déjà une valeur définie (pas un getter)
+              var existing = globalThis.documentPictureInPicture;
+              if (existing && typeof existing === 'object' && typeof existing.requestWindow === 'function') {
+                // Déjà défini correctement, ne pas le redéfinir
+              } else {
+                // Définir directement la valeur
+                Object.defineProperty(globalThis, 'documentPictureInPicture', {
+                  value: polyfill,
+                  writable: true,
+                  configurable: true,
+                  enumerable: false
+                });
+              }
+            } catch (e) {
+              // Fallback si defineProperty échoue
+              try {
+                globalThis.documentPictureInPicture = polyfill;
+              } catch (e2) {
+                // Ignorer si cela échoue
+              }
+            }
+          }
+          
           // Définir aussi sur document
           if (typeof document !== 'undefined') {
             var docPolyfill = (typeof window !== 'undefined' && window.documentPictureInPicture) || polyfill;
@@ -108,19 +140,28 @@
           }
           
           // S'assurer que l'API est disponible globalement même si elle est accédée de manière asynchrone
+          // IMPORTANT: Définir directement la valeur, pas un getter, pour éviter la récursion
           if (typeof window !== 'undefined' && typeof window.self !== 'undefined') {
             try {
-              if (!('documentPictureInPicture' in window.self)) {
+              var existingSelf = window.self.documentPictureInPicture;
+              if (existingSelf && typeof existingSelf === 'object' && typeof existingSelf.requestWindow === 'function') {
+                // Déjà défini correctement, ne pas le redéfinir
+              } else {
+                // Définir directement la valeur
                 Object.defineProperty(window.self, 'documentPictureInPicture', {
-                  get: function() {
-                    return (typeof window !== 'undefined' && window.documentPictureInPicture) || polyfill;
-                  },
+                  value: polyfill,
+                  writable: true,
                   configurable: true,
                   enumerable: false
                 });
               }
             } catch (e) {
-              // Ignorer si cela échoue
+              // Fallback si defineProperty échoue
+              try {
+                window.self.documentPictureInPicture = polyfill;
+              } catch (e2) {
+                // Ignorer si cela échoue
+              }
             }
           }
         }

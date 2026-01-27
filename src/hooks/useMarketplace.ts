@@ -129,8 +129,24 @@ export const useMarketplace = () => {
       return false;
     }
 
+    console.log('[Marketplace] Creating item with data:', {
+      title: formData.title,
+      category: formData.category,
+      main_image_url: formData.main_image_url,
+      additional_images: formData.additional_images,
+      price: formData.price
+    });
+
     try {
-      const { error } = await supabase
+      // Clean image URLs (remove cache busters for storage)
+      const cleanMainImageUrl = formData.main_image_url 
+        ? formData.main_image_url.split('?')[0] 
+        : null;
+      const cleanAdditionalImages = formData.additional_images.map(url => url.split('?')[0]);
+
+      console.log('[Marketplace] Cleaned URLs:', { cleanMainImageUrl, cleanAdditionalImages });
+
+      const { data, error } = await supabase
         .from('marketplace_items')
         .insert({
           user_id: currentUserId,
@@ -139,12 +155,19 @@ export const useMarketplace = () => {
           category: formData.category,
           price: formData.price,
           currency: formData.currency,
-          main_image_url: formData.main_image_url,
-          additional_images: formData.additional_images,
+          main_image_url: cleanMainImageUrl,
+          additional_images: cleanAdditionalImages,
           offer_end_date: formData.offer_end_date
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Marketplace] Insert error:', error);
+        throw error;
+      }
+
+      console.log('[Marketplace] Item created successfully:', data);
 
       toast({
         title: "Succès",
@@ -155,10 +178,10 @@ export const useMarketplace = () => {
       await fetchMyItems();
       return true;
     } catch (error: any) {
-      console.error('Error creating item:', error);
+      console.error('[Marketplace] Error creating item:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de créer l'article",
+        description: error.message || "Impossible de créer l'article",
         variant: "destructive"
       });
       return false;
@@ -174,6 +197,8 @@ export const useMarketplace = () => {
       });
       return false;
     }
+
+    console.log('[Marketplace] Updating item:', id, formData);
 
     try {
       // First, verify that the item belongs to the current user
@@ -194,12 +219,27 @@ export const useMarketplace = () => {
         return false;
       }
 
+      // Clean image URLs (remove cache busters for storage)
+      const updateData: Record<string, any> = {
+        ...formData,
+        updated_at: new Date().toISOString()
+      };
+      
+      if (formData.main_image_url !== undefined) {
+        updateData.main_image_url = formData.main_image_url 
+          ? formData.main_image_url.split('?')[0] 
+          : null;
+      }
+      
+      if (formData.additional_images !== undefined) {
+        updateData.additional_images = formData.additional_images.map(url => url.split('?')[0]);
+      }
+
+      console.log('[Marketplace] Update data:', updateData);
+
       const { error } = await supabase
         .from('marketplace_items')
-        .update({
-          ...formData,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', id)
         .eq('user_id', currentUserId); // Additional security check
 
@@ -214,10 +254,10 @@ export const useMarketplace = () => {
       await fetchMyItems();
       return true;
     } catch (error: any) {
-      console.error('Error updating item:', error);
+      console.error('[Marketplace] Error updating item:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour l'article",
+        description: error.message || "Impossible de mettre à jour l'article",
         variant: "destructive"
       });
       return false;
@@ -337,6 +377,16 @@ export const useMarketplace = () => {
   };
 
   const uploadImage = async (file: File): Promise<string | null> => {
+    if (!currentUserId) {
+      console.error('[Marketplace] No user ID for upload');
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté pour uploader une image",
+        variant: "destructive"
+      });
+      return null;
+    }
+
     try {
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
@@ -348,32 +398,45 @@ export const useMarketplace = () => {
         'jpeg': 'image/jpeg',
         'png': 'image/png',
         'gif': 'image/gif',
-        'webp': 'image/webp'
+        'webp': 'image/webp',
+        'heic': 'image/heic',
+        'heif': 'image/heif'
       };
       const contentType = mimeTypes[fileExt] || 'image/jpeg';
       
-      // Create proper File object with correct MIME type
-      const properFile = new File([file], file.name, { 
-        type: contentType, 
-        lastModified: Date.now() 
-      });
+      console.log('[Marketplace] Uploading image:', { filePath, contentType, size: file.size });
+      
+      // Create a properly typed Blob to ensure content-type is set correctly
+      const typedBlob = new Blob([file], { type: contentType });
 
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('marketplace-images')
-        .upload(filePath, properFile, { contentType });
+        .upload(filePath, typedBlob, { 
+          contentType,
+          upsert: true
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('[Marketplace] Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      console.log('[Marketplace] Upload success:', uploadData);
 
       const { data } = supabase.storage
         .from('marketplace-images')
         .getPublicUrl(filePath);
 
-      return data.publicUrl;
+      // Add cache buster for immediate visibility
+      const publicUrl = data.publicUrl + '?t=' + Date.now();
+      console.log('[Marketplace] Public URL:', publicUrl);
+
+      return publicUrl;
     } catch (error: any) {
-      console.error('Error uploading image:', error);
+      console.error('[Marketplace] Error uploading image:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'uploader l'image",
+        description: error.message || "Impossible d'uploader l'image",
         variant: "destructive"
       });
       return null;

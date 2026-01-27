@@ -19,26 +19,29 @@ export const uploadAvatar = async (
     const pngBlob = await convertToPngBlob(imageSource);
     console.log('[Avatar] Converted to PNG, size:', pngBlob.size, 'type:', pngBlob.type);
 
-    // IMPORTANT: upload a File (not a raw Blob) to ensure the storage service
-    // persists the correct mime-type metadata (otherwise it can end up as application/json).
-    const pngFile = new File([pngBlob], 'avatar.png', { type: 'image/png' });
-    
     // Fixed path for consistency
     const filePath = `${userId}/avatar.png`;
 
-    // First, try to delete existing file to avoid conflicts
-    await supabase.storage
-      .from('avatars')
-      .remove([filePath]);
+    // First, delete existing file to ensure clean upload
+    try {
+      await supabase.storage.from('avatars').remove([filePath]);
+      console.log('[Avatar] Deleted old file');
+    } catch (e) {
+      console.log('[Avatar] No existing file to delete');
+    }
 
-    // Upload with upsert - ensure proper content type for browser display
+    // Create a proper Blob with explicit MIME type
+    // This ensures the storage service receives the correct content-type
+    const typedBlob = new Blob([pngBlob], { type: 'image/png' });
+    
+    console.log('[Avatar] Created Blob:', 'type:', typedBlob.type, 'size:', typedBlob.size);
+
+    // Upload with explicit content type
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, pngFile, {
+      .upload(filePath, typedBlob, {
         upsert: true,
         contentType: 'image/png',
-        // cacheControl impacts CDN headers; we still add a cache-buster for display.
-        // Keep it short to avoid stale avatars on some CDNs.
         cacheControl: '60',
       });
 
@@ -65,11 +68,17 @@ export const uploadAvatar = async (
     
     // Verify file exists and has correct Content-Type (helpful for debugging)
     try {
+      // Wait a bit for storage to propagate
+      await new Promise(resolve => setTimeout(resolve, 300));
       const response = await fetch(cleanUrl + '?t=' + Date.now(), { method: 'HEAD' });
       if (!response.ok) {
         console.warn('[Avatar] File may not be accessible yet, status:', response.status);
       } else {
-        console.log('[Avatar] File verified accessible. content-type:', response.headers.get('content-type'));
+        const contentType = response.headers.get('content-type');
+        console.log('[Avatar] File verified accessible. content-type:', contentType);
+        if (contentType && !contentType.startsWith('image/')) {
+          console.error('[Avatar] Wrong content-type detected:', contentType);
+        }
       }
     } catch (e) {
       console.warn('[Avatar] Could not verify file accessibility:', e);

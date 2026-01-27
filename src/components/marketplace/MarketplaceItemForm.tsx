@@ -71,33 +71,55 @@ export const MarketplaceItemForm = ({
     const file = e.target.files?.[0];
     if (!file) return;
     
+    console.log('[MarketplaceForm] Uploading main image:', file.name);
     setUploading(true);
-    const url = await onUploadImage(file);
-    if (url) {
-      setFormData(prev => ({ ...prev, main_image_url: url }));
+    try {
+      const url = await onUploadImage(file);
+      console.log('[MarketplaceForm] Main image URL received:', url);
+      if (url) {
+        setFormData(prev => {
+          const updated = { ...prev, main_image_url: url };
+          console.log('[MarketplaceForm] Updated formData with main image:', updated.main_image_url);
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error('[MarketplaceForm] Main image upload error:', error);
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const handleAdditionalImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
+    console.log('[MarketplaceForm] Uploading additional images:', files.length);
     setUploading(true);
     const newImages: string[] = [];
     
-    for (let i = 0; i < files.length; i++) {
-      const url = await onUploadImage(files[i]);
-      if (url) {
-        newImages.push(url);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const url = await onUploadImage(files[i]);
+        console.log('[MarketplaceForm] Additional image URL received:', url);
+        if (url) {
+          newImages.push(url);
+        }
       }
+      
+      setFormData(prev => {
+        const updated = {
+          ...prev,
+          additional_images: [...prev.additional_images, ...newImages]
+        };
+        console.log('[MarketplaceForm] Updated additional_images count:', updated.additional_images.length);
+        return updated;
+      });
+    } catch (error) {
+      console.error('[MarketplaceForm] Additional images upload error:', error);
+    } finally {
+      setUploading(false);
     }
-    
-    setFormData(prev => ({
-      ...prev,
-      additional_images: [...prev.additional_images, ...newImages]
-    }));
-    setUploading(false);
   };
 
   const removeAdditionalImage = (index: number) => {
@@ -111,14 +133,26 @@ export const MarketplaceItemForm = ({
     e.preventDefault();
     
     if (!formData.title || !formData.category || formData.price <= 0) {
+      console.warn('[MarketplaceForm] Validation failed:', { 
+        title: !!formData.title, 
+        category: !!formData.category, 
+        price: formData.price 
+      });
       return;
     }
+    
+    console.log('[MarketplaceForm] Submitting form:', {
+      title: formData.title,
+      main_image_url: formData.main_image_url,
+      additional_images_count: formData.additional_images.length
+    });
     
     setSubmitting(true);
     const success = await onSubmit(formData);
     setSubmitting(false);
     
     if (success) {
+      console.log('[MarketplaceForm] Submit successful, closing dialog');
       onOpenChange(false);
       // Reset form
       setFormData({

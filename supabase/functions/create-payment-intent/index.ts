@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,15 +31,10 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Stripe
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: "2024-11-20.acacia",
-      httpClient: Stripe.createFetchHttpClient(),
-    });
-
-    // Get Supabase client
+    // Get Supabase configuration
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error("Supabase configuration missing");
@@ -56,17 +50,23 @@ serve(async (req) => {
       );
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    // Client for authentication (with user context)
+    const supabaseAuthClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: { Authorization: req.headers.get("Authorization") || "" },
       },
     });
 
+    // Client for database operations (bypasses RLS)
+    const supabaseClient = supabaseServiceKey
+      ? createClient(supabaseUrl, supabaseServiceKey)
+      : createClient(supabaseUrl, supabaseAnonKey);
+
     // Get current user
     const {
       data: { user },
       error: authError,
-    } = await supabaseClient.auth.getUser();
+    } = await supabaseAuthClient.auth.getUser();
 
     if (authError || !user) {
       console.error("Auth error:", authError);
@@ -178,22 +178,54 @@ serve(async (req) => {
       );
     }
 
-    // Create Payment Intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(finalAmount * 100), // Convert to cents
-      currency: finalCurrency,
-      metadata: {
-        itemId: itemId,
-        buyerId: user.id,
-        sellerId: item.user_id,
+    const customerEmail = user.email;
+    const origin = req.headers.get("origin") || "https://aurora-society.com";
+
+    // Create Checkout Session using Stripe API directly
+    const checkoutResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${stripeSecretKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      body: new URLSearchParams({
+        "mode": "payment",
+        "payment_method_types[0]": "card",
+        "line_items[0][price_data][currency]": finalCurrency,
+        "line_items[0][price_data][product_data][name]": item.title,
+        ...(item.description && { "line_items[0][price_data][product_data][description]": item.description }),
+        "line_items[0][price_data][unit_amount]": String(Math.round(finalAmount * 100)),
+        "line_items[0][quantity]": "1",
+        "metadata[itemId]": itemId,
+        "metadata[buyerId]": user.id,
+        "metadata[sellerId]": item.user_id,
+        ...(customerEmail && { "customer_email": customerEmail }),
+        "success_url": `${origin}/marketplace?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        "cancel_url": `${origin}/marketplace?payment=cancelled`,
+      }),
     });
 
+    if (!checkoutResponse.ok) {
+      const errorData = await checkoutResponse.json();
+      console.error("Stripe Checkout Session creation error:", errorData);
+      return new Response(
+        JSON.stringify({ 
+          message: "Erreur lors de la création de la session de paiement Stripe", 
+          code: "STRIPE_CHECKOUT_SESSION_ERROR",
+          error: errorData.error?.message || "Unknown error"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
+    const checkoutSession = await checkoutResponse.json();
+    console.log("Checkout Session created:", checkoutSession.id);
+
     // Create payment record in database
-    const { error: paymentError } = await supabaseClient
+    const { data: paymentData, error: paymentError } = await supabaseClient
       .from("marketplace_payments")
       .insert({
         item_id: itemId,
@@ -201,19 +233,35 @@ serve(async (req) => {
         seller_id: item.user_id,
         amount: finalAmount,
         currency: finalCurrency.toUpperCase(),
-        stripe_payment_intent_id: paymentIntent.id,
+        stripe_payment_intent_id: checkoutSession.id,
         status: "pending",
-      });
+      })
+      .select()
+      .single();
 
     if (paymentError) {
       console.error("Payment record error:", paymentError);
-      // Continue anyway, the payment intent is created
+      
+      return new Response(
+        JSON.stringify({ 
+          message: "Erreur lors de l'enregistrement du paiement", 
+          code: "DATABASE_INSERT_ERROR",
+          error: paymentError.message,
+          details: paymentError 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
     }
+
+    console.log("Payment record created:", paymentData?.id);
 
     return new Response(
       JSON.stringify({
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
+        sessionId: checkoutSession.id,
+        url: checkoutSession.url,
         amount: finalAmount,
         currency: finalCurrency.toUpperCase(),
       }),
@@ -224,11 +272,14 @@ serve(async (req) => {
     );
   } catch (error: any) {
     console.error("STRIPE_CREATE_INTENT_ERROR:", error);
+    console.error("Error stack:", error.stack);
+    
     return new Response(
       JSON.stringify({ 
-        message: "Échec init paiement Stripe", 
+        message: "Erreur lors de l'initialisation du paiement", 
         code: "STRIPE_CREATE_INTENT_ERROR",
-        error: error.message 
+        error: error.message,
+        type: error.constructor?.name || "Unknown"
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

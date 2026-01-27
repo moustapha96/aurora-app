@@ -5,6 +5,7 @@ import { Upload, X, Loader2, CheckCircle, AlertTriangle, XCircle, User, Shield, 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { uploadImage, getMimeType } from "@/lib/imageUploadUtils";
 
 interface EditableImageProps {
   imageUrl: string;
@@ -70,36 +71,15 @@ export const EditableImage = ({
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const filePath = `${user.id}/${Date.now()}.${fileExt}`;
       
-      // Get correct MIME type
-      const mimeTypes: Record<string, string> = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp'
-      };
-      const contentType = mimeTypes[fileExt] || 'image/jpeg';
+      // Use centralized upload utility for consistent MIME type handling
+      const publicUrl = await uploadImage(storageFolder, filePath, file);
       
-      // Create proper File object with correct MIME type
-      const properFile = new File([file], file.name, { 
-        type: contentType, 
-        lastModified: Date.now() 
-      });
+      if (!publicUrl) {
+        throw new Error("Upload failed");
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from(storageFolder)
-        .upload(filePath, properFile, { contentType });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from(storageFolder)
-        .getPublicUrl(filePath);
-
-      // Add cache-buster to force refresh everywhere
-      const cacheBustedUrl = `${publicUrl}?t=${Date.now()}`;
-
-      onSave(cacheBustedUrl);
+      // URL already has cache-buster from uploadImage
+      onSave(publicUrl);
       setIsEditing(false);
       setPendingFile(null);
       setPendingPreview(null);

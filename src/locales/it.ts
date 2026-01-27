@@ -1566,6 +1566,27 @@ export const it: Record<string, string> = {
   marketplaceUpdateStatus: "Aggiorna stato",
   marketplaceArticles: "articolo",
   marketplaceArticlesPlural: "articoli",
+  marketplaceItems: "Articoli",
+  marketplacePayments: "Pagamenti",
+  paymentStatus: "Stato del pagamento",
+  paymentAllStatuses: "Tutti gli stati",
+  paymentStatusCompleted: "Completato",
+  paymentStatusPending: "In attesa",
+  paymentStatusFailed: "Fallito",
+  paymentStatusRefunded: "Rimborsato",
+  paymentStatusActive: "Attivo",
+  paymentStatusSold: "Venduto",
+  paymentStatusExpired: "Scaduto",
+  paymentStatusCancelled: "Annullato",
+  paymentItem: "Articolo",
+  paymentAmount: "Importo",
+  paymentBuyer: "Acquirente",
+  paymentSeller: "Venditore",
+  paymentDate: "Data",
+  paymentCompletedAt: "Data di pagamento",
+  noPaymentsFound: "Nessun pagamento trovato",
+  unknownUser: "Utente sconosciuto",
+  unknownItem: "Articolo sconosciuto",
 
   // Settings page
   settingsPageTitle: "Paramètres",
@@ -1702,6 +1723,7 @@ export const it: Record<string, string> = {
   processing: "Elaborazione...",
   pay: "Paga",
   paymentError: "Errore nel pagamento",
+  redirectingToPayment: "Verrai reindirizzato alla pagina di pagamento sicuro Stripe",
   stripeNotConfigured: "Stripe non è configurato. Si prega di contattare l'amministratore.",
 
   // Messaging
@@ -2064,6 +2086,8 @@ export const it: Record<string, string> = {
   imageUploadError: "Errore durante il caricamento dell'immagine",
   imagePreview: "Anteprima",
   clickToUploadImage: "Clicca per caricare un'immagine",
+  attachDocument: "Documento allegato",
+  clickToUploadDocument: "Clicca per allegare un documento (PDF, Word...)",
   pleaseSelectAnImage: "Seleziona un'immagine",
   maxFileSize: "Dimensione massima: 5MB",
   imageEditor: "Immagine",
@@ -2701,11 +2725,30 @@ export const it: Record<string, string> = {
 
   // Family Commitments Dialog
   addCommitment: "Aggiungi impegno",
+  editCommitment: "Modifica impegno",
   commitmentAdded: "Impegno aggiunto",
   deleteThisCommitment: "Eliminare questo impegno?",
   commitmentDeleted: "Impegno eliminato",
   pleaseIndicateTitleFirst: "Inserisci prima un titolo",
   philanthropyEducationEnvironment: "Filantropia, Educazione, Ambiente...",
+  commitmentTitleLabel: "Titolo / Nome dell'impegno",
+  commitmentTitlePlaceholder: "Fondazione di famiglia, Mecenatismo...",
+  commitmentDescriptionPlaceholder: "Obiettivi, azioni, impatto...",
+  organizationPlaceholder: "Fondazione, ONG...",
+  selectCategoryCommitment: "Seleziona...",
+  changeImage: "Cambia immagine",
+  addImageCommitment: "Aggiungi immagine",
+  
+  // Commitment Categories
+  categoryPhilanthropy: "Filantropia",
+  categoryEducation: "Educazione",
+  categoryHealth: "Salute",
+  categoryEnvironment: "Ambiente",
+  categoryCultureArts: "Cultura e Arti",
+  categorySocial: "Sociale",
+  categorySport: "Sport",
+  categoryOther: "Altro",
+  
   startYear: "Anno di inizio",
 
   // Business Images

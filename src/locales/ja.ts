@@ -1576,6 +1576,27 @@ export const ja: Record<string, string> = {
   marketplaceUpdateStatus: "ステータスを更新",
   marketplaceArticles: "アイテム",
   marketplaceArticlesPlural: "アイテム",
+  marketplaceItems: "アイテム",
+  marketplacePayments: "支払い",
+  paymentStatus: "支払いステータス",
+  paymentAllStatuses: "すべてのステータス",
+  paymentStatusCompleted: "完了",
+  paymentStatusPending: "保留中",
+  paymentStatusFailed: "失敗",
+  paymentStatusRefunded: "返金済み",
+  paymentStatusActive: "アクティブ",
+  paymentStatusSold: "販売済み",
+  paymentStatusExpired: "期限切れ",
+  paymentStatusCancelled: "キャンセル",
+  paymentItem: "アイテム",
+  paymentAmount: "金額",
+  paymentBuyer: "購入者",
+  paymentSeller: "販売者",
+  paymentDate: "日付",
+  paymentCompletedAt: "支払い日",
+  noPaymentsFound: "支払いが見つかりません",
+  unknownUser: "不明なユーザー",
+  unknownItem: "不明なアイテム",
 
   // Additional Settings
   biometricAuthSettings: "生体認証",
@@ -1680,6 +1701,7 @@ export const ja: Record<string, string> = {
   processing: "処理中...",
   pay: "支払う",
   paymentError: "支払いエラー",
+  redirectingToPayment: "Stripeの安全な支払いページにリダイレクトされます",
   stripeNotConfigured: "Stripeが設定されていません。管理者にお問い合わせください。",
 
   // Messaging
@@ -2042,6 +2064,8 @@ export const ja: Record<string, string> = {
   imageUploadError: "画像のアップロードエラー",
   imagePreview: "プレビュー",
   clickToUploadImage: "画像をアップロードするにはクリック",
+  attachDocument: "添付文書",
+  clickToUploadDocument: "文書を添付するにはクリック (PDF, Word...)",
   pleaseSelectAnImage: "画像を選択してください",
   maxFileSize: "最大サイズ: 5MB",
   imageEditor: "画像",
@@ -2651,14 +2675,6 @@ export const ja: Record<string, string> = {
   deleteThisMember: "このメンバーを削除しますか？",
   memberDeleted: "メンバーを削除しました",
 
-  // Family Commitments Dialog
-  addCommitment: "コミットメントを追加",
-  commitmentAdded: "コミットメントを追加しました",
-  deleteThisCommitment: "このコミットメントを削除しますか？",
-  commitmentDeleted: "コミットメントを削除しました",
-  pleaseIndicateTitleFirst: "まずタイトルを入力してください",
-  philanthropyEducationEnvironment: "慈善活動、教育、環境...",
-  startYear: "開始年",
 
   // Business Images
   businessMainImage: "メインビジネス画像",
@@ -2731,4 +2747,31 @@ export const ja: Record<string, string> = {
   approve: "承認",
   reject: "拒否",
   businessImageFormatNotAllowed: "画像形式は許可されていません。PNG、JPEG、または JPG を使用してください。",
+  
+  // Family Commitments Dialog
+  addCommitment: "コミットメントを追加",
+  editCommitment: "コミットメントを編集",
+  commitmentAdded: "コミットメントが追加されました",
+  deleteThisCommitment: "このコミットメントを削除しますか？",
+  commitmentDeleted: "コミットメントが削除されました",
+  pleaseIndicateTitleFirst: "まずタイトルを入力してください",
+  philanthropyEducationEnvironment: "慈善活動、教育、環境...",
+  commitmentTitleLabel: "タイトル / コミットメント名",
+  commitmentTitlePlaceholder: "家族財団、後援...",
+  commitmentDescriptionPlaceholder: "目標、行動、影響...",
+  organizationPlaceholder: "財団、NGO...",
+  selectCategoryCommitment: "選択...",
+  changeImage: "画像を変更",
+  addImageCommitment: "画像を追加",
+  startYear: "開始年",
+  
+  // Commitment Categories
+  categoryPhilanthropy: "慈善活動",
+  categoryEducation: "教育",
+  categoryHealth: "健康",
+  categoryEnvironment: "環境",
+  categoryCultureArts: "文化・芸術",
+  categorySocial: "社会",
+  categorySport: "スポーツ",
+  categoryOther: "その他",
 }

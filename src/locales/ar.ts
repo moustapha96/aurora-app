@@ -1571,6 +1571,27 @@ export const ar: Record<string, string> = {
   marketplaceUpdateStatus: "تحديث الحالة",
   marketplaceArticles: "عنصر",
   marketplaceArticlesPlural: "عناصر",
+  marketplaceItems: "العناصر",
+  marketplacePayments: "المدفوعات",
+  paymentStatus: "حالة الدفع",
+  paymentAllStatuses: "جميع الحالات",
+  paymentStatusCompleted: "مكتمل",
+  paymentStatusPending: "قيد الانتظار",
+  paymentStatusFailed: "فشل",
+  paymentStatusRefunded: "مسترد",
+  paymentStatusActive: "نشط",
+  paymentStatusSold: "مباع",
+  paymentStatusExpired: "منتهي",
+  paymentStatusCancelled: "ملغي",
+  paymentItem: "العنصر",
+  paymentAmount: "المبلغ",
+  paymentBuyer: "المشتري",
+  paymentSeller: "البائع",
+  paymentDate: "التاريخ",
+  paymentCompletedAt: "تاريخ الدفع",
+  noPaymentsFound: "لم يتم العثور على مدفوعات",
+  unknownUser: "مستخدم غير معروف",
+  unknownItem: "عنصر غير معروف",
 
   // Settings page
   settingsPageTitle: "الإعدادات",
@@ -1706,6 +1727,7 @@ export const ar: Record<string, string> = {
   processing: "جاري المعالجة...",
   pay: "ادفع",
   paymentError: "خطأ في الدفع",
+  redirectingToPayment: "سيتم إعادة توجيهك إلى صفحة الدفع الآمنة عبر Stripe",
   stripeNotConfigured: "Stripe غير مُكوّن. يرجى الاتصال بالمسؤول.",
 
   // Messaging
@@ -2068,6 +2090,8 @@ export const ar: Record<string, string> = {
   imageUploadError: "خطأ في رفع الصورة",
   imagePreview: "معاينة",
   clickToUploadImage: "انقر لرفع صورة",
+  attachDocument: "مستند مرفق",
+  clickToUploadDocument: "انقر لإرفاق مستند (PDF، Word...)",
   pleaseSelectAnImage: "يرجى اختيار صورة",
   maxFileSize: "الحجم الأقصى: 5 ميجابايت",
   imageEditor: "صورة",
@@ -2646,14 +2670,6 @@ export const ar: Record<string, string> = {
   deleteThisMember: "حذف هذا العضو؟",
   memberDeleted: "تم حذف العضو",
 
-  // Family Commitments Dialog
-  addCommitment: "إضافة التزام",
-  commitmentAdded: "تمت إضافة الالتزام",
-  deleteThisCommitment: "حذف هذا الالتزام؟",
-  commitmentDeleted: "تم حذف الالتزام",
-  pleaseIndicateTitleFirst: "يرجى الإشارة إلى عنوان أولاً",
-  philanthropyEducationEnvironment: "العمل الخيري، التعليم، البيئة...",
-  startYear: "سنة البدء",
 
   // Business Images
   businessMainImage: "الصورة الرئيسية للأعمال",
@@ -2726,4 +2742,31 @@ export const ar: Record<string, string> = {
   approve: "الموافقة",
   reject: "الرفض",
   businessImageFormatNotAllowed: "تنسيق الصورة غير مسموح به. استخدم PNG أو JPEG أو JPG.",
+  
+  // Family Commitments Dialog
+  addCommitment: "إضافة التزام",
+  editCommitment: "تعديل الالتزام",
+  commitmentAdded: "تمت إضافة الالتزام",
+  deleteThisCommitment: "حذف هذا الالتزام؟",
+  commitmentDeleted: "تم حذف الالتزام",
+  pleaseIndicateTitleFirst: "يرجى إدخال العنوان أولاً",
+  philanthropyEducationEnvironment: "العمل الخيري، التعليم، البيئة...",
+  commitmentTitleLabel: "العنوان / اسم الالتزام",
+  commitmentTitlePlaceholder: "مؤسسة عائلية، رعاية...",
+  commitmentDescriptionPlaceholder: "الأهداف، الإجراءات، التأثير...",
+  organizationPlaceholder: "مؤسسة، منظمة غير حكومية...",
+  selectCategoryCommitment: "اختر...",
+  changeImage: "تغيير الصورة",
+  addImageCommitment: "إضافة صورة",
+  startYear: "سنة البداية",
+  
+  // Commitment Categories
+  categoryPhilanthropy: "العمل الخيري",
+  categoryEducation: "التعليم",
+  categoryHealth: "الصحة",
+  categoryEnvironment: "البيئة",
+  categoryCultureArts: "الثقافة والفنون",
+  categorySocial: "اجتماعي",
+  categorySport: "رياضة",
+  categoryOther: "أخرى",
 }

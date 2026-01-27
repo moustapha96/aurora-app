@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import { loadStripe, Stripe, StripeElementsOptions } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -18,139 +16,96 @@ interface StripeCheckoutProps {
   onSuccess?: () => void;
 }
 
-// Initialize Stripe
-let stripePromise: Promise<Stripe | null> | null = null;
-
-const getStripe = () => {
-  if (!stripePromise) {
-    const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-    if (!publishableKey) {
-      console.error('VITE_STRIPE_PUBLISHABLE_KEY is not set');
-      return null;
-    }
-    stripePromise = loadStripe(publishableKey);
-  }
-  return stripePromise;
-};
-
-const CheckoutForm = ({ 
+const CheckoutContent = ({ 
   itemId, 
   itemTitle, 
   amount, 
   currency, 
-  onSuccess, 
   onClose 
 }: {
   itemId: string;
   itemTitle: string;
   amount: number;
   currency: string;
-  onSuccess?: () => void;
   onClose: () => void;
 }) => {
   const { t } = useLanguage();
-  const stripe = useStripe();
-  const elements = useElements();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Create Payment Intent
-    const createPaymentIntent = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-          body: {
-            itemId,
-            amount: amount, // Pass amount as-is, Edge Function will convert to cents
-            currency: currency,
-          },
-        });
-
-        if (error) {
-          console.error('Function error:', error);
-          const errorMessage = error.message || data?.message || t('paymentError');
-          setError(errorMessage);
-          toast.error(errorMessage);
-          return;
-        }
-
-        if (data?.clientSecret) {
-          setClientSecret(data.clientSecret);
-        } else {
-          const errorMessage = data?.message || 'No client secret returned';
-          setError(errorMessage);
-          toast.error(errorMessage);
-        }
-      } catch (err: any) {
-        console.error('Error creating payment intent:', err);
-        const errorMessage = err.message || t('paymentError');
-        setError(errorMessage);
-        toast.error(errorMessage);
-      }
-    };
-
-    if (stripe && elements) {
-      createPaymentIntent();
-    }
-  }, [itemId, amount, currency, stripe, elements, t]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!stripe || !elements || !clientSecret) {
-      return;
-    }
-
-    setIsProcessing(true);
+  const handleCheckout = async () => {
+    setIsLoading(true);
     setError(null);
 
     try {
-      const { error: submitError } = await elements.submit();
-      if (submitError) {
-        setError(submitError.message || t('paymentError'));
-        setIsProcessing(false);
+      const { data, error: invokeError } = await supabase.functions.invoke('create-payment-intent', {
+        body: {
+          itemId,
+          amount: amount,
+          currency: currency,
+        },
+      });
+
+      if (invokeError) {
+        console.error('Function error:', invokeError);
+        
+        let errorMessage = t('paymentError');
+        if (data?.message) {
+          errorMessage = data.message;
+        } else if (invokeError.message) {
+          errorMessage = invokeError.message;
+        } else if (data?.error) {
+          errorMessage = data.error;
+        }
+        
+        if (data?.code) {
+          errorMessage += ` (${data.code})`;
+        }
+        
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          description: data?.code ? `Code d'erreur: ${data.code}` : undefined,
+          duration: 5000,
+        });
+        setIsLoading(false);
         return;
       }
 
-      const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        clientSecret,
-        confirmParams: {
-          return_url: `${window.location.origin}/marketplace?payment=success`,
-        },
-        redirect: 'if_required',
-      });
-
-      if (confirmError) {
-        setError(confirmError.message || t('paymentError'));
-        toast.error(confirmError.message || t('paymentError'));
-      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        toast.success(t('paymentSuccess'));
-        onSuccess?.();
-        onClose();
+      if (data?.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        const errorMessage = data?.message || t('paymentError');
+        setError(errorMessage);
+        toast.error(errorMessage);
+        setIsLoading(false);
       }
     } catch (err: any) {
-      console.error('Payment error:', err);
-      setError(err.message || t('paymentError'));
-      toast.error(err.message || t('paymentError'));
-    } finally {
-      setIsProcessing(false);
+      console.error('Error creating checkout session:', err);
+      const errorMessage = err.message || err.toString() || t('paymentError');
+      setError(errorMessage);
+      toast.error(errorMessage, {
+        description: 'Une erreur inattendue s\'est produite',
+        duration: 5000,
+      });
+      setIsLoading(false);
     }
   };
 
-  if (!clientSecret) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
-      
+    <div className="space-y-4">
+      <div className="text-center space-y-2">
+        <p className="text-sm text-muted-foreground">
+          {t('redirectingToPayment') || 'Vous allez être redirigé vers la page de paiement sécurisée Stripe'}
+        </p>
+        <p className="text-lg font-semibold">
+          {new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: currency,
+          }).format(amount)}
+        </p>
+      </div>
+
       {error && (
         <div className="text-sm text-destructive bg-destructive/10 p-3 rounded">
           {error}
@@ -163,16 +118,17 @@ const CheckoutForm = ({
           variant="outline"
           onClick={onClose}
           className="flex-1"
-          disabled={isProcessing}
+          disabled={isLoading}
         >
           {t('cancel')}
         </Button>
         <Button
-          type="submit"
+          type="button"
+          onClick={handleCheckout}
           className="flex-1"
-          disabled={!stripe || isProcessing}
+          disabled={isLoading}
         >
-          {isProcessing ? (
+          {isLoading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               {t('processing')}
@@ -185,7 +141,7 @@ const CheckoutForm = ({
           )}
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 
@@ -199,31 +155,6 @@ export const StripeCheckout = ({
   onSuccess,
 }: StripeCheckoutProps) => {
   const { t } = useLanguage();
-  const stripe = getStripe();
-
-  if (!stripe) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('paymentError')}</DialogTitle>
-            <DialogDescription>
-              {t('stripeNotConfigured')}
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  const options: StripeElementsOptions = {
-    mode: 'payment',
-    amount: Math.round(amount * 100),
-    currency: currency.toLowerCase(),
-    appearance: {
-      theme: 'stripe',
-    },
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -237,16 +168,13 @@ export const StripeCheckout = ({
           </DialogDescription>
         </DialogHeader>
 
-        <Elements stripe={stripe} options={options}>
-          <CheckoutForm
-            itemId={itemId}
-            itemTitle={itemTitle}
-            amount={amount}
-            currency={currency}
-            onSuccess={onSuccess}
-            onClose={() => onOpenChange(false)}
-          />
-        </Elements>
+        <CheckoutContent
+          itemId={itemId}
+          itemTitle={itemTitle}
+          amount={amount}
+          currency={currency}
+          onClose={() => onOpenChange(false)}
+        />
       </DialogContent>
     </Dialog>
   );
