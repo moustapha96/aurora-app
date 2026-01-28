@@ -1544,6 +1544,8 @@ export const zh: Record<string, string> = {
   price: "价格",
   markAsSold: "标记为已售",
   sold: "已售",
+  sellerContact: "卖家联系方式",
+  contactSeller: "联系卖家",
   categoryImmobilier: "房地产",
   categoryAutomobile: "汽车",
   categoryArt: "艺术",

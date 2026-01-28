@@ -1525,6 +1525,8 @@ export const es: Record<string, string> = {
   seconds: "seg",
   sold: "Vendido",
   markAsSold: "Marcar como vendido",
+  sellerContact: "Contacto del vendedor",
+  contactSeller: "Contactar al vendedor",
   categoryImmobilier: "Bienes Raíces",
   categoryAutomobile: "Automóvil",
   categoryArt: "Arte",

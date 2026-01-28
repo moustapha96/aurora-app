@@ -1535,6 +1535,8 @@ export const de: Record<string, string> = {
   offerExpired: "Angebot abgelaufen",
   markAsSold: "Als verkauft markieren",
   sold: "Verkauft",
+  sellerContact: "Verkäuferkontakt",
+  contactSeller: "Verkäufer kontaktieren",
   categoryImmobilier: "Immobilien",
   categoryAutomobile: "Automobil",
   categoryArt: "Kunst",

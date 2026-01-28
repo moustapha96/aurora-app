@@ -1571,6 +1571,8 @@ export const fr: Record<string, string> = {
   giveYourReservationDateHint: "Donnez la date jusqu'à laquelle vous souhaitez réserver ce bien.",
   markAsSold: "Marquer comme vendu",
   sold: "Vendu",
+  sellerContact: "Contact du vendeur",
+  contactSeller: "Contacter le vendeur",
   categoryImmobilier: "Immobilier",
   categoryAutomobile: "Automobile",
   categoryArt: "Art",

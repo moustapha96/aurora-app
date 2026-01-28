@@ -1541,6 +1541,8 @@ export const ru: Record<string, string> = {
    offerExpired: "Предложение истекло",
    markAsSold: "Отметить как проданное",
    sold: "Продано",
+   sellerContact: "Контакт продавца",
+   contactSeller: "Связаться с продавцом",
    categoryImmobilier: "Недвижимость",
    categoryAutomobile: "Автомобили",
    categoryArt: "Искусство",

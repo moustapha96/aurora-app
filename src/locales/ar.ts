@@ -1536,6 +1536,8 @@ export const ar: Record<string, string> = {
   offerExpired: "انتهى العرض",
   markAsSold: "وضع علامة كمباع",
   sold: "مباع",
+  sellerContact: "معلومات الاتصال بالبائع",
+  contactSeller: "اتصل بالبائع",
   categoryImmobilier: "عقارات",
   categoryAutomobile: "سيارات",
   categoryArt: "فن",

@@ -5,11 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MarketplaceCountdown } from './MarketplaceCountdown';
 import { StripeCheckout } from './StripeCheckout';
 import { MarketplaceItem } from '@/hooks/useMarketplace';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Eye, ChevronLeft, ChevronRight, Package, MapPin, CreditCard, Maximize2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Eye, ChevronLeft, ChevronRight, Package, MapPin, CreditCard, Maximize2, User, Phone, MessageCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+interface SellerProfile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  account_number: string | null;
+  mobile_phone?: string | null;
+}
 
 interface MarketplaceItemCardProps {
   item: MarketplaceItem;
@@ -29,18 +41,62 @@ export const MarketplaceItemCard = ({
   onPurchaseSuccess
 }: MarketplaceItemCardProps) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [showDetails, setShowDetails] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [descriptionFullscreen, setDescriptionFullscreen] = useState(false);
   const [requestedReservationUntil, setRequestedReservationUntil] = useState<string>('');
+  const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
+  const [loadingSeller, setLoadingSeller] = useState(false);
 
   const offerEnded = item.offer_end_date ? new Date(item.offer_end_date) <= new Date() : false;
   const maxReservationDate = item.reservation_until_date || item.offer_end_date || null;
 
   useEffect(() => {
-    if (!showDetails) setRequestedReservationUntil('');
-  }, [showDetails]);
+    if (!showDetails) {
+      setRequestedReservationUntil('');
+      return;
+    }
+    
+    // Fetch seller profile when dialog opens
+    const fetchSellerProfile = async () => {
+      if (!item.user_id || isOwner) return;
+      
+      setLoadingSeller(true);
+      try {
+        // Get public profile data
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, avatar_url, account_number')
+          .eq('id', item.user_id)
+          .single();
+        
+        if (profileError || !profileData) {
+          console.error('Error fetching seller profile:', profileError);
+          return;
+        }
+        
+        // Try to get phone from profiles_private (may fail due to RLS)
+        const { data: privateData } = await supabase
+          .from('profiles_private')
+          .select('mobile_phone')
+          .eq('user_id', item.user_id)
+          .single();
+        
+        setSellerProfile({
+          ...profileData,
+          mobile_phone: privateData?.mobile_phone || null
+        });
+      } catch (err) {
+        console.error('Error fetching seller profile:', err);
+      } finally {
+        setLoadingSeller(false);
+      }
+    };
+    
+    fetchSellerProfile();
+  }, [showDetails, item.user_id, isOwner]);
 
   const allImages = [
     item.main_image_url,
@@ -267,6 +323,62 @@ export const MarketplaceItemCard = ({
 
               <div className="space-y-4">
                 <MarketplaceCountdown endDate={item.offer_end_date} />
+                
+                {/* Seller Contact Info - Only for buyers */}
+                {!isOwner && sellerProfile && (
+                  <div className="p-3 bg-primary/5 rounded-lg border border-primary/20 space-y-3">
+                    <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <User className="w-4 h-4 text-primary" />
+                      {t('sellerContact')}
+                    </p>
+                    
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12 border-2 border-primary/20">
+                        <AvatarImage src={sellerProfile.avatar_url || ''} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                          {sellerProfile.first_name?.[0]}{sellerProfile.last_name?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">
+                          {sellerProfile.first_name} {sellerProfile.last_name}
+                        </p>
+                        {sellerProfile.account_number && (
+                          <p className="text-xs text-muted-foreground">
+                            #{sellerProfile.account_number}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {sellerProfile.mobile_phone && (
+                      <a 
+                        href={`tel:${sellerProfile.mobile_phone}`}
+                        className="flex items-center gap-2 text-sm text-foreground hover:text-primary transition-colors"
+                      >
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span>{sellerProfile.mobile_phone}</span>
+                      </a>
+                    )}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-8 text-xs border-primary/30 hover:bg-primary/10"
+                      onClick={() => navigate(`/messages?userId=${sellerProfile.id}`)}
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
+                      {t('contactSeller')}
+                    </Button>
+                  </div>
+                )}
+                
+                {!isOwner && loadingSeller && (
+                  <div className="p-3 bg-muted/30 rounded-lg border border-border animate-pulse">
+                    <div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
+                    <div className="h-10 bg-muted rounded"></div>
+                  </div>
+                )}
                 
                 {!offerEnded && maxReservationDate && (
                   <div className="p-2.5 bg-muted/30 rounded-lg border border-border space-y-0.5">

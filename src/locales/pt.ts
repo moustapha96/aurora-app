@@ -1552,6 +1552,8 @@ export const pt: Record<string, string> = {
   offerEndsIn: "A oferta termina em",
   offerExpired: "Oferta expirada",
   markAsSold: "Marcar como vendido",
+  sellerContact: "Contato do vendedor",
+  contactSeller: "Contatar vendedor",
   settingsPageTitle: "Configurações",
   managePreferences: "Gerencie suas preferências",
   language: "Idioma",

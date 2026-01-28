@@ -1531,6 +1531,8 @@ export const it: Record<string, string> = {
   offerExpired: "Offre expirée",
   markAsSold: "Segna come venduto",
   sold: "Venduto",
+  sellerContact: "Contatto del venditore",
+  contactSeller: "Contatta il venditore",
   categoryImmobilier: "Immobiliare",
   categoryAutomobile: "Automobile",
   categoryArt: "Arte",

@@ -1541,6 +1541,8 @@ export const ja: Record<string, string> = {
   offerExpired: "オファー期限切れ",
   markAsSold: "販売済みとしてマーク",
   sold: "販売済み",
+  sellerContact: "販売者の連絡先",
+  contactSeller: "販売者に連絡",
   categoryImmobilier: "不動産",
   categoryAutomobile: "自動車",
   categoryArt: "アート",

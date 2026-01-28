@@ -1558,6 +1558,8 @@ export const en: Record<string, string> = {
   offerExpired: "Offer expired",
   markAsSold: "Mark as sold",
   sold: "Sold",
+  sellerContact: "Seller contact",
+  contactSeller: "Contact seller",
   categoryImmobilier: "Real Estate",
   categoryAutomobile: "Automobile",
   categoryArt: "Art",
