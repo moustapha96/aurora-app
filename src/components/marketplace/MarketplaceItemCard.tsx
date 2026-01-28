@@ -324,8 +324,8 @@ export const MarketplaceItemCard = ({
               <div className="space-y-4">
                 <MarketplaceCountdown endDate={item.offer_end_date} />
                 
-                {/* Seller Contact Info - Only for buyers */}
-                {!isOwner && sellerProfile && (
+                {/* Seller Contact Info - Only for buyers and active offers */}
+                {!isOwner && !offerEnded && sellerProfile && (
                   <div className="p-3 bg-primary/5 rounded-lg border border-primary/20 space-y-3">
                     <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <User className="w-4 h-4 text-primary" />
@@ -373,7 +373,7 @@ export const MarketplaceItemCard = ({
                   </div>
                 )}
                 
-                {!isOwner && loadingSeller && (
+                {!isOwner && !offerEnded && loadingSeller && (
                   <div className="p-3 bg-muted/30 rounded-lg border border-border animate-pulse">
                     <div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
                     <div className="h-10 bg-muted rounded"></div>
@@ -426,7 +426,7 @@ export const MarketplaceItemCard = ({
                       {t('delete')}
                     </Button>
                   </div>
-                ) : item.status === 'active' ? (
+                ) : item.status === 'active' && !offerEnded ? (
                   <div className="flex flex-row justify-end">
                     <Button 
                       onClick={() => setShowCheckout(true)}
