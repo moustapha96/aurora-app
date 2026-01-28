@@ -2548,6 +2548,45 @@ export type Database = {
         }
         Relationships: []
       }
+      single_use_invitation_codes: {
+        Row: {
+          code_name: string | null
+          created_at: string
+          id: string
+          invitation_code: string
+          is_active: boolean | null
+          is_used: boolean | null
+          updated_at: string
+          used_at: string | null
+          used_by: string | null
+          user_id: string
+        }
+        Insert: {
+          code_name?: string | null
+          created_at?: string
+          id?: string
+          invitation_code: string
+          is_active?: boolean | null
+          is_used?: boolean | null
+          updated_at?: string
+          used_at?: string | null
+          used_by?: string | null
+          user_id: string
+        }
+        Update: {
+          code_name?: string | null
+          created_at?: string
+          id?: string
+          invitation_code?: string
+          is_active?: boolean | null
+          is_used?: boolean | null
+          updated_at?: string
+          used_at?: string | null
+          used_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       social_influence: {
         Row: {
           created_at: string
@@ -2626,6 +2665,87 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      subscription_tiers: {
+        Row: {
+          bg_color_class: string
+          border_color_class: string
+          color_class: string
+          created_at: string
+          currency: string
+          display_order: number
+          icon_type: string
+          id: string
+          is_active: boolean
+          name_ar: string
+          name_de: string
+          name_en: string
+          name_es: string
+          name_fr: string
+          name_it: string
+          name_ja: string
+          name_pt: string
+          name_ru: string
+          name_zh: string
+          price: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          tier_key: string
+          updated_at: string
+        }
+        Insert: {
+          bg_color_class?: string
+          border_color_class?: string
+          color_class?: string
+          created_at?: string
+          currency?: string
+          display_order?: number
+          icon_type?: string
+          id?: string
+          is_active?: boolean
+          name_ar: string
+          name_de: string
+          name_en: string
+          name_es: string
+          name_fr: string
+          name_it: string
+          name_ja: string
+          name_pt: string
+          name_ru: string
+          name_zh: string
+          price: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          tier_key: string
+          updated_at?: string
+        }
+        Update: {
+          bg_color_class?: string
+          border_color_class?: string
+          color_class?: string
+          created_at?: string
+          currency?: string
+          display_order?: number
+          icon_type?: string
+          id?: string
+          is_active?: boolean
+          name_ar?: string
+          name_de?: string
+          name_en?: string
+          name_es?: string
+          name_fr?: string
+          name_it?: string
+          name_ja?: string
+          name_pt?: string
+          name_ru?: string
+          name_zh?: string
+          price?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          tier_key?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2889,6 +3009,10 @@ export type Database = {
         Args: { conv_id: string; user_id: string }
         Returns: boolean
       }
+      mark_invitation_code_used: {
+        Args: { code_id_param: string; used_by_param: string }
+        Returns: boolean
+      }
       validate_referral_code: {
         Args: { code: string }
         Returns: {
@@ -2902,6 +3026,14 @@ export type Database = {
           is_family_link: boolean
           is_valid: boolean
           referral_code: string
+          sponsor_id: string
+        }[]
+      }
+      validate_single_use_invitation_code: {
+        Args: { code_param: string }
+        Returns: {
+          code_id: string
+          is_valid: boolean
           sponsor_id: string
         }[]
       }

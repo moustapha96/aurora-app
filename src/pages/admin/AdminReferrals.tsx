@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminPagination } from "@/components/ui/admin-pagination";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,8 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Gift
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -95,11 +97,35 @@ interface Referral {
   };
 }
 
+interface InvitationCode {
+  id: string;
+  user_id: string;
+  invitation_code: string;
+  code_name: string | null;
+  is_used: boolean;
+  used_by: string | null;
+  used_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  owner?: {
+    first_name: string;
+    last_name: string;
+    username: string;
+    avatar_url: string | null;
+  };
+  used_by_profile?: {
+    first_name: string;
+    last_name: string;
+    avatar_url: string | null;
+  } | null;
+}
+
 const AdminReferrals = () => {
   const { t, language } = useLanguage();
   const [links, setLinks] = useState<ReferralLink[]>([]);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [invitationCodes, setInvitationCodes] = useState<InvitationCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -115,6 +141,7 @@ const AdminReferrals = () => {
   const [linkedPage, setLinkedPage] = useState(1);
   const [referralsPage, setReferralsPage] = useState(1);
   const [pendingPage, setPendingPage] = useState(1);
+  const [invitationCodesPage, setInvitationCodesPage] = useState(1);
   const pageSize = 10;
 
   // Stats
@@ -127,7 +154,9 @@ const AdminReferrals = () => {
     pendingReferrals: 0,
     confirmedReferrals: 0,
     pendingApproval: 0,
-    rejectedReferrals: 0
+    rejectedReferrals: 0,
+    totalInvitationCodes: 0,
+    usedInvitationCodes: 0
   });
 
   useEffect(() => {
@@ -233,6 +262,40 @@ const AdminReferrals = () => {
           confirmedReferrals: confirmed,
           pendingApproval,
           rejectedReferrals: rejected
+        }));
+      }
+
+      // Load invitation codes
+      const { data: invitationCodesData } = await (supabase as any)
+        .from('single_use_invitation_codes')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (invitationCodesData && invitationCodesData.length > 0) {
+        // Get all user IDs (owners and used_by)
+        const allUserIds = [...new Set([
+          ...invitationCodesData.map((c: InvitationCode) => c.user_id),
+          ...invitationCodesData.filter((c: InvitationCode) => c.used_by).map((c: InvitationCode) => c.used_by)
+        ])].filter(Boolean);
+        
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, username, avatar_url')
+          .in('id', allUserIds);
+
+        const codesWithProfiles = invitationCodesData.map((code: InvitationCode) => ({
+          ...code,
+          owner: profiles?.find(p => p.id === code.user_id),
+          used_by_profile: code.used_by ? profiles?.find(p => p.id === code.used_by) || null : null
+        }));
+        setInvitationCodes(codesWithProfiles);
+
+        const usedCodes = invitationCodesData.filter((c: InvitationCode) => c.is_used).length;
+        setStats(prev => ({
+          ...prev,
+          totalInvitationCodes: invitationCodesData.length,
+          usedInvitationCodes: usedCodes
         }));
       }
 
@@ -417,11 +480,22 @@ const AdminReferrals = () => {
     referral.referred?.last_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Filter invitation codes
+  const filteredInvitationCodes = invitationCodes.filter(code =>
+    code.invitation_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    code.code_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    code.owner?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    code.owner?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    code.used_by_profile?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    code.used_by_profile?.last_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // Pagination
   const paginatedLinks = filteredLinks.slice((linksPage - 1) * pageSize, linksPage * pageSize);
   const paginatedLinked = filteredLinked.slice((linkedPage - 1) * pageSize, linkedPage * pageSize);
   const paginatedReferrals = filteredReferrals.slice((referralsPage - 1) * pageSize, referralsPage * pageSize);
   const paginatedPendingApproval = filteredPendingApproval.slice((pendingPage - 1) * pageSize, pendingPage * pageSize);
+  const paginatedInvitationCodes = filteredInvitationCodes.slice((invitationCodesPage - 1) * pageSize, invitationCodesPage * pageSize);
 
   if (loading) {
     return (
@@ -540,6 +614,10 @@ const AdminReferrals = () => {
             {t('adminReferralsTabPending')}
           </TabsTrigger>
           <TabsTrigger value="links">{t('adminReferralsTabLinks')} ({filteredLinks.length})</TabsTrigger>
+          <TabsTrigger value="codes" className="gap-2">
+            <Gift className="w-4 h-4" />
+            {t('adminReferralsTabInvitationCodes')} ({filteredInvitationCodes.length})
+          </TabsTrigger>
           <TabsTrigger value="linked">{t('adminReferralsTabLinked')} ({filteredLinked.length})</TabsTrigger>
           <TabsTrigger value="referrals">{t('adminReferralsTabReferrals')} ({filteredReferrals.length})</TabsTrigger>
         </TabsList>
@@ -924,6 +1002,120 @@ const AdminReferrals = () => {
                   startIndex={(referralsPage - 1) * pageSize + 1}
                   endIndex={Math.min(referralsPage * pageSize, filteredReferrals.length)}
                 />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Invitation Codes Tab */}
+        <TabsContent value="codes">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-gold" />
+                {t('adminInvitationCodesTitle')}
+              </CardTitle>
+              <CardDescription>{t('adminInvitationCodesDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {filteredInvitationCodes.length === 0 ? (
+                <div className="text-center py-8">
+                  <Gift className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">{t('adminNoInvitationCodes')}</p>
+                </div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('adminInvitationCodeOwner')}</TableHead>
+                        <TableHead>{t('adminInvitationCodeCode')}</TableHead>
+                        <TableHead>{t('adminInvitationCodeName')}</TableHead>
+                        <TableHead>{t('adminInvitationCodeStatus')}</TableHead>
+                        <TableHead>{t('adminInvitationCodeUsedBy')}</TableHead>
+                        <TableHead>{t('adminInvitationCodeCreatedAt')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedInvitationCodes.map((code) => (
+                        <TableRow key={code.id} className={code.is_used ? 'bg-muted/30' : ''}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={code.owner?.avatar_url || undefined} />
+                                <AvatarFallback className="bg-gold/20 text-gold text-xs">
+                                  {code.owner?.first_name?.[0]}{code.owner?.last_name?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {code.owner?.first_name} {code.owner?.last_name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">@{code.owner?.username}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <code className={`text-sm font-mono px-2 py-1 rounded ${code.is_used ? 'bg-muted text-muted-foreground line-through' : 'bg-gold/10 text-gold font-bold'}`}>
+                              {code.invitation_code}
+                            </code>
+                          </TableCell>
+                          <TableCell className="text-sm">{code.code_name || '-'}</TableCell>
+                          <TableCell>
+                            {code.is_used ? (
+                              <Badge className="bg-muted text-muted-foreground">
+                                {t('used')}
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-green-500/20 text-green-600">
+                                {t('available')}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {code.is_used && code.used_by_profile ? (
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage src={code.used_by_profile.avatar_url || undefined} />
+                                  <AvatarFallback className="bg-primary/20 text-xs">
+                                    {code.used_by_profile.first_name?.[0]}{code.used_by_profile.last_name?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm">
+                                  {code.used_by_profile.first_name} {code.used_by_profile.last_name}
+                                </span>
+                              </div>
+                            ) : code.is_used ? (
+                              <span className="text-sm text-muted-foreground">{t('unknownMember')}</span>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {formatDate(code.created_at)}
+                            {code.used_at && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {t('usedOn')}: {formatDate(code.used_at)}
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {filteredInvitationCodes.length > pageSize && (
+                    <AdminPagination
+                      currentPage={invitationCodesPage}
+                      totalPages={Math.ceil(filteredInvitationCodes.length / pageSize)}
+                      totalItems={filteredInvitationCodes.length}
+                      pageSize={pageSize}
+                      onPageChange={setInvitationCodesPage}
+                      onPageSizeChange={() => {}}
+                      startIndex={(invitationCodesPage - 1) * pageSize + 1}
+                      endIndex={Math.min(invitationCodesPage * pageSize, filteredInvitationCodes.length)}
+                    />
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

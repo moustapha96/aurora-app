@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LandingClassic, LandingLuxury, LandingMinimal, LandingTemplate } from "@/components/landing-templates";
-import { Loader2 } from "lucide-react";
+import { AuroraLogo } from "@/components/AuroraLogo";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, ArrowLeft, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -29,6 +31,7 @@ interface LandingPreferences {
 
 const MemberLanding = () => {
   const { memberId } = useParams<{ memberId: string }>();
+  const navigate = useNavigate();
   const { t } = useLanguage();
   
   const [member, setMember] = useState<MemberData | null>(null);
@@ -149,17 +152,64 @@ const MemberLanding = () => {
     member: displayMember,
     onContact: preferences.show_contact_button ? handleContact : undefined,
     showContactButton: preferences.show_contact_button,
+    hideHeader: true,
   };
 
-  switch (preferences.template) {
-    case 'luxury':
-      return <LandingLuxury {...commonProps} />;
-    case 'minimal':
-      return <LandingMinimal {...commonProps} />;
-    case 'classic':
-    default:
-      return <LandingClassic {...commonProps} />;
-  }
+  const LandingContent = () => {
+    switch (preferences.template) {
+      case 'luxury':
+        return <LandingLuxury {...commonProps} />;
+      case 'minimal':
+        return <LandingMinimal {...commonProps} />;
+      case 'classic':
+      default:
+        return <LandingClassic {...commonProps} />;
+    }
+  };
+
+  const backLabel = t('back') || 'Retour';
+  const headerBadge =
+    preferences.template === 'luxury' ? (
+      <Badge className="bg-primary/20 text-primary border-primary/30 gap-1">
+        <Crown className="h-3 w-3" />
+        Elite Member
+      </Badge>
+    ) : (
+      <Badge variant="outline" className="text-xs">
+        Membre Aurora Society
+      </Badge>
+    );
+
+  return (
+    <div className="min-h-screen">
+      {/* Header : retour à gauche, logo au centre, badge à droite */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+        <div className="flex items-center justify-between h-14 px-4 sm:px-6">
+          <button
+            type="button"
+            onClick={() => navigate('/landing-preview')}
+            className="flex items-center gap-2 text-foreground hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-opacity min-w-[2.5rem]"
+            aria-label={backLabel}
+          >
+            <ArrowLeft className="h-5 w-5 shrink-0" />
+            <span className="text-sm font-medium hidden sm:inline">{backLabel}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/landing-preview')}
+            className="flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-opacity hover:opacity-80 absolute left-1/2 -translate-x-1/2"
+            aria-label={backLabel}
+          >
+            <AuroraLogo size="sm" />
+          </button>
+          <div className="min-w-[2.5rem] flex justify-end">
+            {headerBadge}
+          </div>
+        </div>
+      </header>
+      <LandingContent />
+    </div>
+  );
 };
 
 export default MemberLanding;

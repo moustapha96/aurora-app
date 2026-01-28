@@ -26,6 +26,7 @@ import Messages from "./pages/Messages";
 import LinkedAccount from "./pages/LinkedAccount";
 import Connections from "./pages/Connections";
 import Referrals from "./pages/Referrals";
+import Subscription from "./pages/Subscription";
 import Settings from "./pages/Settings";
 import SecuritySettings from "./pages/SecuritySettings";
 import Contact from "./pages/Contact";
@@ -58,6 +59,7 @@ import AdminApiConfig from "./pages/admin/AdminApiConfig";
 import AdminCron from "./pages/admin/AdminCron";
 import AdminReferrals from "./pages/admin/AdminReferrals";
 import AdminMarketplace from "./pages/admin/AdminMarketplace";
+import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 
 // Optimized QueryClient with caching
 const queryClient = createOptimizedQueryClient();
@@ -102,6 +104,7 @@ const App = () => (
           <Route path="/messages" element={<Messages />} />
           <Route path="/connections" element={<Connections />} />
           <Route path="/referrals" element={<Referrals />} />
+          <Route path="/subscription" element={<Subscription />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/security-settings" element={<SecuritySettings />} />
           <Route path="/contact" element={<Contact />} />
@@ -127,6 +130,7 @@ const App = () => (
           <Route path="/admin/cron" element={<AdminCron />} />
           <Route path="/admin/referrals" element={<AdminReferrals />} />
           <Route path="/admin/marketplace" element={<AdminMarketplace />} />
+          <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

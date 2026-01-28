@@ -112,6 +112,12 @@ const MarketplaceContent = () => {
 
 
       <main className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-16">
+        {/* Payment Info Banner */}
+        <div className="mb-6 p-4 bg-muted/30 border border-border rounded-lg">
+          <p className="text-sm text-muted-foreground text-center">
+            {t('marketplacePaymentInfo')}
+          </p>
+        </div>
         
         {/* Tabs */}
         <Tabs defaultValue="browse" className="w-full">

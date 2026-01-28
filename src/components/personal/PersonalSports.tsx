@@ -220,7 +220,10 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
     if (!currentUserId) return;
     
     try {
-      const defaultTitle = getSportLabel(sportType);
+      // Pour la méditation, utiliser "Méditation / Recueillement" par défaut
+      const defaultTitle = sportType === 'meditation' 
+        ? (t('personalSportLabel_meditation_default') || 'Méditation / Recueillement')
+        : getSportLabel(sportType);
       const defaultDescription = getSportDescription(sportType);
       
       const { data, error } = await supabase

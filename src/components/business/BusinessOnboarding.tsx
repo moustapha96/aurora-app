@@ -286,31 +286,31 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
   // Step: Choose Mode
   if (currentStep === "choose") {
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">{t('businessWelcomeToBusinessUniverse')}</h2>
-          <p className="text-gold/70 max-w-xl mx-auto">
+          <h2 className="text-xl font-serif text-gold mb-3">{t('businessWelcomeToBusinessUniverse')}</h2>
+          <p className="text-gold/70 max-w-xl mx-auto text-sm">
             {t('businessCreateElegantVersion')}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {modes.map((mode) => (
             <Card
               key={mode.id}
               className="cursor-pointer transition-all hover:border-gold/50 hover:bg-gold/10 border-gold/20 bg-black/50 group"
               onClick={() => handleModeSelect(mode.id)}
             >
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-gold/10 group-hover:bg-gold/20 transition-colors">
-                    <mode.icon className="w-6 h-6 text-gold" />
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-gold/10 group-hover:bg-gold/20 transition-colors">
+                    <mode.icon className="w-4 h-4 text-gold" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-medium text-gold mb-1">{mode.title}</h3>
-                    <p className="text-sm text-gold/60">{mode.description}</p>
+                    <h3 className="font-medium text-gold mb-1 text-sm">{mode.title}</h3>
+                    <p className="text-xs text-gold/60">{mode.description}</p>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all" />
+                  <ArrowRight className="w-4 h-4 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all" />
                 </div>
               </CardContent>
             </Card>
@@ -325,40 +325,40 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">{t('business3SmartQuestions')}</h2>
-          <p className="text-gold/70">{t('businessAnswerQuicklyAuroraDoesRest')}</p>
+          <h2 className="text-xl font-serif text-gold mb-3">{t('business3SmartQuestions')}</h2>
+          <p className="text-gold/70 text-sm">{t('businessAnswerQuicklyAuroraDoesRest')}</p>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-3">
           <div className="space-y-2">
-            <Label className="text-gold">{t('businessQuestion1')}</Label>
+            <Label className="text-gold text-sm">{t('businessQuestion1')}</Label>
             <Input
               value={q1}
               onChange={(e) => setQ1(e.target.value)}
               placeholder={t('businessQuestion1Placeholder')}
-              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30"
+              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 text-sm h-9"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-gold">{t('businessQuestion2')}</Label>
+            <Label className="text-gold text-sm">{t('businessQuestion2')}</Label>
             <Textarea
               value={q2}
               onChange={(e) => setQ2(e.target.value)}
               placeholder={t('businessQuestion2Placeholder')}
-              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[100px]"
+              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[80px] text-sm"
             />
           </div>
 
-          <div className="space-y-3">
-            <Label className="text-gold">{t('businessQuestion3')}</Label>
-            <RadioGroup value={tone} onValueChange={setTone} className="flex gap-4">
+          <div className="space-y-2">
+            <Label className="text-gold text-sm">{t('businessQuestion3')}</Label>
+            <RadioGroup value={tone} onValueChange={setTone} className="flex gap-3">
               {[t('businessToneDiscrete'), t('businessToneInstitutional'), t('businessToneInspiring')].map((toneLabel, index) => {
                 const toneValue = ["discret", "institutionnel", "inspirant"][index];
                 return (
                   <div key={toneValue} className="flex items-center space-x-2">
                     <RadioGroupItem value={toneValue} id={toneValue} className="border-gold text-gold" />
-                    <Label htmlFor={toneValue} className="text-gold/80 capitalize cursor-pointer">
+                    <Label htmlFor={toneValue} className="text-gold/80 capitalize cursor-pointer text-sm">
                       {toneLabel}
                     </Label>
                   </div>
@@ -371,20 +371,22 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
         <div className="flex justify-between">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setCurrentStep("choose")}
-            className="border-gold/30 text-gold hover:bg-gold/10"
+            className="border-gold/30 text-gold hover:bg-gold/10 text-xs h-8 px-3"
           >
             {t('back')}
           </Button>
           <Button
+            size="sm"
             onClick={handleAIGenerate}
             disabled={!q1.trim() || !q2.trim() || isLoading}
-            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed text-xs h-8 px-3"
           >
             {isLoading ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
             ) : (
-              <Sparkles className="w-4 h-4 mr-2" />
+              <Sparkles className="w-3 h-3 mr-1.5" />
             )}
             {t('businessGenerateMyProfile')}
           </Button>
@@ -397,8 +399,8 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
   if (currentStep === "ai-generating") {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="w-12 h-12 text-gold animate-spin mb-6" />
-        <p className="text-gold/70">{t('businessAnalyzingAndCreatingProfile')}</p>
+        <Loader2 className="w-8 h-8 text-gold animate-spin mb-4" />
+        <p className="text-gold/70 text-sm">{t('businessAnalyzingAndCreatingProfile')}</p>
       </div>
     );
   }
@@ -406,37 +408,37 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
   // Step: Preview
   if (currentStep === "preview" && generatedData) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">{t('businessPreviewYourBusinessSection')}</h2>
-          <p className="text-gold/70">{t('businessReviewAndValidateProfile')}</p>
+          <h2 className="text-xl font-serif text-gold mb-3">{t('businessPreviewYourBusinessSection')}</h2>
+          <p className="text-gold/70 text-sm">{t('businessReviewAndValidateProfile')}</p>
         </div>
 
-        <div className="space-y-6 bg-black/50 border border-gold/20 rounded-lg p-6">
+        <div className="space-y-4 bg-black/50 border border-gold/20 rounded-lg p-4">
           {generatedData.bio_executive && (
             <div>
-              <h4 className="text-lg font-serif text-gold mb-2">{t('businessBioExecutive')}</h4>
-              <p className="text-gold/70">{generatedData.bio_executive}</p>
+              <h4 className="text-base font-serif text-gold mb-1.5">{t('businessBioExecutive')}</h4>
+              <p className="text-gold/70 text-sm">{generatedData.bio_executive}</p>
             </div>
           )}
           {generatedData.achievements_text && (
             <div>
-              <h4 className="text-lg font-serif text-gold mb-2">{t('businessAchievements')}</h4>
-              <p className="text-gold/70 whitespace-pre-line">{generatedData.achievements_text}</p>
+              <h4 className="text-base font-serif text-gold mb-1.5">{t('businessAchievements')}</h4>
+              <p className="text-gold/70 whitespace-pre-line text-sm">{generatedData.achievements_text}</p>
             </div>
           )}
           {generatedData.vision_text && (
             <div>
-              <h4 className="text-lg font-serif text-gold mb-2">{t('businessVision')}</h4>
-              <p className="text-gold/70">{generatedData.vision_text}</p>
+              <h4 className="text-base font-serif text-gold mb-1.5">{t('businessVision')}</h4>
+              <p className="text-gold/70 text-sm">{generatedData.vision_text}</p>
             </div>
           )}
           {generatedData.timeline && generatedData.timeline.length > 0 && (
             <div>
-              <h4 className="text-lg font-serif text-gold mb-2">{t('businessCareerPath')}</h4>
-              <div className="space-y-2">
+              <h4 className="text-base font-serif text-gold mb-1.5">{t('businessCareerPath')}</h4>
+              <div className="space-y-1.5">
                 {generatedData.timeline.map((item: any, index: number) => (
-                  <div key={index} className="text-gold/70">
+                  <div key={index} className="text-gold/70 text-sm">
                     <span className="text-gold">{item.year}</span> - {item.title} @ {item.company}
                   </div>
                 ))}
@@ -445,10 +447,10 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
           )}
           {generatedData.press && generatedData.press.length > 0 && (
             <div>
-              <h4 className="text-lg font-serif text-gold mb-2">{t('businessPressDistinctions')}</h4>
-              <div className="space-y-2">
+              <h4 className="text-base font-serif text-gold mb-1.5">{t('businessPressDistinctions')}</h4>
+              <div className="space-y-1.5">
                 {generatedData.press.map((item: any, index: number) => (
-                  <div key={index} className="text-gold/70">
+                  <div key={index} className="text-gold/70 text-sm">
                     {item.title} - <span className="text-gold/50">{item.source} ({item.year})</span>
                   </div>
                 ))}
@@ -460,16 +462,18 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
         <div className="flex justify-between">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setCurrentStep("edit")}
-            className="border-gold/30 text-gold hover:bg-gold/10"
+            className="border-gold/30 text-gold hover:bg-gold/10 text-xs h-8 px-3"
           >
-            <Edit3 className="w-4 h-4 mr-2" />
+            <Edit3 className="w-3 h-3 mr-1.5" />
             {t('edit')}
           </Button>
           <Button 
+            size="sm"
             onClick={handleValidate} 
             disabled={!generatedData}
-            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed text-xs h-8 px-3"
           >
             {t('businessValidateAll')}
           </Button>
@@ -483,37 +487,37 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">{t('businessEditYourInformation')}</h2>
-          <p className="text-gold/70">{t('businessAdjustGeneratedContent')}</p>
+          <h2 className="text-xl font-serif text-gold mb-3">{t('businessEditYourInformation')}</h2>
+          <p className="text-gold/70 text-sm">{t('businessAdjustGeneratedContent')}</p>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-3">
           <div className="space-y-2">
-            <Label className="text-gold">{t('businessBioExecutive')}</Label>
+            <Label className="text-gold text-sm">{t('businessBioExecutive')}</Label>
             <Textarea
               value={generatedData.bio_executive || ""}
               onChange={(e) => setGeneratedData({ ...generatedData, bio_executive: e.target.value })}
-              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[120px]"
+              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[100px] text-sm"
               placeholder={t('businessYourBioExecutive')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-gold">{t('businessAchievements')}</Label>
+            <Label className="text-gold text-sm">{t('businessAchievements')}</Label>
             <Textarea
               value={generatedData.achievements_text || ""}
               onChange={(e) => setGeneratedData({ ...generatedData, achievements_text: e.target.value })}
-              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[100px]"
+              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[80px] text-sm"
               placeholder={t('businessYourMajorAchievements')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-gold">{t('businessVision')}</Label>
+            <Label className="text-gold text-sm">{t('businessVision')}</Label>
             <Textarea
               value={generatedData.vision_text || ""}
               onChange={(e) => setGeneratedData({ ...generatedData, vision_text: e.target.value })}
-              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[100px]"
+              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[80px] text-sm"
               placeholder={t('businessYourVision')}
             />
           </div>
@@ -522,15 +526,17 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
         <div className="flex justify-between">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setCurrentStep("preview")}
-            className="border-gold/30 text-gold hover:bg-gold/10"
+            className="border-gold/30 text-gold hover:bg-gold/10 text-xs h-8 px-3"
           >
             {t('businessBackToPreview')}
           </Button>
           <Button 
+            size="sm"
             onClick={handleValidate} 
             disabled={!generatedData}
-            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed text-xs h-8 px-3"
           >
             {t('businessValidateModifications')}
           </Button>
@@ -544,20 +550,20 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">{t('assistant')}</h2>
-          <p className="text-gold/70">
+          <h2 className="text-xl font-serif text-gold mb-3">{t('assistant')}</h2>
+          <p className="text-gold/70 text-sm">
             {t('businessConciergeDescription')}
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="space-y-2">
-            <Label className="text-gold">{t('businessIndicateYourSources')}</Label>
+            <Label className="text-gold text-sm">{t('businessIndicateYourSources')}</Label>
             <Textarea
               value={conciergeMessage}
               onChange={(e) => setConciergeMessage(e.target.value)}
               placeholder={t('businessLinkedInExample')}
-              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[120px]"
+              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 min-h-[100px] text-sm"
             />
           </div>
 
@@ -572,31 +578,32 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             />
             <Button 
               type="button"
-              variant="outline" 
+              variant="outline"
+              size="sm"
               onClick={() => conciergeFileInputRef.current?.click()}
-              className="border-gold/30 text-gold hover:bg-gold/10"
+              className="border-gold/30 text-gold hover:bg-gold/10 text-xs h-8 px-3"
             >
-              <Upload className="w-4 h-4 mr-2" />
+              <Upload className="w-3 h-3 mr-1.5" />
               {t('businessAddAttachments')}
             </Button>
             
             {conciergeFiles.length > 0 && (
               <div className="space-y-2 mt-2">
                 {conciergeFiles.map((file, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-gold/10 border border-gold/30 rounded-lg">
-                    <FileText className="w-5 h-5 text-gold" />
+                  <div key={index} className="flex items-center gap-2 p-2 bg-gold/10 border border-gold/30 rounded-lg">
+                    <FileText className="w-4 h-4 text-gold" />
                     <div className="flex-1">
-                      <p className="text-gold font-medium text-sm">{file.name}</p>
-                      <p className="text-gold/50 text-xs">{(file.size / 1024).toFixed(1)} KB</p>
+                      <p className="text-gold font-medium text-xs">{file.name}</p>
+                      <p className="text-gold/50 text-[10px]">{(file.size / 1024).toFixed(1)} KB</p>
                     </div>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemoveConciergeFile(index)}
-                      className="text-gold/60 hover:text-gold"
+                      className="text-gold/60 hover:text-gold h-6 w-6 p-0"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3 h-3" />
                     </Button>
                   </div>
                 ))}
@@ -608,17 +615,19 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
         <div className="flex justify-between">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setCurrentStep("choose")}
-            className="border-gold/30 text-gold hover:bg-gold/10"
+            className="border-gold/30 text-gold hover:bg-gold/10 text-xs h-8 px-3"
           >
             {t('back')}
           </Button>
           <Button
+            size="sm"
             onClick={handleConciergeSubmit}
             disabled={!conciergeMessage.trim()}
-            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed text-xs h-8 px-3"
           >
-            <Phone className="w-4 h-4 mr-2" />
+            <Phone className="w-3 h-3 mr-1.5" />
             {t('businessEntrustToConcierge')}
           </Button>
         </div>
@@ -631,14 +640,14 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     return (
       <div className="space-y-8 max-w-2xl mx-auto">
         <div className="text-center">
-          <h2 className="text-2xl font-serif text-gold mb-4">{t('businessSmartImport')}</h2>
-          <p className="text-gold/70">{t('businessUploadCVOrLinkedInDescription')}</p>
+          <h2 className="text-xl font-serif text-gold mb-3">{t('businessSmartImport')}</h2>
+          <p className="text-gold/70 text-sm">{t('businessUploadCVOrLinkedInDescription')}</p>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-3">
           {/* File Upload Zone */}
           <div className="space-y-2">
-            <Label className="text-gold">{t('businessUploadYourCV')}</Label>
+            <Label className="text-gold text-sm">{t('businessUploadYourCV')}</Label>
             <input
               type="file"
               ref={fileInputRef}
@@ -647,29 +656,29 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
               className="hidden"
             />
             {uploadedFile ? (
-              <div className="flex items-center gap-3 p-4 bg-gold/10 border border-gold/30 rounded-lg">
-                <FileText className="w-8 h-8 text-gold" />
+              <div className="flex items-center gap-2 p-3 bg-gold/10 border border-gold/30 rounded-lg">
+                <FileText className="w-5 h-5 text-gold" />
                 <div className="flex-1">
-                  <p className="text-gold font-medium">{uploadedFile.name}</p>
-                  <p className="text-gold/50 text-sm">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
+                  <p className="text-gold font-medium text-sm">{uploadedFile.name}</p>
+                  <p className="text-gold/50 text-xs">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setUploadedFile(null)}
-                  className="text-gold/60 hover:text-gold"
+                  className="text-gold/60 hover:text-gold h-6 w-6 p-0"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3 h-3" />
                 </Button>
               </div>
             ) : (
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gold/30 rounded-lg p-8 text-center cursor-pointer hover:border-gold/50 transition-colors"
+                className="border-2 border-dashed border-gold/30 rounded-lg p-6 text-center cursor-pointer hover:border-gold/50 transition-colors"
               >
-                <Upload className="w-10 h-10 text-gold/50 mx-auto mb-3" />
-                <p className="text-gold/70">{t('businessClickToUploadCV')}</p>
-                <p className="text-gold/40 text-sm mt-1">{t('businessPDFWordTextMax5MB')}</p>
+                <Upload className="w-8 h-8 text-gold/50 mx-auto mb-2" />
+                <p className="text-gold/70 text-sm">{t('businessClickToUploadCV')}</p>
+                <p className="text-gold/40 text-xs mt-1">{t('businessPDFWordTextMax5MB')}</p>
               </div>
             )}
           </div>
@@ -682,12 +691,12 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
 
           {/* LinkedIn URL */}
           <div className="space-y-2">
-            <Label className="text-gold">{t('businessLinkedInProfileURL')}</Label>
+            <Label className="text-gold text-sm">{t('businessLinkedInProfileURL')}</Label>
             <Input
               value={importSources}
               onChange={(e) => setImportSources(e.target.value)}
               placeholder={t('businessLinkedInPlaceholder')}
-              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30"
+              className="bg-black/50 border-gold/30 text-gold placeholder:text-gold/30 text-sm h-9"
             />
           </div>
         </div>
@@ -695,20 +704,22 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
         <div className="flex justify-between">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setCurrentStep("choose")}
-            className="border-gold/30 text-gold hover:bg-gold/10"
+            className="border-gold/30 text-gold hover:bg-gold/10 text-xs h-8 px-3"
           >
             {t('back')}
           </Button>
           <Button
+            size="sm"
             onClick={handleImport}
             disabled={isLoading || (!uploadedFile && !importSources.trim())}
-            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-gold text-black hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed text-xs h-8 px-3"
           >
             {isLoading ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
             ) : (
-              <Sparkles className="w-4 h-4 mr-2" />
+              <Sparkles className="w-3 h-3 mr-1.5" />
             )}
             {t('businessAnalyzeAndImport')}
           </Button>

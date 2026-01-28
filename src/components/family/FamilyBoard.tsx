@@ -137,7 +137,7 @@ export const FamilyBoard = ({ members, isEditable = false, onUpdate }: FamilyBoa
 
       {(!members || members.length === 0) ? (
         <p className="text-muted-foreground text-sm italic">
-          {t('noPersonalBoardMemberEntered')}
+          {/* {t('noPersonalBoardMemberEntered')} */}
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

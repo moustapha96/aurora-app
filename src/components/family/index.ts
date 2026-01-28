@@ -8,3 +8,4 @@ export { FamilyCommitments } from "./FamilyCommitments";
 export { FamilyHeritage } from "./FamilyHeritage";
 export { FamilyParrainage } from "./FamilyParrainage";
 export { FamilyLinkInvite } from "./FamilyLinkInvite";
+export { SingleUseInvitationCodes } from "./SingleUseInvitationCodes";

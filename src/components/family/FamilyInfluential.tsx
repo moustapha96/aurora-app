@@ -476,7 +476,7 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
       {/* Liste */}
       {!people || people.length === 0 ? (
         <p className="text-muted-foreground text-sm italic">
-          {t("noInfluentialPersonEntered")}
+          {/* {t("noInfluentialPersonEntered")} */}
         </p>
       ) : (
         <div className="space-y-3 sm:space-y-4">

@@ -19,9 +19,10 @@ interface LandingLuxuryProps {
   member: MemberData;
   onContact?: () => void;
   showContactButton?: boolean;
+  hideHeader?: boolean;
 }
 
-export const LandingLuxury = ({ member, onContact, showContactButton = true }: LandingLuxuryProps) => {
+export const LandingLuxury = ({ member, onContact, showContactButton = true, hideHeader = false }: LandingLuxuryProps) => {
   const initials = `${member.first_name?.[0] || ''}${member.last_name?.[0] || ''}`;
 
   return (
@@ -43,17 +44,18 @@ export const LandingLuxury = ({ member, onContact, showContactButton = true }: L
 
       {/* Content */}
       <div className="relative z-10 min-h-screen flex flex-col">
-        {/* Header */}
-        <header className="p-6 flex items-center justify-between">
-          <AuroraLogo size="sm" />
-          <Badge className="bg-primary/20 text-primary border-primary/30 gap-1">
-            <Crown className="h-3 w-3" />
-            Elite Member
-          </Badge>
-        </header>
+        {!hideHeader && (
+          <header className="p-6 flex items-center justify-between">
+            <AuroraLogo size="sm" />
+            <Badge className="bg-primary/20 text-primary border-primary/30 gap-1">
+              <Crown className="h-3 w-3" />
+              Elite Member
+            </Badge>
+          </header>
+        )}
 
         {/* Main content */}
-        <main className="flex-1 flex items-center justify-center px-6">
+        <main className={`flex-1 flex items-center justify-center px-6 ${hideHeader ? "pt-14" : ""}`}>
           <div className="text-center max-w-3xl">
             {/* Avatar with glow */}
             <div className="relative inline-block mb-8">

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { AuroraLogo } from "./AuroraLogo";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Menu, Settings, User, MessageSquare, FileText, Trash2, LogOut, Layout, Smartphone, Monitor, Apple, Globe, Briefcase, Heart, Users, Compass, ShoppingBag, Headphones, Home, Shield, Fingerprint, Gift } from "lucide-react";
+import { Menu, Settings, User, MessageSquare, FileText, Trash2, LogOut, Layout, Smartphone, Monitor, Apple, Globe, Briefcase, Heart, Users, Compass, ShoppingBag, Headphones, Home, Shield, Fingerprint, Gift, CreditCard } from "lucide-react";
 import { usePlatformContext } from "@/contexts/PlatformContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -310,6 +310,11 @@ export const Header = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => navigate("/subscription")}>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      {t('subscription')}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => navigate("/settings")}>
                       <Settings className="w-4 h-4 mr-2" />
                       {t('settings')}
@@ -395,9 +400,9 @@ export const Header = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => navigate("/settings")}>
-                      <Settings className="w-4 h-4 mr-2" />
-                      {t('settings')}
+                    <DropdownMenuItem onClick={() => navigate("/subscription")}>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      {t('subscription')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => navigate("/settings")}>

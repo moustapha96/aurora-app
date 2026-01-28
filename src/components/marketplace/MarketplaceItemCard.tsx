@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MarketplaceCountdown } from './MarketplaceCountdown';
 import { StripeCheckout } from './StripeCheckout';
 import { MarketplaceItem } from '@/hooks/useMarketplace';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Eye, ChevronLeft, ChevronRight, Package, MapPin, CreditCard } from 'lucide-react';
+import { Eye, ChevronLeft, ChevronRight, Package, MapPin, CreditCard, Maximize2 } from 'lucide-react';
 
 interface MarketplaceItemCardProps {
   item: MarketplaceItem;
@@ -30,6 +32,15 @@ export const MarketplaceItemCard = ({
   const [showDetails, setShowDetails] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [descriptionFullscreen, setDescriptionFullscreen] = useState(false);
+  const [requestedReservationUntil, setRequestedReservationUntil] = useState<string>('');
+
+  const offerEnded = item.offer_end_date ? new Date(item.offer_end_date) <= new Date() : false;
+  const maxReservationDate = item.reservation_until_date || item.offer_end_date || null;
+
+  useEffect(() => {
+    if (!showDetails) setRequestedReservationUntil('');
+  }, [showDetails]);
 
   const allImages = [
     item.main_image_url,
@@ -97,7 +108,7 @@ export const MarketplaceItemCard = ({
                 <Package className="w-12 h-12 text-muted-foreground/30" />
               </div>
               {allImages.length > 1 && (
-                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
                   +{allImages.length - 1}
                 </div>
               )}
@@ -111,47 +122,60 @@ export const MarketplaceItemCard = ({
           {/* Status badges */}
           {item.status === 'sold' && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <Badge className="bg-red-500 text-white text-lg px-4 py-2">{t('sold')}</Badge>
+              <Badge className="bg-red-500 text-white text-sm px-3 py-1.5">{t('sold')}</Badge>
             </div>
           )}
           
           {/* Category badge */}
           <Badge 
             variant="secondary" 
-            className="absolute top-2 left-2 bg-black/60 text-white border-0 text-xs"
+            className="absolute top-1.5 left-1.5 bg-black/60 text-white border-0 text-[10px] px-1.5 py-0"
           >
             {getCategoryLabel(item.category)}
           </Badge>
         </div>
 
-        <CardContent className="p-4">
-          <h3 className="font-serif text-base text-foreground line-clamp-1 mb-1 group-hover:text-primary transition-colors">
+        <CardContent className="p-3 sm:p-4">
+          <h3 className="font-serif font-semibold text-base sm:text-lg text-foreground line-clamp-1 mb-1 group-hover:text-primary transition-colors leading-tight">
             {item.title}
           </h3>
           
           {item.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+            <p className="text-sm text-muted-foreground line-clamp-2 mb-2 leading-relaxed">
               {item.description}
             </p>
           )}
 
-          <div className="flex items-center justify-between">
-            <p className="text-lg font-serif text-primary">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-base sm:text-lg font-serif font-bold text-primary">
               {formatPrice(item.price, item.currency)}
             </p>
             <MarketplaceCountdown endDate={item.offer_end_date} compact />
           </div>
+          
+          {!offerEnded && maxReservationDate && (
+            <div className="mt-1.5 pt-1.5 border-t border-border">
+              <p className="text-xs text-muted-foreground">
+                {t('youCanReserveUntil') || 'Vous pouvez réserver ce bien jusqu\'au'}{' '}
+                <span className="text-foreground font-semibold">
+                  {new Date(maxReservationDate).toLocaleDateString()}
+                </span>
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Details Dialog */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl">{item.title}</DialogTitle>
+          <DialogHeader className="pb-2">
+            <DialogTitle className="font-serif font-semibold text-lg sm:text-xl text-foreground leading-tight">
+              {item.title}
+            </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* Image Gallery */}
             {allImages.length > 0 && (
               <div className="relative">
@@ -172,26 +196,26 @@ export const MarketplaceItemCard = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white"
+                      className="absolute left-1 top-1/2 -translate-y-1/2 h-8 w-8 bg-black/50 hover:bg-black/70 text-white rounded-full"
                       onClick={prevImage}
                     >
-                      <ChevronLeft className="w-5 h-5" />
+                      <ChevronLeft className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 bg-black/50 hover:bg-black/70 text-white rounded-full"
                       onClick={nextImage}
                     >
-                      <ChevronRight className="w-5 h-5" />
+                      <ChevronRight className="w-4 h-4" />
                     </Button>
                     
                     {/* Thumbnails */}
-                    <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
+                    <div className="flex gap-1.5 mt-2 overflow-x-auto pb-1">
                       {allImages.map((img, idx) => (
                         <button
                           key={idx}
-                          className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
+                          className={`flex-shrink-0 w-12 h-12 rounded overflow-hidden border-2 transition-all ${
                             idx === currentImageIndex ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'
                           }`}
                           onClick={() => setCurrentImageIndex(idx)}
@@ -206,23 +230,37 @@ export const MarketplaceItemCard = ({
             )}
 
             {/* Info Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-4">
                 <div>
-                  <Badge variant="outline">{getCategoryLabel(item.category)}</Badge>
+                  <Badge variant="outline" className="text-xs">{getCategoryLabel(item.category)}</Badge>
                 </div>
                 
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">{t('price')}</p>
-                  <p className="text-2xl font-serif text-primary">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">{t('price')}</p>
+                  <p className="text-xl font-serif font-bold text-primary">
                     {formatPrice(item.price, item.currency)}
                   </p>
                 </div>
 
                 {item.description && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">{t('description')}</p>
-                    <p className="text-foreground whitespace-pre-wrap">{item.description}</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-foreground">{t('description')}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDescriptionFullscreen(true)}
+                        className="h-7 w-7 p-0 shrink-0 border-gold/30 text-gold hover:bg-gold/10"
+                        title={t('fullscreen') || 'Plein écran'}
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                      {item.description}
+                    </p>
                   </div>
                 )}
               </div>
@@ -230,32 +268,93 @@ export const MarketplaceItemCard = ({
               <div className="space-y-4">
                 <MarketplaceCountdown endDate={item.offer_end_date} />
                 
+                {!offerEnded && maxReservationDate && (
+                  <div className="p-2.5 bg-muted/30 rounded-lg border border-border space-y-0.5">
+                    <p className="text-sm font-semibold text-foreground">{t('youCanReserveUntil') || 'Vous pouvez réserver ce bien jusqu\'au'}</p>
+                    <p className="text-sm text-foreground font-medium">
+                      {new Date(maxReservationDate).toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t('reservationInfo')}</p>
+                  </div>
+                )}
+
+                {/* Champ : on demande à l'acheteur de donner sa date de réservation */}
+                {!isOwner && item.status === 'active' && !offerEnded && maxReservationDate && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="requestedReservationUntil" className="text-sm font-semibold text-foreground">
+                      {t('giveYourReservationDate') || 'Indiquez jusqu\'à quelle date vous souhaitez réserver'}
+                    </Label>
+                    <Input
+                      id="requestedReservationUntil"
+                      type="date"
+                      value={requestedReservationUntil}
+                      onChange={(e) => setRequestedReservationUntil(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      max={maxReservationDate ? new Date(maxReservationDate).toISOString().split('T')[0] : undefined}
+                      className="h-9 text-base"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t('giveYourReservationDateHint') || 'Donnez la date jusqu\'à laquelle vous souhaitez réserver ce bien.'}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Boutons alignés, même position, plus petits */}
                 {isOwner ? (
-                  <div className="flex flex-col gap-2">
-                    <Button variant="outline" onClick={onEdit}>
+                  <div className="flex flex-row flex-wrap justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={onEdit} className="h-7 text-xs px-2.5 min-w-[4rem]">
                       {t('edit')}
                     </Button>
                     {item.status === 'active' && (
-                      <Button variant="secondary" onClick={onMarkSold}>
+                      <Button variant="secondary" size="sm" onClick={onMarkSold} className="h-7 text-xs px-2.5 min-w-[4rem]">
                         {t('markAsSold')}
                       </Button>
                     )}
-                    <Button variant="destructive" onClick={onDelete}>
+                    <Button variant="destructive" size="sm" onClick={onDelete} className="h-7 text-xs px-2.5 min-w-[4rem]">
                       {t('delete')}
                     </Button>
                   </div>
                 ) : item.status === 'active' ? (
-                  <Button 
-                    onClick={() => setShowCheckout(true)}
-                    className="w-full"
-                    size="lg"
-                  >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    {t('buyNow')}
-                  </Button>
+                  <div className="flex flex-row justify-end">
+                    <Button 
+                      onClick={() => setShowCheckout(true)}
+                      size="sm"
+                      className="h-7 text-xs px-2.5 min-w-[4rem]"
+                    >
+                      <CreditCard className="w-3 h-3 mr-1" />
+                      {t('buyNow')}
+                    </Button>
+                  </div>
                 ) : null}
               </div>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog plein écran pour la description */}
+      <Dialog open={descriptionFullscreen} onOpenChange={setDescriptionFullscreen}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 py-3 border-b border-border flex-shrink-0">
+            <DialogTitle className="text-base font-serif font-semibold text-foreground">
+              {item.title} – {t('description')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto p-6">
+            <p className="text-base text-foreground whitespace-pre-wrap leading-relaxed">
+              {item.description || t('noDescription') || 'Aucune description'}
+            </p>
+          </div>
+          <div className="px-6 py-3 border-t border-border flex-shrink-0 flex flex-row justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDescriptionFullscreen(false)}
+              className="h-7 text-xs px-2.5"
+            >
+              {t('close') || 'Fermer'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -75,9 +75,10 @@ export const MarketplaceCountdown = ({ endDate, compact = false }: MarketplaceCo
 
   const isUrgent = timeLeft.days === 0;
 
-  return (
-    <div className={`rounded-lg p-3 ${isUrgent ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-primary/5 border border-primary/10'}`}>
-      <div className="flex items-center gap-2 mb-2">
+  return null;
+    
+   {/* <div className={`rounded-lg p-3 ${isUrgent ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-primary/5 border border-primary/10'}`}>
+       <div className="flex items-center gap-2 mb-2">
         <Clock className={`w-4 h-4 ${isUrgent ? 'text-orange-500' : 'text-primary'}`} />
         <span className={`text-xs font-medium ${isUrgent ? 'text-orange-500' : 'text-primary'}`}>
           {t('offerEndsIn')}
@@ -102,7 +103,6 @@ export const MarketplaceCountdown = ({ endDate, compact = false }: MarketplaceCo
           <div className="text-xl font-bold text-foreground">{String(timeLeft.seconds).padStart(2, '0')}</div>
           <div className="text-xs text-muted-foreground">{t('seconds')}</div>
         </div>
-      </div>
-    </div>
-  );
+      </div> 
+    </div>*/}
 };

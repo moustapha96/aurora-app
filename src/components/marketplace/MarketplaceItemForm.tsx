@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MarketplaceItem, MarketplaceItemFormData, MARKETPLACE_CATEGORIES } from '@/hooks/useMarketplace';
-import { Upload, X, Plus, Loader2, ImageIcon } from 'lucide-react';
+import { Upload, X, Plus, Loader2, ImageIcon, Maximize2 } from 'lucide-react';
 
 interface MarketplaceItemFormProps {
   open: boolean;
@@ -25,7 +25,8 @@ const getInitialFormData = (item?: MarketplaceItem | null): MarketplaceItemFormD
   currency: item?.currency || 'EUR',
   main_image_url: item?.main_image_url || null,
   additional_images: item?.additional_images || [],
-  offer_end_date: item?.offer_end_date || null
+  offer_end_date: item?.offer_end_date || null,
+  reservation_until_date: item?.reservation_until_date || null
 });
 
 export const MarketplaceItemForm = ({
@@ -42,6 +43,8 @@ export const MarketplaceItemForm = ({
   const [formData, setFormData] = useState<MarketplaceItemFormData>(getInitialFormData(item));
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [descriptionFocused, setDescriptionFocused] = useState(false);
+  const [descriptionFullscreen, setDescriptionFullscreen] = useState(false);
 
   // Sync form data when item changes or dialog opens
   useEffect(() => {
@@ -163,7 +166,8 @@ export const MarketplaceItemForm = ({
         currency: 'EUR',
         main_image_url: null,
         additional_images: [],
-        offer_end_date: null
+        offer_end_date: null,
+        reservation_until_date: null
       });
     }
   };
@@ -171,19 +175,19 @@ export const MarketplaceItemForm = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-serif">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="font-serif font-semibold text-lg sm:text-xl text-foreground leading-tight">
             {item ? t('editItem') : t('addItem')}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Main Image */}
-          <div className="space-y-2">
-            <Label>{t('mainImage')}</Label>
-            <div className="flex items-center gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold text-foreground">{t('mainImage')}</Label>
+            <div className="flex items-center gap-3">
               {formData.main_image_url ? (
-                <div className="relative w-32 h-32 rounded-lg overflow-hidden border">
+                <div className="relative w-28 h-28 rounded-lg overflow-hidden border border-border">
                   <img 
                     src={formData.main_image_url} 
                     alt="Main" 
@@ -191,10 +195,10 @@ export const MarketplaceItemForm = ({
                   />
                   <button
                     type="button"
-                    className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1"
+                    className="absolute top-0.5 right-0.5 bg-black/50 text-white rounded-full p-0.5 hover:bg-black/70"
                     onClick={() => setFormData(prev => ({ ...prev, main_image_url: null }))}
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-2.5 h-2.5" />
                   </button>
                 </div>
               ) : (
@@ -202,14 +206,14 @@ export const MarketplaceItemForm = ({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="w-32 h-32 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-colors"
+                  className="w-28 h-28 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors"
                 >
                   {uploading ? (
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   ) : (
                     <>
-                      <ImageIcon className="w-6 h-6 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{t('addImage')}</span>
+                      <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground">{t('addImage')}</span>
                     </>
                   )}
                 </button>
@@ -225,18 +229,18 @@ export const MarketplaceItemForm = ({
           </div>
 
           {/* Additional Images */}
-          <div className="space-y-2">
-            <Label>{t('additionalImages')}</Label>
-            <div className="flex flex-wrap gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold text-foreground">{t('additionalImages')}</Label>
+            <div className="flex flex-wrap gap-2">
               {formData.additional_images.map((img, idx) => (
-                <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                <div key={idx} className="relative w-16 h-16 rounded-md overflow-hidden border border-border">
                   <img src={img} alt="" className="w-full h-full object-cover" />
                   <button
                     type="button"
-                    className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5"
+                    className="absolute top-0 right-0 bg-black/50 text-white rounded-full p-0.5 hover:bg-black/70"
                     onClick={() => removeAdditionalImage(idx)}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-2 h-2" />
                   </button>
                 </div>
               ))}
@@ -244,12 +248,12 @@ export const MarketplaceItemForm = ({
                 type="button"
                 onClick={() => additionalFilesRef.current?.click()}
                 disabled={uploading}
-                className="w-20 h-20 border-2 border-dashed border-border rounded-lg flex items-center justify-center hover:border-primary/50 transition-colors"
+                className="w-16 h-16 border-2 border-dashed border-border rounded-md flex items-center justify-center hover:border-primary/50 transition-colors"
               >
                 {uploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                 ) : (
-                  <Plus className="w-5 h-5 text-muted-foreground" />
+                  <Plus className="w-3.5 h-3.5 text-muted-foreground" />
                 )}
               </button>
               <input
@@ -264,25 +268,26 @@ export const MarketplaceItemForm = ({
           </div>
 
           {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="title">{t('itemTitle')} *</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="title" className="text-sm font-semibold text-foreground">{t('itemTitle')} *</Label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               placeholder={t('itemTitlePlaceholder')}
               required
+              className="h-9 text-base placeholder:text-muted-foreground/70"
             />
           </div>
 
           {/* Category */}
-          <div className="space-y-2">
-            <Label>{t('category')} *</Label>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold text-foreground">{t('category')} *</Label>
             <Select
               value={formData.category}
               onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder={t('selectCategory')} />
               </SelectTrigger>
               <SelectContent>
@@ -297,8 +302,8 @@ export const MarketplaceItemForm = ({
 
           {/* Price */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="price">{t('price')} *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="price" className="text-sm font-medium text-foreground">{t('price')} *</Label>
               <Input
                 id="price"
                 type="number"
@@ -308,15 +313,16 @@ export const MarketplaceItemForm = ({
                 onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
                 placeholder="0"
                 required
+                className="h-9 text-base"
               />
             </div>
-          <div className="space-y-2">
-            <Label>{t('marketplaceCurrency')}</Label>
-            <Select
-              value={formData.currency}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
-            >
-                <SelectTrigger>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold text-foreground">{t('marketplaceCurrency')}</Label>
+              <Select
+                value={formData.currency}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+              >
+                <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -330,40 +336,100 @@ export const MarketplaceItemForm = ({
           </div>
 
           {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">{t('description')}</Label>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="description" className="text-sm font-medium text-foreground">{t('description')}</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDescriptionFullscreen(true)}
+                className="h-7 w-7 p-0 shrink-0 border-gold/30 text-gold hover:bg-gold/10"
+                title={t('fullscreen') || 'Plein écran'}
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              onFocus={() => setDescriptionFocused(true)}
+              onBlur={() => setDescriptionFocused(false)}
               placeholder={t('descriptionPlaceholder')}
-              rows={4}
+              rows={descriptionFocused ? 8 : 4}
+              className={`text-base leading-relaxed placeholder:text-muted-foreground/70 transition-all duration-300 ease-in-out ${
+                descriptionFocused 
+                  ? 'min-h-[200px] sm:min-h-[250px] md:min-h-[300px]' 
+                  : 'min-h-[100px]'
+              }`}
             />
           </div>
 
+          {/* Dialog plein écran pour la description */}
+          <Dialog open={descriptionFullscreen} onOpenChange={setDescriptionFullscreen}>
+            <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full flex flex-col p-0 gap-0">
+              <DialogHeader className="px-6 py-3 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-base font-serif font-semibold text-foreground">
+                  {t('description')} – {t('fullscreen') || 'Plein écran'}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex-1 overflow-auto p-6">
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder={t('descriptionPlaceholder')}
+                  className="w-full min-h-[50vh] resize-none text-base leading-relaxed"
+                />
+              </div>
+              <DialogFooter className="px-6 py-3 border-t border-border flex-shrink-0 flex flex-row justify-end gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setDescriptionFullscreen(false)} className="h-7 text-xs px-2.5">
+                  {t('close') || 'Fermer'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           {/* Offer End Date */}
-          <div className="space-y-2">
-            <Label htmlFor="endDate">{t('endofOffer')}</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="endDate" className="text-sm font-medium text-foreground">{t('endofOffer')}</Label>
             <Input
               id="endDate"
-              type="datetime-local"
-              value={formData.offer_end_date?.slice(0, 16) || ''}
+              type="date"
+              value={formData.offer_end_date ? new Date(formData.offer_end_date).toISOString().split('T')[0] : ''}
               onChange={(e) => setFormData(prev => ({ 
                 ...prev, 
-                offer_end_date: e.target.value ? new Date(e.target.value).toISOString() : null
+                offer_end_date: e.target.value ? new Date(e.target.value + 'T00:00:00').toISOString() : null
               }))}
+              className="h-9 text-base"
             />
             <p className="text-xs text-muted-foreground">{t('offerEndDateHint')}</p>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          {/* Reservation Until Date */}
+          <div className="space-y-1.5">
+            <Label htmlFor="reservationDate" className="text-sm font-semibold text-foreground">{t('reservationUntilDate')}</Label>
+            <Input
+              id="reservationDate"
+              type="date"
+              value={formData.reservation_until_date ? new Date(formData.reservation_until_date).toISOString().split('T')[0] : ''}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                reservation_until_date: e.target.value ? new Date(e.target.value + 'T00:00:00').toISOString() : null
+              }))}
+              className="h-9 text-base"
+            />
+            <p className="text-xs text-muted-foreground">{t('reservationUntilDateHint')}</p>
+          </div>
+
+          <DialogFooter className="flex flex-row justify-end gap-2 sm:gap-2 pt-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)} className="h-7 text-xs px-2.5 min-w-[4rem]">
               {t('cancel')}
             </Button>
-            <Button type="submit" disabled={submitting || uploading}>
+            <Button type="submit" size="sm" disabled={submitting || uploading} className="h-7 text-xs px-2.5 min-w-[4rem]">
               {submitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                   {t('saving')}
                 </>
               ) : (

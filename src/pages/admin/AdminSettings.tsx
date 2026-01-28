@@ -19,6 +19,7 @@ const AdminSettings = () => {
     allowRegistration: true,
     emailVerificationRequired: false,
     maxReferralsPerUser: 10,
+    maxInvitationCodesPerUser: 2,
     autoApproveContent: false,
     enableNotifications: true,
   });
@@ -408,6 +409,26 @@ const AdminSettings = () => {
                   type="number"
                   value={settings.maxReferralsPerUser}
                   onChange={(e) => updateSetting('maxReferralsPerUser', parseInt(e.target.value) || 0)}
+                  className="w-24"
+                />
+              </div>
+              
+              <Separator />
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="maxInvitationCodes">{t('adminMaxInvitationCodesPerUser') || 'Codes d\'invitation par membre'}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t('adminMaxInvitationCodesPerUserDesc') || 'Nombre maximum de codes d\'invitation à usage unique par membre'}
+                  </p>
+                </div>
+                <Input
+                  id="maxInvitationCodes"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={settings.maxInvitationCodesPerUser}
+                  onChange={(e) => updateSetting('maxInvitationCodesPerUser', parseInt(e.target.value) || 2)}
                   className="w-24"
                 />
               </div>

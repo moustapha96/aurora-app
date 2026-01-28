@@ -19,22 +19,24 @@ interface LandingMinimalProps {
   member: MemberData;
   onContact?: () => void;
   showContactButton?: boolean;
+  hideHeader?: boolean;
 }
 
-export const LandingMinimal = ({ member, onContact, showContactButton = true }: LandingMinimalProps) => {
+export const LandingMinimal = ({ member, onContact, showContactButton = true, hideHeader = false }: LandingMinimalProps) => {
   const initials = `${member.first_name?.[0] || ''}${member.last_name?.[0] || ''}`;
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
-        <div className="container mx-auto px-6 py-4">
-          <AuroraLogo size="sm" />
-        </div>
-      </header>
+      {!hideHeader && (
+        <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
+          <div className="container mx-auto px-6 py-4">
+            <AuroraLogo size="sm" />
+          </div>
+        </header>
+      )}
 
       {/* Main content */}
-      <main className="pt-24 pb-20 px-6">
+      <main className={hideHeader ? "pt-20 pb-20 px-6" : "pt-24 pb-20 px-6"}>
         <div className="container mx-auto max-w-2xl">
           {/* Profile section */}
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12">

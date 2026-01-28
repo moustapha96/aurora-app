@@ -420,7 +420,7 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
       {/* Liste */}
       {!commitments || commitments.length === 0 ? (
         <p className="text-muted-foreground text-sm italic">
-          {t("noFamilyCommitmentEntered")}
+          {/* {t("noFamilyCommitmentEntered")} */}
         </p>
       ) : (
         <div className="space-y-3 sm:space-y-4">

@@ -45,6 +45,7 @@ export const useAdminMarketplace = () => {
         return {
           ...item,
           additional_images: item.additional_images || [],
+          reservation_until_date: null,
           status: item.status as 'active' | 'sold' | 'expired' | 'cancelled',
           owner_name: profile ? `${profile.first_name} ${profile.last_name}` : 'Inconnu',
           owner_email: profile?.account_number || 'N/A'

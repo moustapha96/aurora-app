@@ -316,11 +316,9 @@ const FamilySocial = () => {
               onUpdate={loadAllContent}
               renderContent={() => (
                 <div className="space-y-6">
-
                   {/* Section pour inviter des proches */}
                   <FamilyLinkInvite
                     isEditable={isOwnProfile}
-
                     onUpdate={loadAllContent}
                   />
                 </div>

@@ -49,9 +49,13 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
           sport_type: sport.sport_type || ""
         });
       } else {
+        // Pour la méditation, définir le titre par défaut à "Méditation / Recueillement"
+        const defaultTitle = defaultCategory === "meditation" 
+          ? (t("personalSportLabel_meditation_default") || "Méditation / Recueillement")
+          : "";
         reset({
           id: "",
-          title: "",
+          title: defaultTitle,
           subtitle: "",
           description: "",
           badge_text: "",
@@ -60,7 +64,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
         });
       }
     }
-  }, [sport, reset, open, defaultCategory]);
+  }, [sport, reset, open, defaultCategory, t]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -185,7 +189,8 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
               <Label className="text-sm">{t("title")} *</Label>
               <Input 
                 {...register("title", { required: true })} 
-                placeholder={t("exGolfYachting")} 
+                value={watch("sport_type") === "meditation" ? t('personalSportLabel_meditation_default') : ""}
+                placeholder=""
                 className="text-sm"
               />
             </div>
@@ -193,7 +198,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
               <Label className="text-sm">{t("subtitle")}</Label>
               <Input 
                 {...register("subtitle")} 
-                placeholder={t("exClubMonaco")} 
+                placeholder=""
                 className="text-sm"
               />
             </div>
@@ -202,7 +207,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
             <Label className="text-sm">{t("badgeLevel")}</Label>
             <Input 
               {...register("badge_text")} 
-              placeholder={t("exExpertHandicap5")} 
+              placeholder=""
               className="text-sm"
             />
           </div>
@@ -210,7 +215,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
             <Label className="text-sm">{t("description")}</Label>
             <Textarea 
               {...register("description")} 
-              placeholder={t("describeYourPassion")} 
+              placeholder=""
               rows={4} 
               className="text-sm min-h-[100px]"
             />
@@ -221,9 +226,9 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
                 size="sm"
                 onClick={handleAISuggest}
                 disabled={generating}
-                className="gap-2 text-sm w-full sm:w-auto"
+                className="gap-1.5 text-xs h-8 px-2.5 w-full sm:w-auto"
               >
-                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                 {t("aiAurora")}
               </Button>
               <Button
@@ -231,9 +236,9 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
                 variant="outline"
                 size="sm"
                 onClick={() => document.getElementById('import-doc-sports')?.click()}
-                className="gap-2 text-sm w-full sm:w-auto"
+                className="gap-1.5 text-xs h-8 px-2.5 w-full sm:w-auto"
               >
-                <FileUp className="w-4 h-4" />
+                <FileUp className="w-3 h-3" />
                 {t("import")}
               </Button>
               <input
@@ -270,10 +275,10 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
                   type="button"
                   variant="destructive"
                   size="icon"
-                  className="absolute top-2 right-2 h-7 w-7 sm:h-8 sm:w-8"
+                  className="absolute top-2 right-2 h-6 w-6 sm:h-7 sm:w-7"
                   onClick={() => setValue("image_url", "")}
                 >
-                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </Button>
               </div>
             )}
@@ -282,15 +287,17 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
             <Button 
               type="button" 
               variant="outline" 
+              size="sm"
               onClick={() => onOpenChange(false)}
-              className="w-full sm:w-auto text-sm"
+              className="w-full sm:w-auto text-xs h-8 px-3"
             >
               {t("cancel")}
             </Button>
             <Button 
               type="submit" 
+              size="sm"
               disabled={uploading || submitting} 
-              className="bg-gold text-black hover:bg-gold/90 w-full sm:w-auto text-sm"
+              className="bg-gold text-black hover:bg-gold/90 w-full sm:w-auto text-xs h-8 px-3"
             >
               {submitting ? t("saving") : t("validate")}
             </Button>

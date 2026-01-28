@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Users, Plus, Gift, CheckCircle2, XCircle, Loader2, Search, UserPlus, Share2, Copy, Check, Link2, Trash2, Edit, Eye, EyeOff, Clock, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
+import { Users, Plus, Gift, CheckCircle2, XCircle, Loader2, Search, UserPlus, Share2, Copy, Check, Link2, Trash2, Edit, Eye, EyeOff, Clock, ThumbsUp, ThumbsDown, AlertCircle, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { SingleUseInvitationCodes } from "./SingleUseInvitationCodes";
 
 interface ReferredMember {
   id: string;
@@ -42,6 +43,23 @@ interface ReferralLink {
   is_active: boolean;
   expires_at: string | null;
   created_at: string;
+}
+
+interface SecondaryReferralCode {
+  id: string;
+  user_id: string;
+  invitation_code: string;
+  code_name: string | null;
+  is_used: boolean;
+  used_by: string | null;
+  used_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  used_by_profile?: {
+    first_name: string;
+    last_name: string;
+    avatar_url: string | null;
+  } | null;
 }
 
 interface FamilyParrainageProps {
@@ -76,6 +94,20 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
   const [selectedMember, setSelectedMember] = useState<ReferredMember | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [processingApproval, setProcessingApproval] = useState(false);
+  
+  // Invitation states
+  const [newInviteCode, setNewInviteCode] = useState<string>("");
+  const [newInviteLink, setNewInviteLink] = useState<string>("");
+  const [inviteLinkName, setInviteLinkName] = useState<string>("");
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
+  
+  // Secondary referral codes states
+  const [secondaryCodes, setSecondaryCodes] = useState<SecondaryReferralCode[]>([]);
+  const [newCodeDialogOpen, setNewCodeDialogOpen] = useState(false);
+  const [newCodeName, setNewCodeName] = useState<string>("");
+  const [creatingNewCode, setCreatingNewCode] = useState(false);
+  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -185,6 +217,34 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
 
       if (linksError) throw linksError;
       setReferralLinks((links || []) as ReferralLink[]);
+
+      // Charger les codes d'invitation à usage unique
+      const { data: secondaryCodesData, error: secondaryCodesError } = await (supabase as any)
+        .from('single_use_invitation_codes')
+        .select('*')
+        .eq('user_id', profileId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (secondaryCodesError) {
+        console.error("Error loading invitation codes:", secondaryCodesError);
+      } else {
+        // Récupérer les profils des membres qui ont utilisé les codes
+        const codesWithProfiles = await Promise.all(
+          (secondaryCodesData || []).map(async (code: any) => {
+            if (code.is_used && code.used_by) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('first_name, last_name, avatar_url')
+                .eq('id', code.used_by)
+                .maybeSingle();
+              return { ...code, used_by_profile: profile };
+            }
+            return { ...code, used_by_profile: null };
+          })
+        );
+        setSecondaryCodes(codesWithProfiles as SecondaryReferralCode[]);
+      }
     } catch (error: any) {
       console.error("Error loading referrals:", error);
       toast.error(t('errorLoadingReferrals'));
@@ -315,6 +375,116 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
     return code;
   };
 
+  const createSecondaryReferralCode = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error(t('youMustBeConnected'));
+      return;
+    }
+
+    const profileId = userId || user.id;
+    setCreatingNewCode(true);
+
+    try {
+      // Générer un code unique
+      let newCode: string = "";
+      let codeExists = true;
+      let attempts = 0;
+      
+      while (codeExists && attempts < 10) {
+        newCode = generateReferralCode();
+        // Vérifier l'unicité dans single_use_invitation_codes
+        const { data: existingCode } = await (supabase as any)
+          .from('single_use_invitation_codes')
+          .select('id')
+          .eq('invitation_code', newCode)
+          .maybeSingle();
+        
+        if (!existingCode) {
+          codeExists = false;
+        }
+        attempts++;
+      }
+
+      if (codeExists) {
+        toast.error(t('errorGeneratingUniqueCode') || 'Erreur lors de la génération d\'un code unique');
+        return;
+      }
+
+      // Créer le code d'invitation à usage unique
+      const { error } = await (supabase as any)
+        .from('single_use_invitation_codes')
+        .insert({
+          user_id: profileId,
+          invitation_code: newCode,
+          code_name: newCodeName.trim() || null,
+          is_active: true,
+          is_used: false
+        });
+
+      if (error) throw error;
+
+      toast.success(t('secondaryCodeCreatedSuccessfully') || 'Code de parrainage créé avec succès');
+      setNewCodeDialogOpen(false);
+      setNewCodeName("");
+      loadData();
+      onUpdate?.();
+    } catch (error: any) {
+      console.error("Error creating invitation code:", error);
+      toast.error(error.message || t('errorCreatingSecondaryCode') || 'Erreur lors de la création du code');
+    } finally {
+      setCreatingNewCode(false);
+    }
+  };
+
+  const copySecondaryCode = async (code: string, codeId: string) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(code);
+        setCopiedCodeId(codeId);
+        toast.success(t('codeCopiedClipboard'));
+        setTimeout(() => setCopiedCodeId(null), 2000);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = code;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          setCopiedCodeId(codeId);
+          toast.success(t('codeCopiedClipboard'));
+          setTimeout(() => setCopiedCodeId(null), 2000);
+        } catch (err) {
+          toast.error(t('cannotCopyCode'));
+        } finally {
+          document.body.removeChild(textarea);
+        }
+      }
+    } catch (error) {
+      toast.error(t('cannotCopyCode'));
+    }
+  };
+
+  const deleteSecondaryCode = async (codeId: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('single_use_invitation_codes')
+        .update({ is_active: false })
+        .eq('id', codeId);
+
+      if (error) throw error;
+
+      toast.success(t('secondaryCodeDeletedSuccessfully') || 'Code de parrainage supprimé avec succès');
+      loadData();
+      onUpdate?.();
+    } catch (error: any) {
+      console.error("Error deleting invitation code:", error);
+      toast.error(error.message || t('errorDeletingSecondaryCode') || 'Erreur lors de la suppression du code');
+    }
+  };
+
   const copyToClipboard = async () => {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -391,6 +561,109 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
       } else {
         toast.error(t('cannotShareOrCopyLink'));
       }
+    }
+  };
+
+  const createInviteLink = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error(t('youMustBeConnected'));
+      return;
+    }
+
+    const profileId = userId || user.id;
+
+    // Vérifier la limite
+    if (referralLinks.length >= maxReferralLinks) {
+      toast.error(t('referralLinksLimitReached').replace('{maxReferralLinks}', maxReferralLinks.toString()));
+      return;
+    }
+
+    setCreatingInvite(true);
+    try {
+      // Récupérer le code de parrainage du sponsor
+      const { data: sponsorProfile } = await supabase
+        .from('profiles')
+        .select('referral_code')
+        .eq('id', profileId)
+        .single();
+
+      if (!sponsorProfile?.referral_code) {
+        toast.error(t('referralCodeNotFound'));
+        return;
+      }
+
+      // Générer un code de lien unique
+      const generateLinkCode = () => {
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let code = "AURORA-LINK-";
+        for (let i = 0; i < 6; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+      };
+
+      const linkCode = generateLinkCode();
+      const linkName = inviteLinkName.trim() || t('newMemberInvitation') || 'Invitation nouveau membre';
+
+      // Créer le lien de partage
+      const { data: linkData, error } = await (supabase as any)
+        .from('referral_links')
+        .insert({
+          sponsor_id: profileId,
+          link_name: linkName,
+          link_code: linkCode,
+          referral_code: sponsorProfile.referral_code,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const inviteUrl = `${window.location.origin}/register?link=${linkCode}`;
+      setNewInviteCode(linkCode);
+      setNewInviteLink(inviteUrl);
+      
+      toast.success(t('inviteLinkCreatedSuccessfully') || 'Lien d\'invitation créé avec succès');
+      setInviteLinkName("");
+      loadData();
+      onUpdate?.();
+    } catch (error: any) {
+      console.error("Error creating invite link:", error);
+      toast.error(error.message || t('errorCreatingLink') || 'Erreur lors de la création du lien');
+    } finally {
+      setCreatingInvite(false);
+    }
+  };
+
+  const copyInviteLink = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(newInviteLink);
+        setInviteCopied(true);
+        toast.success(t('linkCopiedClipboard') || 'Lien copié dans le presse-papiers');
+        setTimeout(() => setInviteCopied(false), 2000);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = newInviteLink;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          setInviteCopied(true);
+          toast.success(t('linkCopiedClipboard') || 'Lien copié dans le presse-papiers');
+          setTimeout(() => setInviteCopied(false), 2000);
+        } catch (err) {
+          toast.error(t('cannotCopyLink') || 'Impossible de copier le lien');
+        } finally {
+          document.body.removeChild(textarea);
+        }
+      }
+    } catch (error) {
+      toast.error(t('cannotCopyLink') || 'Impossible de copier le lien');
     }
   };
 
@@ -690,124 +963,86 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
     <div className="space-y-6">
       {/* Statistiques - Full Width */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-gold/10 to-transparent border-gold/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-gold/20">
-                <Users className="h-6 w-6 text-gold" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">{currentCount} / {maxReferrals}</p>
-                <p className="text-sm text-muted-foreground">{t('referredMembers')}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-primary/20">
-                <Gift className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{remaining}</p>
-                <p className="text-sm text-muted-foreground">{t('referralsRemaining')}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-blue-500/20">
-                <CheckCircle2 className="h-6 w-6 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{maxReferrals}</p>
-                <p className="text-sm text-muted-foreground">{t('totalLimit')}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card> */}
-      </div>
+       </div>
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
 
         {/* Colonne gauche : Code de parrainage et Liens */}
         <div className="space-y-4 sm:space-y-6">
-          {/* Code de parrainage */}
+          {/* Code de parrainage initial — même design que les codes à usage unique */}
           {referralCode && (
-            <Card className="bg-gradient-to-br from-gold/5 to-transparent border-gold/20">
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">{t('yourShareableReferralCode')}</p>
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-background/50 border border-gold/20">
-                      <p className="text-lg sm:text-xl font-mono font-bold text-gold flex-1 break-all">{referralCode}</p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={copyToClipboard}
-                        className="h-8 w-8 p-0 border-gold/30 text-gold hover:bg-gold/10 flex-shrink-0"
-                      >
-                        {copied ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
+            <Card className={`bg-gradient-to-br ${referredMembers.length > 0 ? 'from-muted/20 to-transparent border-muted/40 opacity-70' : 'from-gold/5 to-transparent border-gold/20'}`}>
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground mb-1">{t('initialInvitationCode') || 'Code d\'invitation initial'}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className={`text-base font-mono font-bold ${referredMembers.length > 0 ? 'text-muted-foreground line-through' : 'text-gold'}`}>
+                        {referralCode}
+                      </p>
+                      {referredMembers.length > 0 ? (
+                        <Badge variant="secondary" className="text-xs">
+                          {t('used') || 'Utilisé'}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs border-green-500/50 text-green-600">
+                          {t('available') || 'Disponible'}
+                        </Badge>
+                      )}
                     </div>
+                    {referredMembers.length > 0 && (
+                      <div className="mt-2 flex items-center gap-2 p-2 rounded-md bg-muted/30">
+                        {referredMembers[0]?.referred_profile ? (
+                          <>
+                            <Avatar className="h-6 w-6 shrink-0">
+                              <AvatarImage src={referredMembers[0].referred_profile.avatar_url || undefined} />
+                              <AvatarFallback className="text-xs bg-gold/20 text-gold">
+                                {referredMembers[0].referred_profile.first_name?.[0]}
+                                {referredMembers[0].referred_profile.last_name?.[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground">
+                                {t('codeUsedBy') || 'Utilisé par'}: {[referredMembers[0].referred_profile.first_name, referredMembers[0].referred_profile.last_name].filter(Boolean).join(' ') || t('unknownMember')}
+                                {referredMembers.length > 1 && ` +${referredMembers.length - 1} ${t('other') || 'autre(s)'}`}
+                              </p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Calendar className="w-3 h-3 shrink-0" />
+                                {referredMembers.length} {referredMembers.length === 1 ? (t('member') || 'membre') : (t('members') || 'membres')} {t('referred') || 'parrainé(s)'}
+                              </p>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <p className="text-xs text-muted-foreground">
+                              {t('codeUsedBy') || 'Utilisé par'}: {referredMembers.length} {referredMembers.length === 1 ? (t('member') || 'membre') : (t('members') || 'membres')} {t('referred') || 'parrainé(s)'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={copyToClipboard}
-                      className="flex-1 border-gold/30 text-gold hover:bg-gold/10"
+                      className="h-8 w-8 p-0 text-gold hover:bg-gold/10"
                     >
                       {copied ? (
-                        <>
-                          <Check className="h-4 w-4 mr-2" />
-                          {t('copied')}
-                        </>
+                        <Check className="h-4 w-4 text-green-500" />
                       ) : (
-                        <>
-                          <Copy className="h-4 w-4 sm:mr-2" />
-                          <span className="hidden sm:inline">{t('copyCode')}</span>
-                        </>
+                        <Copy className="h-4 w-4" />
                       )}
                     </Button>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={shareReferralLink}
-                      className="flex-1 bg-gold hover:bg-gold/90 text-primary-foreground h-9 sm:h-10 px-2 sm:px-4"
-                    >
-                      <Share2 className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">{t('share')}</span>
-                    </Button>
                   </div>
-                
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Bouton ajouter */}
-          {isEditable && remaining > 0 && (
-            <Button
-              onClick={() => setNewDialogOpen(true)}
-              variant="outline"
-              size="sm"
-              className="w-full border-gold/30 text-gold hover:bg-gold/10"
-            >
-              <Plus className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">{t('sponsorNewMember')}</span>
-            </Button>
-          )}
 
           {isEditable && remaining === 0 && (
             <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
@@ -817,9 +1052,22 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
             </div>
           )}
 
+          {/* Codes d'invitation à usage unique (comptage avec code initial, suppression interdite si dernier code) */}
+          {userId && (
+            <div className="space-y-4">
+              <SingleUseInvitationCodes
+                isEditable={isEditable}
+                userId={userId}
+                onUpdate={onUpdate}
+                hasInitialCode={!!referralCode}
+                initialCodeUsed={referredMembers.length > 0}
+              />
+            </div>
+          )}
+
           {/* Section Liens de Partage */}
           <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        {/* <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Link2 className="h-5 w-5 text-gold" />
@@ -840,9 +1088,10 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               <span className="hidden sm:inline">{t('createLink')}</span>
             </Button>
           )}
-        </div>
+        </div> */}
 
-        {referralLinks.length === 0 ? (
+
+        {/* {referralLinks.length === 0 ? (
           <Card className="bg-muted/30">
             <CardContent className="pt-6">
               <div className="text-center py-6">
@@ -903,7 +1152,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                         </div>
                       </div>
 
-                      {/* <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-muted-foreground">{t('clicks')}</p>
                           <p className="font-semibold text-foreground">{link.click_count}</p>
@@ -912,21 +1161,21 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                           <p className="text-muted-foreground">{t('registrations')}</p>
                           <p className="font-semibold text-foreground">{link.registration_count}</p>
                         </div>
-                      </div> */}
+                      </div>
 
                       {isEditable && (
                         <div className="flex items-center justify-between pt-2 ">
                           <div className="flex items-center gap-2">
-                            {/* <Switch
+                            <Switch
                               checked={link.is_active}
                               onCheckedChange={() => toggleLinkActive(link)}
                             />
                             <Label className="text-sm">
                               {link.is_active ? t('active') : t('inactive')}
-                            </Label> */}
+                            </Label>
                           </div>
                           <div className="flex gap-2">
-                            {/* <Button
+                            <Button
                               variant="outline"
                               size="sm"
                               onClick={() => shareLink(link)}
@@ -934,7 +1183,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                             >
                               <Share2 className="h-3.5 w-3.5 sm:mr-1.5" />
                               <span className="hidden sm:inline">{t('share')}</span>
-                            </Button> */}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -952,7 +1201,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               );
             })}
           </div>
-        )}
+        )} */}
 
         {isEditable && referralLinks.length >= maxReferralLinks && (
           <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
@@ -1039,6 +1288,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               )}
             </div>
           )}
+        
 
           {/* Section: Autres membres */}
           {referredMembers.length === 0 ? (
@@ -1090,67 +1340,196 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
         </div>
       </div>
 
-      {/* Dialog pour ajouter un parrainage */}
-      <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
+      {/* Dialog pour inviter un nouveau membre */}
+      <Dialog open={newDialogOpen} onOpenChange={(open) => {
+        setNewDialogOpen(open);
+        if (!open) {
+          setNewInviteCode("");
+          setNewInviteLink("");
+          setInviteLinkName("");
+          setInviteCopied(false);
+        }
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t('sponsorNewMember')}</DialogTitle>
             <DialogDescription>
-              {t('searchMemberToAddToReferrals').replace('{remaining}', remaining.toString())}
+              {t('inviteNewMemberWithCode') || 'Générez un code d\'invitation unique pour inviter un nouveau membre'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!newInviteLink ? (
+              <>
+                <div>
+                  <Label htmlFor="inviteLinkName">{t('linkNameOptional') || 'Nom du lien (optionnel)'}</Label>
+                  <Input
+                    id="inviteLinkName"
+                    value={inviteLinkName}
+                    onChange={(e) => setInviteLinkName(e.target.value)}
+                    placeholder={t('exNewMemberInvitation') || 'Ex: Invitation nouveau membre'}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setNewDialogOpen(false);
+                      setInviteLinkName("");
+                    }}
+                    size="sm"
+                    className="w-full sm:w-auto text-sm"
+                  >
+                    {t('cancel')}
+                  </Button>
+                  <Button
+                    onClick={createInviteLink}
+                    disabled={creatingInvite}
+                    size="sm"
+                    className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-primary-foreground text-sm"
+                  >
+                    {creatingInvite ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        {t('creating') || 'Création...'}
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">{t('generateInviteCode') || 'Générer le code'}</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  <div>
+                    <Label>{t('inviteCode') || 'Code d\'invitation'}</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        value={newInviteCode}
+                        readOnly
+                        className="font-mono text-sm"
+                      />
+                      <Button
+                        onClick={copyInviteLink}
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                      >
+                        {inviteCopied ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>{t('inviteLink') || 'Lien d\'invitation'}</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        value={newInviteLink}
+                        readOnly
+                        className="font-mono text-xs"
+                      />
+                      <Button
+                        onClick={copyInviteLink}
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                      >
+                        {inviteCopied ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="bg-muted/50 border border-border rounded-lg p-4">
+                    <p className="text-sm text-muted-foreground">
+                      {t('inviteLinkInstructions') || 'Partagez ce lien avec le nouveau membre. Il pourra s\'inscrire en utilisant ce code d\'invitation unique.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setNewDialogOpen(false);
+                      setNewInviteCode("");
+                      setNewInviteLink("");
+                      setInviteLinkName("");
+                      setInviteCopied(false);
+                    }}
+                    size="sm"
+                    className="w-full sm:w-auto text-sm"
+                  >
+                    {t('close') || 'Fermer'}
+                  </Button>
+                  <Button
+                    onClick={copyInviteLink}
+                    size="sm"
+                    className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-primary-foreground text-sm"
+                  >
+                    <Share2 className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{t('copyLink') || 'Copier le lien'}</span>
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog pour créer un nouveau code de parrainage */}
+      <Dialog open={newCodeDialogOpen} onOpenChange={(open) => {
+        setNewCodeDialogOpen(open);
+        if (!open) {
+          setNewCodeName("");
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('createNewReferralCode') || 'Créer un nouveau code de parrainage'}</DialogTitle>
+            <DialogDescription>
+              {t('createSecondaryCodeDescription') || 'Créez un deuxième code de parrainage unique pour inviter de nouveaux membres.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>{t('searchByUsernameFirstNameLastName')}</Label>
-              <div className="flex gap-2 mt-2">
-                <Input
-                  value={searchEmail}
-                  onChange={(e) => setSearchEmail(e.target.value)}
-                  placeholder={t('searchByUsernameFirstNameLastName')}
-                  onKeyPress={(e) => e.key === 'Enter' && searchUserByEmail()}
-                />
-                <Button
-                  onClick={searchUserByEmail}
-                  disabled={searching}
-                  className="bg-gold hover:bg-gold/90 text-primary-foreground"
-                >
-                  {searching ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
+              <Label htmlFor="codeName">{t('codeNameOptional') || 'Nom du code (optionnel)'}</Label>
+              <Input
+                id="codeName"
+                value={newCodeName}
+                onChange={(e) => setNewCodeName(e.target.value)}
+                placeholder={t('exFamilyInvitation') || 'Ex: Invitation famille'}
+                className="mt-2"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t('codeNameHint') || 'Donnez un nom à ce code pour le distinguer de votre code principal'}
+              </p>
             </div>
 
-            {foundUser && (
-              <Card className="bg-muted/50">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={foundUser.avatar_url || undefined} />
-                      <AvatarFallback className="bg-gold/10 text-gold">
-                        {foundUser.first_name?.[0]}{foundUser.last_name?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h4 className="font-medium text-foreground">
-                        {foundUser.first_name} {foundUser.last_name}
-                      </h4>
-                      <p className="text-sm text-muted-foreground">{t('userFound')}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            <div className="bg-muted/50 border border-border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
+                {t('secondaryCodeInfo') || 'Un nouveau code unique sera généré automatiquement au format AURORA-XXXXXX. Ce code pourra être utilisé pour parrainer de nouveaux membres.'}
+              </p>
+            </div>
 
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
               <Button
                 variant="outline"
                 onClick={() => {
-                  setNewDialogOpen(false);
-                  setSearchEmail("");
-                  setFoundUser(null);
+                  setNewCodeDialogOpen(false);
+                  setNewCodeName("");
                 }}
                 size="sm"
                 className="w-full sm:w-auto text-sm"
@@ -1158,20 +1537,20 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                 {t('cancel')}
               </Button>
               <Button
-                onClick={addReferral}
-                disabled={!foundUser || addingReferral}
+                onClick={createSecondaryReferralCode}
+                disabled={creatingNewCode}
                 size="sm"
                 className="w-full sm:w-auto bg-gold hover:bg-gold/90 text-primary-foreground text-sm"
               >
-                {addingReferral ? (
+                {creatingNewCode ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    {t('adding')}
+                    {t('creating') || 'Création...'}
                   </>
                 ) : (
                   <>
-                    <UserPlus className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">{t('addReferral')}</span>
+                    <Plus className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{t('createCode') || 'Créer le code'}</span>
                   </>
                 )}
               </Button>

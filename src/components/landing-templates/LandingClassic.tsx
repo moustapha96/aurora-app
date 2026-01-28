@@ -20,9 +20,10 @@ interface LandingClassicProps {
   member: MemberData;
   onContact?: () => void;
   showContactButton?: boolean;
+  hideHeader?: boolean;
 }
 
-export const LandingClassic = ({ member, onContact, showContactButton = true }: LandingClassicProps) => {
+export const LandingClassic = ({ member, onContact, showContactButton = true, hideHeader = false }: LandingClassicProps) => {
   const initials = `${member.first_name?.[0] || ''}${member.last_name?.[0] || ''}`;
   
   const getWealthBadge = () => {
@@ -37,16 +38,17 @@ export const LandingClassic = ({ member, onContact, showContactButton = true }: 
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <AuroraLogo size="sm" />
-          <Badge variant="outline" className="text-xs">Membre Aurora Society</Badge>
-        </div>
-      </header>
+      {!hideHeader && (
+        <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+            <AuroraLogo size="sm" />
+            <Badge variant="outline" className="text-xs">Membre Aurora Society</Badge>
+          </div>
+        </header>
+      )}
 
       {/* Hero Section */}
-      <main className="pt-32 pb-20 px-6">
+      <main className={hideHeader ? "pt-20 pb-20 px-6" : "pt-32 pb-20 px-6"}>
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-12">
             <Avatar className="w-32 h-32 mx-auto mb-6 ring-4 ring-primary/20">
