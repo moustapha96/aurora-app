@@ -56,43 +56,97 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // Get all subscriptions (active and canceled)
-    const activeSubscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      expand: ['data.items.data.price.product'],
-    });
+    // Get all subscriptions (active, trialing, and canceled)
+    const [activeSubscriptions, trialingSubscriptions, canceledSubscriptions] = await Promise.all([
+      stripe.subscriptions.list({
+        customer: customerId,
+        status: "active",
+      }),
+      stripe.subscriptions.list({
+        customer: customerId,
+        status: "trialing",
+      }),
+      stripe.subscriptions.list({
+        customer: customerId,
+        status: "canceled",
+        limit: 10,
+      }),
+    ]);
 
-    const canceledSubscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "canceled",
-      expand: ['data.items.data.price.product'],
-      limit: 10,
-    });
-
-    const allSubscriptions = [...activeSubscriptions.data, ...canceledSubscriptions.data];
+    // Collect all unique product IDs to fetch
+    const productIds = new Set<string>();
+    const allSubscriptions = [
+      ...activeSubscriptions.data,
+      ...trialingSubscriptions.data,
+      ...canceledSubscriptions.data,
+    ];
     
-    const subscriptionsData = allSubscriptions.map(sub => {
-      const priceItem = sub.items.data[0];
-      const product = priceItem.price.product as Stripe.Product;
-      return {
-        id: sub.id,
-        status: sub.status,
-        product_id: product.id,
-        product_name: product.name,
-        price_id: priceItem.price.id,
-        amount: priceItem.price.unit_amount,
-        currency: priceItem.price.currency,
-        interval: priceItem.price.recurring?.interval,
-        current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-        cancel_at_period_end: sub.cancel_at_period_end,
-        canceled_at: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null,
-        created: new Date(sub.created * 1000).toISOString(),
-      };
-    });
+    for (const sub of allSubscriptions) {
+      const priceItem = sub.items?.data?.[0];
+      const productId = priceItem?.price?.product;
+      if (typeof productId === "string") {
+        productIds.add(productId);
+      }
+    }
 
-    const hasActiveSub = activeSubscriptions.data.length > 0;
+    // Fetch all products in parallel
+    const productMap = new Map<string, string>();
+    if (productIds.size > 0) {
+      const products = await Promise.all(
+        Array.from(productIds).map(id => stripe.products.retrieve(id))
+      );
+      for (const product of products) {
+        productMap.set(product.id, product.name);
+      }
+    }
+
+
+    const subscriptionsData: Array<{
+      id: string;
+      status: string;
+      product_id: string;
+      product_name: string;
+      price_id: string;
+      amount: number;
+      currency: string;
+      interval: string | undefined;
+      current_period_start: string;
+      current_period_end: string;
+      cancel_at_period_end: boolean;
+      canceled_at: string | null;
+      created: string;
+    }> = [];
+
+    for (const sub of allSubscriptions) {
+      try {
+        if (!sub.items?.data?.length) continue;
+        const priceItem = sub.items.data[0];
+        const price = priceItem?.price;
+        if (!price) continue;
+        const productId = typeof price.product === "string" ? price.product : "";
+        const productName = productMap.get(productId) || productId || "Subscription";
+        subscriptionsData.push({
+          id: sub.id,
+          status: sub.status ?? "unknown",
+          product_id: productId,
+          product_name: productName,
+          price_id: price.id,
+          amount: price.unit_amount ?? 0,
+          currency: price.currency ?? "eur",
+          interval: price.recurring?.interval,
+          current_period_start: new Date((sub.current_period_start ?? 0) * 1000).toISOString(),
+          current_period_end: new Date((sub.current_period_end ?? 0) * 1000).toISOString(),
+          cancel_at_period_end: sub.cancel_at_period_end ?? false,
+          canceled_at: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null,
+          created: new Date((sub.created ?? 0) * 1000).toISOString(),
+        });
+      } catch (itemErr) {
+        logStep("Skip invalid subscription item", { subId: sub.id, error: String(itemErr) });
+      }
+    }
+
+    const hasActiveSub =
+      activeSubscriptions.data.length > 0 || trialingSubscriptions.data.length > 0;
     logStep("Subscriptions found", { active: hasActiveSub, total: subscriptionsData.length });
 
     return new Response(JSON.stringify({

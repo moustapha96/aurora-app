@@ -34,6 +34,7 @@ const AdminSettings = () => {
   
   // Email config state
   const [emailMode, setEmailMode] = useState<'test' | 'production'>('test');
+  const [emailProvider, setEmailProvider] = useState<'smtp' | 'resend'>('resend');
   const [emailConfig, setEmailConfig] = useState({
     smtpHost: '',
     smtpPort: '587',
@@ -211,6 +212,7 @@ const AdminSettings = () => {
         .select('setting_key, setting_value')
         .in('setting_key', [
           'email_mode',
+          'email_provider',
           'smtp_host',
           'smtp_port',
           'smtp_user',
@@ -226,6 +228,7 @@ const AdminSettings = () => {
         }, {} as Record<string, string | null>);
         
         setEmailMode((configMap['email_mode'] as 'test' | 'production') || 'test');
+        setEmailProvider((configMap['email_provider'] as 'smtp' | 'resend') || 'resend');
         setEmailConfig({
           smtpHost: configMap['smtp_host'] || '',
           smtpPort: configMap['smtp_port'] || '587',
@@ -247,6 +250,7 @@ const AdminSettings = () => {
       const { data, error } = await supabase.functions.invoke('update-smtp-config', {
         body: {
           email_mode: emailMode,
+          email_provider: emailProvider,
           smtp_host: emailConfig.smtpHost,
           smtp_port: emailConfig.smtpPort,
           smtp_user: emailConfig.smtpUser,
@@ -524,62 +528,115 @@ const AdminSettings = () => {
               {emailMode === 'production' && (
                 <>
                   <Separator />
-                  <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4 mb-4">
-                    <p className="text-sm text-green-500 font-medium">
-                      🚀 {t('adminProductionModeCustomServer')}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t('adminProductionModeCustomServerDesc')}
-                    </p>
-                  </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="smtpHost">{t('adminSmtpServer')}</Label>
-                      <Input
-                        id="smtpHost"
-                        placeholder={t('adminSmtpServerPlaceholder')}
-                        value={emailConfig.smtpHost}
-                        onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpHost: e.target.value }))}
-                      />
+                  {/* Email Provider Selection */}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>{t('adminEmailProvider')}</Label>
+                      <p className="text-sm text-muted-foreground">
+                        {emailProvider === 'resend' 
+                          ? t('adminEmailProviderResendDesc')
+                          : t('adminEmailProviderSmtpDesc')
+                        }
+                      </p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="smtpPort">{t('adminPort')}</Label>
-                      <Input
-                        id="smtpPort"
-                        placeholder="587"
-                        value={emailConfig.smtpPort}
-                        onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpPort: e.target.value }))}
-                      />
+                    <Select value={emailProvider} onValueChange={(value: 'smtp' | 'resend') => setEmailProvider(value)}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="resend">
+                          <span className="flex items-center gap-2">
+                            <span className="text-purple-500">⚡</span> Resend (API)
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="smtp">
+                          <span className="flex items-center gap-2">
+                            <span className="text-blue-500">📧</span> {t('adminSmtpServer')}
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {emailProvider === 'resend' && (
+                    <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-4">
+                      <p className="text-sm text-purple-500 font-medium">
+                        ⚡ {t('adminResendProvider')}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t('adminResendProviderDesc')}
+                      </p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="smtpUser">{t('adminSmtpUser')}</Label>
-                      <Input
-                        id="smtpUser"
-                        placeholder={t('adminSmtpUserPlaceholder')}
-                        value={emailConfig.smtpUser}
-                        onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpUser: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="smtpPassword">{t('adminSmtpPassword')}</Label>
-                      <div className="relative">
-                        <Input
-                          id="smtpPassword"
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="••••••••"
-                          value={emailConfig.smtpPassword}
-                          onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpPassword: e.target.value }))}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
+                  )}
+
+                  {emailProvider === 'smtp' && (
+                    <>
+                      <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4">
+                        <p className="text-sm text-green-500 font-medium">
+                          🚀 {t('adminProductionModeCustomServer')}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t('adminProductionModeCustomServerDesc')}
+                        </p>
                       </div>
-                    </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="smtpHost">{t('adminSmtpServer')}</Label>
+                          <Input
+                            id="smtpHost"
+                            placeholder={t('adminSmtpServerPlaceholder')}
+                            value={emailConfig.smtpHost}
+                            onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpHost: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="smtpPort">{t('adminPort')}</Label>
+                          <Input
+                            id="smtpPort"
+                            placeholder="587"
+                            value={emailConfig.smtpPort}
+                            onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpPort: e.target.value }))}
+                          />
+                          <p className="text-xs text-muted-foreground">{t('adminSmtpPortHelp')}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="smtpUser">{t('adminSmtpUser')}</Label>
+                          <Input
+                            id="smtpUser"
+                            placeholder={t('adminSmtpUserPlaceholder')}
+                            value={emailConfig.smtpUser}
+                            onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpUser: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="smtpPassword">{t('adminSmtpPassword')}</Label>
+                          <div className="relative">
+                            <Input
+                              id="smtpPassword"
+                              type={showPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              value={emailConfig.smtpPassword}
+                              onChange={(e) => setEmailConfig(prev => ({ ...prev, smtpPassword: e.target.value }))}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <Separator />
+
+                  {/* Sender info (common to both providers) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="senderEmail">{t('adminSenderEmail')}</Label>
                       <Input
@@ -588,6 +645,9 @@ const AdminSettings = () => {
                         value={emailConfig.senderEmail}
                         onChange={(e) => setEmailConfig(prev => ({ ...prev, senderEmail: e.target.value }))}
                       />
+                      {emailProvider === 'resend' && (
+                        <p className="text-xs text-muted-foreground">{t('adminResendDomainHint')}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="senderName">{t('adminSenderName')}</Label>

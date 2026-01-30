@@ -27,6 +27,7 @@ import LinkedAccount from "./pages/LinkedAccount";
 import Connections from "./pages/Connections";
 import Referrals from "./pages/Referrals";
 import Subscription from "./pages/Subscription";
+import SubscriptionCheckout from "./pages/SubscriptionCheckout";
 import Settings from "./pages/Settings";
 import SecuritySettings from "./pages/SecuritySettings";
 import Contact from "./pages/Contact";
@@ -105,6 +106,7 @@ const App = () => (
           <Route path="/connections" element={<Connections />} />
           <Route path="/referrals" element={<Referrals />} />
           <Route path="/subscription" element={<Subscription />} />
+          <Route path="/subscription/checkout" element={<SubscriptionCheckout />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/security-settings" element={<SecuritySettings />} />
           <Route path="/contact" element={<Contact />} />

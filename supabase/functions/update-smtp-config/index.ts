@@ -16,6 +16,7 @@ interface UpdateSmtpConfigRequest {
   sender_email?: string;
   sender_name?: string;
   email_mode?: 'test' | 'production';
+  email_provider?: 'smtp' | 'resend';
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -63,14 +64,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if user is admin
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    // Check if user is admin using the has_role function
+    const { data: isAdmin, error: roleError } = await supabaseAdmin.rpc('has_role', {
+      _user_id: user.id,
+      _role: 'admin'
+    });
 
-    if (profileError || profile?.role !== "admin") {
+    if (roleError || !isAdmin) {
+      console.error("Admin check failed:", roleError);
       return new Response(
         JSON.stringify({ error: "Forbidden: Admin access required" }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -107,6 +108,14 @@ const handler = async (req: Request): Promise<Response> => {
         setting_key: 'email_mode',
         setting_value: requestData.email_mode,
         description: 'Email sending mode (test/production)'
+      });
+    }
+
+    if (requestData.email_provider !== undefined) {
+      settingsToUpdate.push({
+        setting_key: 'email_provider',
+        setting_value: requestData.email_provider,
+        description: 'Email provider (smtp/resend)'
       });
     }
 
@@ -179,7 +188,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Clear SMTP config cache to force reload on next request
     clearSmtpConfigCache();
 
-    console.log("SMTP configuration updated successfully");
+    console.log("SMTP configuration updated successfully:", settingsToUpdate.map(s => s.setting_key));
 
     return new Response(
       JSON.stringify({

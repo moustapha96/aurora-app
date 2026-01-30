@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CreditCard, Crown, Star, Sparkles, Calendar, RefreshCw, ExternalLink, CheckCircle, XCircle } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { SUBSCRIPTION_CHECKOUT_STORAGE_KEY } from "./SubscriptionCheckout";
 
 interface SubscriptionData {
   id: string;
@@ -68,6 +69,7 @@ const getTierName = (tier: SubscriptionTier, language: Language): string => {
 const Subscription = () => {
   const { t, language } = useLanguage();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([]);
   const [tiers, setTiers] = useState<SubscriptionTier[]>([]);
@@ -125,7 +127,8 @@ const Subscription = () => {
       
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, '_blank');
+        sessionStorage.setItem(SUBSCRIPTION_CHECKOUT_STORAGE_KEY, data.url);
+        navigate("/subscription/checkout", { state: { checkoutUrl: data.url } });
       }
     } catch (error: any) {
       console.error("Error creating subscription:", error);
@@ -141,7 +144,8 @@ const Subscription = () => {
       const { data, error } = await supabase.functions.invoke('customer-portal');
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, '_blank');
+        sessionStorage.setItem(SUBSCRIPTION_CHECKOUT_STORAGE_KEY, data.url);
+        navigate("/subscription/checkout", { state: { checkoutUrl: data.url } });
       }
     } catch (error: any) {
       console.error("Error opening portal:", error);
