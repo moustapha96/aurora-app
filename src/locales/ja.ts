@@ -652,6 +652,26 @@ export const ja: Record<string, string> = {
   adminRegisterPage: "登録ページ",
   adminContactPage: "お問い合わせページ",
   adminSaveCaptchaConfig: "CAPTCHA 設定を保存",
+  
+  // Stripe Configuration
+  adminStripeConfiguration: "Stripe 設定",
+  adminStripeConfigurationDesc: "決済とサブスクリプション用の Stripe API キーを設定",
+  adminStripeMode: "Stripe モード",
+  adminStripeTestMode: "テストモード",
+  adminStripeProductionMode: "本番モード",
+  adminStripeModeTestDesc: "テストキーを使用して実際の課金なしで決済をシミュレート",
+  adminStripeModeProductionDesc: "本番キーを使用して実際の決済を処理",
+  adminStripeTestKeys: "テストキー",
+  adminStripeLiveKeys: "本番キー",
+  adminStripeTestInfo: "テスト設定",
+  adminStripeTestInfoDesc: "これらのキーでは実際のカードに課金せずに決済をテストできます",
+  adminStripeLiveInfo: "本番設定",
+  adminStripeLiveInfoDesc: "これらのキーは実際の決済に使用されます。注意してください！",
+  adminStripeSecretKey: "シークレット API キー",
+  adminStripeWebhookSecret: "Webhook シークレット",
+  adminSaveStripeConfig: "Stripe 設定を保存",
+  adminStripeConfigSaved: "Stripe 設定が正常に保存されました",
+  
   adminDatabase: "データベース",
   adminDatabaseInfo: "データベース情報",
   adminProvider: "プロバイダー",
@@ -2943,4 +2963,14 @@ export const ja: Record<string, string> = {
   adminSubscriptionUnknownMember: "不明なメンバー",
   adminSubscriptionViewProfile: "プロフィールを見る",
   adminSubscriptionLoadError: "サブスクリプションの読み込みエラー",
+  
+  // Admin Stripe Test Connection
+  adminStripeTestConnection: "接続テスト",
+  adminStripeTestConnectionDesc: "Stripe APIキーが有効で正常に動作しているか確認します",
+  adminStripeTestButton: "テスト",
+  adminStripeConnectionSuccess: "Stripe接続成功",
+  adminStripeConnectionFailed: "Stripe接続失敗",
+  adminStripeProductsFound: "見つかった製品",
+  adminStripePricesFound: "見つかった価格",
+  testing: "テスト中...",
 }

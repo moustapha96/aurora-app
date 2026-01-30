@@ -638,6 +638,26 @@ export const fr: Record<string, string> = {
   adminRegisterPage: "Page d'inscription",
   adminContactPage: "Page de contact",
   adminSaveCaptchaConfig: "Enregistrer la configuration CAPTCHA",
+  
+  // Stripe Configuration
+  adminStripeConfiguration: "Configuration Stripe",
+  adminStripeConfigurationDesc: "Configurez les clés API Stripe pour les paiements et abonnements",
+  adminStripeMode: "Mode Stripe",
+  adminStripeTestMode: "Mode Test",
+  adminStripeProductionMode: "Mode Production",
+  adminStripeModeTestDesc: "Utilisez les clés de test pour effectuer des paiements simulés sans frais réels",
+  adminStripeModeProductionDesc: "Utilisez les clés de production pour les paiements réels",
+  adminStripeTestKeys: "Clés de Test",
+  adminStripeLiveKeys: "Clés de Production",
+  adminStripeTestInfo: "Configuration de test",
+  adminStripeTestInfoDesc: "Ces clés permettent de tester les paiements sans débiter de vraies cartes",
+  adminStripeLiveInfo: "Configuration de production",
+  adminStripeLiveInfoDesc: "Ces clés seront utilisées pour les paiements réels. Soyez prudent !",
+  adminStripeSecretKey: "Clé secrète API",
+  adminStripeWebhookSecret: "Secret Webhook",
+  adminSaveStripeConfig: "Enregistrer la configuration Stripe",
+  adminStripeConfigSaved: "Configuration Stripe enregistrée avec succès",
+  
   adminDatabase: "Base de données",
   adminDatabaseInfo: "Informations sur la base de données",
   adminProvider: "Provider",
@@ -3014,4 +3034,14 @@ export const fr: Record<string, string> = {
   adminSubscriptionUnknownMember: "Membre inconnu",
   adminSubscriptionViewProfile: "Voir le profil",
   adminSubscriptionLoadError: "Erreur lors du chargement des abonnements",
+  
+  // Admin Stripe Test Connection
+  adminStripeTestConnection: "Tester la connexion",
+  adminStripeTestConnectionDesc: "Vérifiez que votre clé API Stripe est valide et fonctionne correctement",
+  adminStripeTestButton: "Tester",
+  adminStripeConnectionSuccess: "Connexion Stripe réussie",
+  adminStripeConnectionFailed: "Échec de la connexion Stripe",
+  adminStripeProductsFound: "Produits trouvés",
+  adminStripePricesFound: "Prix trouvés",
+  testing: "Test en cours...",
 }

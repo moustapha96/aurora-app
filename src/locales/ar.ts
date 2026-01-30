@@ -633,6 +633,26 @@ export const ar: Record<string, string> = {
   adminRegisterPage: "صفحة التسجيل",
   adminContactPage: "صفحة الاتصال",
   adminSaveCaptchaConfig: "حفظ تكوين CAPTCHA",
+  
+  // Stripe Configuration
+  adminStripeConfiguration: "تكوين Stripe",
+  adminStripeConfigurationDesc: "قم بتكوين مفاتيح API الخاصة بـ Stripe للمدفوعات والاشتراكات",
+  adminStripeMode: "وضع Stripe",
+  adminStripeTestMode: "وضع الاختبار",
+  adminStripeProductionMode: "وضع الإنتاج",
+  adminStripeModeTestDesc: "استخدم مفاتيح الاختبار لمحاكاة المدفوعات بدون رسوم حقيقية",
+  adminStripeModeProductionDesc: "استخدم مفاتيح الإنتاج للمدفوعات الحقيقية",
+  adminStripeTestKeys: "مفاتيح الاختبار",
+  adminStripeLiveKeys: "مفاتيح الإنتاج",
+  adminStripeTestInfo: "تكوين الاختبار",
+  adminStripeTestInfoDesc: "تسمح هذه المفاتيح باختبار المدفوعات دون شحن بطاقات حقيقية",
+  adminStripeLiveInfo: "تكوين الإنتاج",
+  adminStripeLiveInfoDesc: "سيتم استخدام هذه المفاتيح للمدفوعات الحقيقية. كن حذراً!",
+  adminStripeSecretKey: "مفتاح API السري",
+  adminStripeWebhookSecret: "سر Webhook",
+  adminSaveStripeConfig: "حفظ تكوين Stripe",
+  adminStripeConfigSaved: "تم حفظ تكوين Stripe بنجاح",
+  
   adminDatabase: "قاعدة البيانات",
   adminDatabaseInfo: "معلومات قاعدة البيانات",
   adminProvider: "المزود",
@@ -2938,4 +2958,14 @@ export const ar: Record<string, string> = {
   adminSubscriptionUnknownMember: "عضو غير معروف",
   adminSubscriptionViewProfile: "عرض الملف الشخصي",
   adminSubscriptionLoadError: "خطأ في تحميل الاشتراكات",
+  
+  // Admin Stripe Test Connection
+  adminStripeTestConnection: "اختبار الاتصال",
+  adminStripeTestConnectionDesc: "تحقق من صحة مفتاح API الخاص بـ Stripe وأنه يعمل بشكل صحيح",
+  adminStripeTestButton: "اختبار",
+  adminStripeConnectionSuccess: "اتصال Stripe ناجح",
+  adminStripeConnectionFailed: "فشل اتصال Stripe",
+  adminStripeProductsFound: "المنتجات الموجودة",
+  adminStripePricesFound: "الأسعار الموجودة",
+  testing: "جاري الاختبار...",
 }

@@ -628,6 +628,26 @@ export const de: Record<string, string> = {
   adminRegisterPage: "Registrierungsseite",
   adminContactPage: "Kontaktseite",
   adminSaveCaptchaConfig: "CAPTCHA-Konfiguration speichern",
+  
+  // Stripe Configuration
+  adminStripeConfiguration: "Stripe-Konfiguration",
+  adminStripeConfigurationDesc: "Konfigurieren Sie Stripe-API-Schlüssel für Zahlungen und Abonnements",
+  adminStripeMode: "Stripe-Modus",
+  adminStripeTestMode: "Testmodus",
+  adminStripeProductionMode: "Produktionsmodus",
+  adminStripeModeTestDesc: "Verwenden Sie Testschlüssel, um Zahlungen ohne echte Gebühren zu simulieren",
+  adminStripeModeProductionDesc: "Verwenden Sie Produktionsschlüssel für echte Zahlungen",
+  adminStripeTestKeys: "Testschlüssel",
+  adminStripeLiveKeys: "Produktionsschlüssel",
+  adminStripeTestInfo: "Testkonfiguration",
+  adminStripeTestInfoDesc: "Diese Schlüssel ermöglichen Testzahlungen ohne echte Kartenbelastung",
+  adminStripeLiveInfo: "Produktionskonfiguration",
+  adminStripeLiveInfoDesc: "Diese Schlüssel werden für echte Zahlungen verwendet. Vorsicht!",
+  adminStripeSecretKey: "Geheimer API-Schlüssel",
+  adminStripeWebhookSecret: "Webhook-Geheimnis",
+  adminSaveStripeConfig: "Stripe-Konfiguration speichern",
+  adminStripeConfigSaved: "Stripe-Konfiguration erfolgreich gespeichert",
+  
   adminDatabase: "Datenbank",
   adminDatabaseInfo: "Datenbankinformationen",
   adminProvider: "Anbieter",
@@ -2966,4 +2986,14 @@ export const de: Record<string, string> = {
   adminSubscriptionUnknownMember: "Unbekanntes Mitglied",
   adminSubscriptionViewProfile: "Profil ansehen",
   adminSubscriptionLoadError: "Fehler beim Laden der Abonnements",
+  
+  // Admin Stripe Test Connection
+  adminStripeTestConnection: "Verbindung testen",
+  adminStripeTestConnectionDesc: "Überprüfen Sie, ob Ihr Stripe API-Schlüssel gültig ist und ordnungsgemäß funktioniert",
+  adminStripeTestButton: "Testen",
+  adminStripeConnectionSuccess: "Stripe-Verbindung erfolgreich",
+  adminStripeConnectionFailed: "Stripe-Verbindung fehlgeschlagen",
+  adminStripeProductsFound: "Produkte gefunden",
+  adminStripePricesFound: "Preise gefunden",
+  testing: "Wird getestet...",
 }

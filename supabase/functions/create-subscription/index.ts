@@ -12,10 +12,59 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
+async function getStripeSecretKey(supabaseAdmin: any): Promise<string> {
+  // First get the stripe mode
+  const { data: modeData } = await supabaseAdmin
+    .from('admin_settings')
+    .select('setting_value')
+    .eq('setting_key', 'stripe_mode')
+    .maybeSingle();
+
+  const stripeMode = modeData?.setting_value || 'test';
+  logStep("Stripe mode", { mode: stripeMode });
+
+  // Get the appropriate key based on mode
+  const keySettingKey = stripeMode === 'production' ? 'stripe_live_secret_key' : 'stripe_test_secret_key';
+  const { data: keyData, error: keyError } = await supabaseAdmin
+    .from('admin_settings')
+    .select('setting_value')
+    .eq('setting_key', keySettingKey)
+    .maybeSingle();
+
+  if (keyError) {
+    logStep("Error getting Stripe key from settings", { error: keyError.message });
+  }
+
+  // Use admin_settings key if available, otherwise fall back to env
+  const stripeKey = keyData?.setting_value || Deno.env.get("STRIPE_SECRET_KEY");
+  
+  if (!stripeKey) {
+    throw new Error("Stripe API key not configured. Please configure it in Admin Settings.");
+  }
+
+  // Validate key format - must be a standard secret key, not a restricted key
+  if (stripeKey.startsWith('rk_')) {
+    throw new Error("Restricted API keys (rk_*) are not supported. Please use a standard secret key (sk_test_* or sk_live_*) in Admin Settings.");
+  }
+
+  if (!stripeKey.startsWith('sk_test_') && !stripeKey.startsWith('sk_live_')) {
+    throw new Error("Invalid API key format. Please use a standard secret key starting with sk_test_ or sk_live_");
+  }
+
+  logStep("Using Stripe key", { source: keyData?.setting_value ? 'admin_settings' : 'env', mode: stripeMode });
+  return stripeKey;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
+  );
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -36,7 +85,9 @@ serve(async (req) => {
     if (!priceId) throw new Error("Price ID is required");
     logStep("Price ID received", { priceId });
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2025-08-27.basil" });
+    // Get the appropriate Stripe key
+    const stripeKey = await getStripeSecretKey(supabaseAdmin);
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     
     // Check if customer exists
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });

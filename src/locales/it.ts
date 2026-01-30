@@ -626,6 +626,26 @@ export const it: Record<string, string> = {
   adminRegisterPage: "Page d'inscription",
   adminContactPage: "Page de contact",
   adminSaveCaptchaConfig: "Enregistrer la configuration CAPTCHA",
+  
+  // Stripe Configuration
+  adminStripeConfiguration: "Configurazione Stripe",
+  adminStripeConfigurationDesc: "Configura le chiavi API Stripe per pagamenti e abbonamenti",
+  adminStripeMode: "Modalità Stripe",
+  adminStripeTestMode: "Modalità Test",
+  adminStripeProductionMode: "Modalità Produzione",
+  adminStripeModeTestDesc: "Usa le chiavi di test per simulare pagamenti senza addebiti reali",
+  adminStripeModeProductionDesc: "Usa le chiavi di produzione per pagamenti reali",
+  adminStripeTestKeys: "Chiavi di Test",
+  adminStripeLiveKeys: "Chiavi di Produzione",
+  adminStripeTestInfo: "Configurazione di test",
+  adminStripeTestInfoDesc: "Queste chiavi permettono di testare i pagamenti senza addebitare carte reali",
+  adminStripeLiveInfo: "Configurazione di produzione",
+  adminStripeLiveInfoDesc: "Queste chiavi saranno usate per pagamenti reali. Attenzione!",
+  adminStripeSecretKey: "Chiave segreta API",
+  adminStripeWebhookSecret: "Segreto Webhook",
+  adminSaveStripeConfig: "Salva configurazione Stripe",
+  adminStripeConfigSaved: "Configurazione Stripe salvata con successo",
+  
   adminDatabase: "Base de données",
   adminDatabaseInfo: "Informations sur la base de données",
   adminProvider: "Provider",
@@ -2991,4 +3011,14 @@ export const it: Record<string, string> = {
   adminSubscriptionUnknownMember: "Membro sconosciuto",
   adminSubscriptionViewProfile: "Vedi profilo",
   adminSubscriptionLoadError: "Errore nel caricamento degli abbonamenti",
+  
+  // Admin Stripe Test Connection
+  adminStripeTestConnection: "Testa connessione",
+  adminStripeTestConnectionDesc: "Verifica che la tua chiave API Stripe sia valida e funzioni correttamente",
+  adminStripeTestButton: "Testa",
+  adminStripeConnectionSuccess: "Connessione Stripe riuscita",
+  adminStripeConnectionFailed: "Connessione Stripe fallita",
+  adminStripeProductsFound: "Prodotti trovati",
+  adminStripePricesFound: "Prezzi trovati",
+  testing: "Test in corso...",
 }

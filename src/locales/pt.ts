@@ -611,6 +611,26 @@ export const pt: Record<string, string> = {
   adminRegisterPage: "Página de registro",
   adminContactPage: "Página de contato",
   adminSaveCaptchaConfig: "Salvar Configuração CAPTCHA",
+  
+  // Stripe Configuration
+  adminStripeConfiguration: "Configuração Stripe",
+  adminStripeConfigurationDesc: "Configure as chaves API do Stripe para pagamentos e assinaturas",
+  adminStripeMode: "Modo Stripe",
+  adminStripeTestMode: "Modo Teste",
+  adminStripeProductionMode: "Modo Produção",
+  adminStripeModeTestDesc: "Use chaves de teste para simular pagamentos sem cobranças reais",
+  adminStripeModeProductionDesc: "Use chaves de produção para pagamentos reais",
+  adminStripeTestKeys: "Chaves de Teste",
+  adminStripeLiveKeys: "Chaves de Produção",
+  adminStripeTestInfo: "Configuração de teste",
+  adminStripeTestInfoDesc: "Estas chaves permitem testar pagamentos sem cobrar cartões reais",
+  adminStripeLiveInfo: "Configuração de produção",
+  adminStripeLiveInfoDesc: "Estas chaves serão usadas para pagamentos reais. Tenha cuidado!",
+  adminStripeSecretKey: "Chave secreta API",
+  adminStripeWebhookSecret: "Segredo Webhook",
+  adminSaveStripeConfig: "Salvar configuração Stripe",
+  adminStripeConfigSaved: "Configuração Stripe salva com sucesso",
+  
   adminDatabase: "Banco de dados",
   adminDatabaseInfo: "Informações do banco de dados",
   adminProvider: "Provedor",
@@ -2931,4 +2951,14 @@ export const pt: Record<string, string> = {
   adminSubscriptionUnknownMember: "Membro desconhecido",
   adminSubscriptionViewProfile: "Ver perfil",
   adminSubscriptionLoadError: "Erro ao carregar as assinaturas",
+  
+  // Admin Stripe Test Connection
+  adminStripeTestConnection: "Testar conexão",
+  adminStripeTestConnectionDesc: "Verifique se sua chave API Stripe é válida e está funcionando corretamente",
+  adminStripeTestButton: "Testar",
+  adminStripeConnectionSuccess: "Conexão Stripe bem-sucedida",
+  adminStripeConnectionFailed: "Falha na conexão Stripe",
+  adminStripeProductsFound: "Produtos encontrados",
+  adminStripePricesFound: "Preços encontrados",
+  testing: "Testando...",
 }

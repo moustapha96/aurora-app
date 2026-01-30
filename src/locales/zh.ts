@@ -651,6 +651,26 @@ export const zh: Record<string, string> = {
   adminRegisterPage: "注册页面",
   adminContactPage: "联系页面",
   adminSaveCaptchaConfig: "保存 CAPTCHA 配置",
+  
+  // Stripe Configuration
+  adminStripeConfiguration: "Stripe 配置",
+  adminStripeConfigurationDesc: "配置 Stripe API 密钥以启用支付和订阅",
+  adminStripeMode: "Stripe 模式",
+  adminStripeTestMode: "测试模式",
+  adminStripeProductionMode: "生产模式",
+  adminStripeModeTestDesc: "使用测试密钥模拟支付，不产生真实费用",
+  adminStripeModeProductionDesc: "使用生产密钥进行真实支付",
+  adminStripeTestKeys: "测试密钥",
+  adminStripeLiveKeys: "生产密钥",
+  adminStripeTestInfo: "测试配置",
+  adminStripeTestInfoDesc: "这些密钥允许测试支付而不对真实卡片收费",
+  adminStripeLiveInfo: "生产配置",
+  adminStripeLiveInfoDesc: "这些密钥将用于真实支付。请谨慎!",
+  adminStripeSecretKey: "API 密钥",
+  adminStripeWebhookSecret: "Webhook 密钥",
+  adminSaveStripeConfig: "保存 Stripe 配置",
+  adminStripeConfigSaved: "Stripe 配置保存成功",
+  
   adminDatabase: "数据库",
   adminDatabaseInfo: "数据库信息",
   adminProvider: "提供商",
@@ -2928,4 +2948,14 @@ export const zh: Record<string, string> = {
   adminSubscriptionUnknownMember: "未知会员",
   adminSubscriptionViewProfile: "查看资料",
   adminSubscriptionLoadError: "加载订阅时出错",
+  
+  // Admin Stripe Test Connection
+  adminStripeTestConnection: "测试连接",
+  adminStripeTestConnectionDesc: "验证您的Stripe API密钥是否有效并正常工作",
+  adminStripeTestButton: "测试",
+  adminStripeConnectionSuccess: "Stripe连接成功",
+  adminStripeConnectionFailed: "Stripe连接失败",
+  adminStripeProductsFound: "找到的产品",
+  adminStripePricesFound: "找到的价格",
+  testing: "测试中...",
 }

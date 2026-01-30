@@ -659,6 +659,26 @@ export const ru: Record<string, string> = {
    adminRegisterPage: "Страница регистрации",
    adminContactPage: "Страница контактов",
    adminSaveCaptchaConfig: "Сохранить настройку CAPTCHA",
+  
+  // Stripe Configuration
+  adminStripeConfiguration: "Настройка Stripe",
+  adminStripeConfigurationDesc: "Настройте API-ключи Stripe для платежей и подписок",
+  adminStripeMode: "Режим Stripe",
+  adminStripeTestMode: "Тестовый режим",
+  adminStripeProductionMode: "Режим продакшена",
+  adminStripeModeTestDesc: "Используйте тестовые ключи для симуляции платежей без реальных списаний",
+  adminStripeModeProductionDesc: "Используйте ключи продакшена для реальных платежей",
+  adminStripeTestKeys: "Тестовые ключи",
+  adminStripeLiveKeys: "Ключи продакшена",
+  adminStripeTestInfo: "Тестовая конфигурация",
+  adminStripeTestInfoDesc: "Эти ключи позволяют тестировать платежи без списания с реальных карт",
+  adminStripeLiveInfo: "Конфигурация продакшена",
+  adminStripeLiveInfoDesc: "Эти ключи будут использоваться для реальных платежей. Будьте осторожны!",
+  adminStripeSecretKey: "Секретный API-ключ",
+  adminStripeWebhookSecret: "Секрет Webhook",
+  adminSaveStripeConfig: "Сохранить настройку Stripe",
+  adminStripeConfigSaved: "Настройка Stripe успешно сохранена",
+  
    adminDatabase: "База данных",
    adminDatabaseInfo: "Информация о базе данных",
    adminProvider: "Провайдер",
@@ -2926,4 +2946,14 @@ export const ru: Record<string, string> = {
   adminSubscriptionUnknownMember: "Неизвестный участник",
   adminSubscriptionViewProfile: "Просмотр профиля",
   adminSubscriptionLoadError: "Ошибка загрузки подписок",
+  
+  // Admin Stripe Test Connection
+  adminStripeTestConnection: "Тест соединения",
+  adminStripeTestConnectionDesc: "Проверьте, что ваш API-ключ Stripe действителен и работает корректно",
+  adminStripeTestButton: "Тест",
+  adminStripeConnectionSuccess: "Подключение Stripe успешно",
+  adminStripeConnectionFailed: "Ошибка подключения Stripe",
+  adminStripeProductsFound: "Найдено продуктов",
+  adminStripePricesFound: "Найдено цен",
+  testing: "Тестирование...",
 }

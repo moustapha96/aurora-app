@@ -626,6 +626,26 @@ export const en: Record<string, string> = {
   adminRegisterPage: "Registration page",
   adminContactPage: "Contact page",
   adminSaveCaptchaConfig: "Save CAPTCHA configuration",
+  
+  // Stripe Configuration
+  adminStripeConfiguration: "Stripe Configuration",
+  adminStripeConfigurationDesc: "Configure Stripe API keys for payments and subscriptions",
+  adminStripeMode: "Stripe Mode",
+  adminStripeTestMode: "Test Mode",
+  adminStripeProductionMode: "Production Mode",
+  adminStripeModeTestDesc: "Use test keys to simulate payments without real charges",
+  adminStripeModeProductionDesc: "Use production keys for real payments",
+  adminStripeTestKeys: "Test Keys",
+  adminStripeLiveKeys: "Production Keys",
+  adminStripeTestInfo: "Test configuration",
+  adminStripeTestInfoDesc: "These keys allow testing payments without charging real cards",
+  adminStripeLiveInfo: "Production configuration",
+  adminStripeLiveInfoDesc: "These keys will be used for real payments. Be careful!",
+  adminStripeSecretKey: "Secret API Key",
+  adminStripeWebhookSecret: "Webhook Secret",
+  adminSaveStripeConfig: "Save Stripe configuration",
+  adminStripeConfigSaved: "Stripe configuration saved successfully",
+  
   adminDatabase: "Database",
   adminDatabaseInfo: "Database information",
   adminProvider: "Provider",
@@ -3045,4 +3065,14 @@ export const en: Record<string, string> = {
   adminSubscriptionUnknownMember: "Unknown member",
   adminSubscriptionViewProfile: "View profile",
   adminSubscriptionLoadError: "Error loading subscriptions",
+  
+  // Admin Stripe Test Connection
+  adminStripeTestConnection: "Test connection",
+  adminStripeTestConnectionDesc: "Verify that your Stripe API key is valid and working correctly",
+  adminStripeTestButton: "Test",
+  adminStripeConnectionSuccess: "Stripe connection successful",
+  adminStripeConnectionFailed: "Stripe connection failed",
+  adminStripeProductsFound: "Products found",
+  adminStripePricesFound: "Prices found",
+  testing: "Testing...",
 }

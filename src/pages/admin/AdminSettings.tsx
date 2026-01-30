@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, Shield, Bell, Database, AlertTriangle, Save, Clock, FlaskConical, Mail, Eye, EyeOff, Send, CheckCircle, XCircle, Loader2, Lock } from 'lucide-react';
+import { Settings, Shield, Bell, Database, AlertTriangle, Save, Clock, FlaskConical, Mail, Eye, EyeOff, Send, CheckCircle, XCircle, Loader2, Lock, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -61,12 +61,116 @@ const AdminSettings = () => {
   const [savingCaptcha, setSavingCaptcha] = useState(false);
   const [showSecretKey, setShowSecretKey] = useState(false);
 
+  // Stripe config state
+  const [stripeMode, setStripeMode] = useState<'test' | 'production'>('test');
+  const [stripeConfig, setStripeConfig] = useState({
+    testSecretKey: '',
+    liveSecretKey: '',
+  });
+  const [savingStripe, setSavingStripe] = useState(false);
+  const [showStripeTestKey, setShowStripeTestKey] = useState(false);
+  const [showStripeLiveKey, setShowStripeLiveKey] = useState(false);
+  const [testingStripe, setTestingStripe] = useState(false);
+  const [stripeTestResult, setStripeTestResult] = useState<{
+    success: boolean;
+    message: string;
+    productsCount?: number;
+    pricesCount?: number;
+  } | null>(null);
+
   useEffect(() => {
     loadInactivityTimeout();
     loadTestMode();
     loadEmailConfig();
     loadCaptchaConfig();
+    loadStripeConfig();
   }, []);
+
+  const loadStripeConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', [
+          'stripe_mode',
+          'stripe_test_secret_key',
+          'stripe_live_secret_key'
+        ]);
+
+      if (error) throw error;
+
+      const configMap: Record<string, string> = {};
+      data?.forEach(item => {
+        configMap[item.setting_key] = item.setting_value || '';
+      });
+
+      setStripeMode((configMap['stripe_mode'] as 'test' | 'production') || 'test');
+      setStripeConfig({
+        testSecretKey: configMap['stripe_test_secret_key'] || '',
+        liveSecretKey: configMap['stripe_live_secret_key'] || ''
+      });
+    } catch (error) {
+      console.error('Error loading Stripe config:', error);
+    }
+  };
+
+  const saveStripeConfig = async () => {
+    setSavingStripe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-stripe-config', {
+        body: {
+          stripe_mode: stripeMode,
+          stripe_test_secret_key: stripeConfig.testSecretKey,
+          stripe_live_secret_key: stripeConfig.liveSecretKey
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(t('adminStripeConfigSaved'));
+    } catch (error: any) {
+      console.error('Error saving Stripe config:', error);
+      toast.error(error?.message || t('adminErrorSaving'));
+    } finally {
+      setSavingStripe(false);
+    }
+  };
+
+  const testStripeConnection = async () => {
+    setTestingStripe(true);
+    setStripeTestResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-stripe-connection');
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        setStripeTestResult({
+          success: true,
+          message: t('adminStripeConnectionSuccess'),
+          productsCount: data.productsCount,
+          pricesCount: data.pricesCount
+        });
+        toast.success(t('adminStripeConnectionSuccess'));
+      } else {
+        setStripeTestResult({
+          success: false,
+          message: data?.error || t('adminStripeConnectionFailed')
+        });
+        toast.error(data?.error || t('adminStripeConnectionFailed'));
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || t('adminStripeConnectionFailed');
+      setStripeTestResult({
+        success: false,
+        message: errorMessage
+      });
+      toast.error(errorMessage);
+    } finally {
+      setTestingStripe(false);
+    }
+  };
 
   const loadCaptchaConfig = async () => {
     try {
@@ -850,6 +954,209 @@ const AdminSettings = () => {
                   checked={settings.maintenanceMode}
                   onCheckedChange={(checked) => updateSetting('maintenanceMode', checked)}
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Stripe Configuration */}
+          <Card className={stripeMode === 'production' ? 'border-green-500/50' : 'border-orange-500/50'}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className={`h-5 w-5 ${stripeMode === 'production' ? 'text-green-500' : 'text-orange-500'}`} />
+                {t('adminStripeConfiguration')}
+                {stripeMode === 'test' && (
+                  <span className="ml-2 px-2 py-0.5 bg-orange-500/20 text-orange-500 text-xs rounded-full flex items-center gap-1">
+                    <FlaskConical className="h-3 w-3" />
+                    {t('adminStripeTestMode')}
+                  </span>
+                )}
+                {stripeMode === 'production' && (
+                  <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-500 text-xs rounded-full">
+                    {t('adminStripeProductionMode')}
+                  </span>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {t('adminStripeConfigurationDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Mode Selection */}
+              <div className="space-y-2">
+                <Label>{t('adminStripeMode')}</Label>
+                <Select value={stripeMode} onValueChange={(v: 'test' | 'production') => setStripeMode(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="test">
+                      <div className="flex items-center gap-2">
+                        <FlaskConical className="h-4 w-4 text-orange-500" />
+                        {t('adminStripeTestMode')}
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="production">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-green-500" />
+                        {t('adminStripeProductionMode')}
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {stripeMode === 'test' ? t('adminStripeModeTestDesc') : t('adminStripeModeProductionDesc')}
+                </p>
+              </div>
+
+              <Separator />
+
+              {/* Test Mode Keys */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <FlaskConical className="h-4 w-4 text-orange-500" />
+                  <Label className="text-orange-500 font-medium">{t('adminStripeTestKeys')}</Label>
+                </div>
+                
+                <div className="rounded-lg bg-orange-500/10 border border-orange-500/20 p-4">
+                  <p className="text-sm text-orange-500 font-medium">
+                    🧪 {t('adminStripeTestInfo')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('adminStripeTestInfoDesc')}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="stripe-test-secret-key">{t('adminStripeSecretKey')}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="stripe-test-secret-key"
+                      type={showStripeTestKey ? 'text' : 'password'}
+                      placeholder="sk_test_..."
+                      value={stripeConfig.testSecretKey}
+                      onChange={(e) => setStripeConfig(prev => ({ ...prev, testSecretKey: e.target.value }))}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowStripeTestKey(!showStripeTestKey)}
+                    >
+                      {showStripeTestKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+              </div>
+
+              <Separator />
+
+              {/* Production Mode Keys */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-green-500" />
+                  <Label className="text-green-500 font-medium">{t('adminStripeLiveKeys')}</Label>
+                </div>
+                
+                <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4">
+                  <p className="text-sm text-green-500 font-medium">
+                    💳 {t('adminStripeLiveInfo')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('adminStripeLiveInfoDesc')}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="stripe-live-secret-key">{t('adminStripeSecretKey')}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="stripe-live-secret-key"
+                      type={showStripeLiveKey ? 'text' : 'password'}
+                      placeholder="sk_live_..."
+                      value={stripeConfig.liveSecretKey}
+                      onChange={(e) => setStripeConfig(prev => ({ ...prev, liveSecretKey: e.target.value }))}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowStripeLiveKey(!showStripeLiveKey)}
+                    >
+                      {showStripeLiveKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Test Connection */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-medium">{t('adminStripeTestConnection')}</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t('adminStripeTestConnectionDesc')}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={testStripeConnection}
+                    disabled={testingStripe}
+                    variant="outline"
+                  >
+                    {testingStripe ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t('testing')}
+                      </>
+                    ) : (
+                      <>
+                        <FlaskConical className="h-4 w-4 mr-2" />
+                        {t('adminStripeTestButton')}
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {stripeTestResult && (
+                  <div className={`p-4 rounded-lg flex items-start gap-3 ${stripeTestResult.success ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                    {stripeTestResult.success ? (
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`font-medium ${stripeTestResult.success ? 'text-green-500' : 'text-red-500'}`}>
+                        {stripeTestResult.message}
+                      </p>
+                      {stripeTestResult.success && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t('adminStripeProductsFound')}: {stripeTestResult.productsCount} | {t('adminStripePricesFound')}: {stripeTestResult.pricesCount}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end">
+                <Button 
+                  onClick={saveStripeConfig}
+                  disabled={savingStripe}
+                >
+                  {savingStripe ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {t('saving')}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      {t('adminSaveStripeConfig')}
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
