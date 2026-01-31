@@ -7,6 +7,72 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+function getPortfolioImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Impossible de lire l'image"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function PortfolioGridImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const resolvedSrc = getPortfolioImageSrc(src);
+  if (failed || !resolvedSrc) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+        <ImageIcon className="w-10 h-10 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+      loading="lazy"
+      decoding="async"
+      crossOrigin={resolvedSrc.startsWith("http") ? "anonymous" : undefined}
+      referrerPolicy={resolvedSrc.startsWith("http") ? "no-referrer" : undefined}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function PortfolioViewerImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const resolvedSrc = getPortfolioImageSrc(src);
+  if (failed || !resolvedSrc) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] text-white/50">
+        <ImageIcon className="w-16 h-16" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className="w-full h-auto max-h-[80vh] object-contain select-none"
+      draggable={false}
+      crossOrigin={resolvedSrc.startsWith("http") ? "anonymous" : undefined}
+      referrerPolicy={resolvedSrc.startsWith("http") ? "no-referrer" : undefined}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 interface PortfolioItem {
   id: string;
   title: string;
@@ -86,53 +152,43 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
     });
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("businessImageFormatNotAllowed") || "Format non supporté");
+      e.target.value = "";
+      return;
+    }
 
     setIsUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t("notAuthenticated") || "Non authentifié");
 
-      // Compress image before upload
       const compressedBlob = await compressImage(file);
-      const fileName = `${user.id}/portfolio/${Date.now()}.jpg`;
+      const dataUrl = await blobToDataUrl(compressedBlob);
 
-      const { error: uploadError } = await supabase.storage
-        .from('personal-content')
-        .upload(fileName, compressedBlob, {
-          contentType: 'image/jpeg'
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('personal-content')
-        .getPublicUrl(fileName);
-
-      // Auto-save after successful upload
-      
-      // Auto-save after successful upload
       const { error } = await supabase
         .from('network_clubs')
         .insert({
           user_id: user.id,
           title: "Photo Portfolio",
-          image_url: urlData.publicUrl,
+          image_url: dataUrl,
           club_type: "portfolio"
         });
 
       if (error) throw error;
-      
-      toast.success("Photo ajoutée au portfolio");
+
+      toast.success(t("photoAddedToPortfolio") || "Photo ajoutée au portfolio");
       setIsDialogOpen(false);
       onUpdate();
     } catch (error) {
-      console.error('Upload error:', error);
-      toast.error("Erreur lors de l'upload");
+      console.error('Add portfolio image error:', error);
+      toast.error(t("uploadError") || "Erreur lors de l'ajout");
     } finally {
       setIsUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -189,14 +245,16 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
             {data.map((item, index) => (
               <div 
                 key={item.id} 
-                className="relative group aspect-square rounded-lg overflow-hidden cursor-pointer"
+                className="relative group aspect-square rounded-lg overflow-hidden cursor-pointer bg-muted/30"
                 onClick={() => setSelectedImageIndex(index)}
               >
-                <img
-                  src={item.image_url}
-                  alt={item.title}
-                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                />
+                {item.image_url && getPortfolioImageSrc(item.image_url) ? (
+                  <PortfolioGridImage src={item.image_url} alt={item.title} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="w-10 h-10 text-muted-foreground" />
+                  </div>
+                )}
                 {/* Overlay - always visible in edit mode, hover only otherwise */}
                 <div className={`absolute inset-0 bg-black/40 transition-opacity flex flex-col justify-between p-2 ${
                   isEditable ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
@@ -277,7 +335,7 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
               <input
                 type="file"
                 accept="image/*"
-                onChange={handleImageUpload}
+                onChange={handleImageSelect}
                 className="hidden"
               />
               {isUploading ? (
@@ -363,12 +421,7 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
                 }
               }}
             >
-              <img
-                src={selectedImage}
-                alt="Fullscreen view"
-                className="w-full h-auto max-h-[80vh] object-contain select-none"
-                draggable={false}
-              />
+              <PortfolioViewerImage src={selectedImage} alt={selectedItem?.title || "Fullscreen view"} />
             </div>
           )}
 

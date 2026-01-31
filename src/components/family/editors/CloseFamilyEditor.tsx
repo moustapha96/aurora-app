@@ -1,3 +1,4 @@
+// React and UI Components
 import React, { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,8 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Loader2, Upload, User, Sparkles, FileUp } from "lucide-react";
+
+// Supabase client
 import { supabase } from "@/integrations/supabase/client";
+
+// Utilities
 import { useToast } from "@/hooks/use-toast";
+
+// Storage utilities - centralized upload functions with correct RLS path patterns
+import { uploadFamilyImage } from "@/lib/storageUploadUtils";
 
 interface CloseFamilyMember {
   id?: string;
@@ -53,6 +61,7 @@ export const CloseFamilyEditor = ({ members, onUpdate }: CloseFamilyEditorProps)
     image_url: ""
   });
 
+  // Handle image upload using centralized utility - ensures correct RLS path: {userId}/close/{timestamp}.{ext}
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -67,37 +76,14 @@ export const CloseFamilyEditor = ({ members, onUpdate }: CloseFamilyEditorProps)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `family-${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      // Upload using centralized utility - path: {userId}/close/{timestamp}.{ext}
+      const result = await uploadFamilyImage(file, user.id, 'close');
       
-      // Get correct MIME type
-      const mimeTypes: Record<string, string> = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp'
-      };
-      const contentType = mimeTypes[fileExt] || 'image/jpeg';
-      
-      // Create proper File object with correct MIME type
-      const properFile = new File([file], file.name, { 
-        type: contentType, 
-        lastModified: Date.now() 
-      });
+      if (!result.success || !result.publicUrl) {
+        throw new Error(result.error || "Erreur lors de l'import");
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from('personal-content')
-        .upload(filePath, properFile, { upsert: true, contentType });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('personal-content')
-        .getPublicUrl(filePath);
-
-      setFormData({ ...formData, image_url: publicUrl });
+      setFormData({ ...formData, image_url: result.publicUrl });
       toast({ title: "Photo importée avec succès" });
     } catch (error) {
       console.error(error);

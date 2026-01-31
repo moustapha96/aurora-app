@@ -231,7 +231,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
                 {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                 {t("aiAurora")}
               </Button>
-              <Button
+              {/* <Button
                 type="button"
                 variant="outline"
                 size="sm"
@@ -252,7 +252,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
                     toast({ title: t("documentImported"), description: t("analysisInProgress") });
                   }
                 }}
-              />
+              /> */}
             </div>
           </div>
           <div>

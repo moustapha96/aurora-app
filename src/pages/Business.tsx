@@ -108,22 +108,14 @@ const Business = () => {
         .maybeSingle();
 
       if (contentData) {
-        // Normaliser company_photos si nécessaire
         if (contentData.company_photos && typeof contentData.company_photos === 'string') {
           try {
             contentData.company_photos = JSON.parse(contentData.company_photos);
-          } catch (e) {
-            console.error('Error parsing company_photos:', e);
+          } catch {
             contentData.company_photos = [];
           }
         }
         setBusinessContent(contentData);
-        // Log pour déboguer
-        console.log('Business content chargé:', {
-          company_photos: contentData.company_photos,
-          type: typeof contentData.company_photos,
-          isArray: Array.isArray(contentData.company_photos)
-        });
         // Check if onboarding completed
         if (!contentData.onboarding_completed && isOwn) {
           setShowOnboarding(true);
@@ -312,7 +304,10 @@ const Business = () => {
   const handleImagesChange = async (images: string[]) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast({ title: t("error"), description: t("notAuthenticated"), variant: "destructive" });
+        return;
+      }
 
       const { error } = await supabase
         .from("business_content")
@@ -325,9 +320,14 @@ const Business = () => {
       if (error) throw error;
 
       setBusinessContent((prev: any) => ({ ...prev, company_photos: images }));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating images:", error);
-      toast({ title: t("error"), variant: "destructive" });
+      toast({
+        title: t("error"),
+        description: error?.message || t("uploadError"),
+        variant: "destructive",
+      });
+      throw error;
     }
   };
 
@@ -346,8 +346,11 @@ const Business = () => {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-black text-gold p-6 pt-24 flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
+        <div className="min-h-screen bg-background text-foreground pt-20 sm:pt-24 flex items-center justify-center safe-area-all">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-gold/30 border-t-gold rounded-full animate-spin" />
+            <p className="text-muted-foreground text-sm">{t('loading')}</p>
+          </div>
         </div>
       </>
     );
@@ -357,19 +360,17 @@ const Business = () => {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-black text-gold p-6 pt-24 flex items-center justify-center">
-          <div className="text-center max-w-md">
-            <p className="text-gold mb-4">{t('businessNoAccess')}</p>
+        <div className="min-h-screen bg-background text-foreground pt-20 sm:pt-24 flex items-center justify-center safe-area-all">
+          <div className="text-center max-w-md px-4">
+            <div className="mb-6">
+              <Briefcase className="w-16 h-16 text-gold/30 mx-auto mb-4" />
+              <h2 className="text-xl font-serif text-gold mb-2">{t('accessRestricted')}</h2>
+              <p className="text-muted-foreground text-sm mb-4">{t('businessNoAccess')}</p>
+            </div>
             <Button
               variant="outline"
-              onClick={() => {
-                if (window.history.length > 1) {
-                  navigate(-1);
-                } else {
-                  navigate("/member-card");
-                }
-              }}
-              className="border-gold text-gold hover:bg-gold hover:text-black"
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/member-card"))}
+              className="border-gold/30 text-gold hover:bg-gold/10"
             >
               {t('businessBackToProfile')}
             </Button>
@@ -383,8 +384,8 @@ const Business = () => {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-black text-gold p-6 pt-24 flex items-center justify-center">
-          <p className="text-gold">{t('businessProfileNotFound')}</p>
+        <div className="min-h-screen bg-background text-foreground pt-20 sm:pt-24 flex items-center justify-center safe-area-all">
+          <p className="text-muted-foreground">{t('businessProfileNotFound')}</p>
         </div>
       </>
     );
@@ -416,60 +417,85 @@ const Business = () => {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-background pt-20 sm:pt-24 safe-area-all">
-
-        <div className="border-b border-border p-4 sm:p-6 bg-card mt-12">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center mb-2">
-              {/* <PageHeaderBackButton to={id ? `/profile/${id}` : "/profile"} /> */}
-              <PageHeaderBackButton to={"/member-card"} />
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide">{t('businessTitle')}</h1>
-                <p className="text-gold/60 text-xs sm:text-sm mt-1">{t('businessSubtitle')}</p>
+      <div className="min-h-screen bg-background text-foreground pt-20 sm:pt-24 safe-area-all">
+        {/* Header - aligné Famille / Passions */}
+        <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-16 sm:top-0 z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center min-w-0">
+                <PageHeaderBackButton to="/member-card" />
+                <div className="min-w-0 ml-2">
+                  <h1 className="text-2xl sm:text-3xl font-serif text-gold tracking-wide truncate">{t('businessTitle')}</h1>
+                  <p className="text-gold/60 text-xs sm:text-sm mt-0.5">{t('businessSubtitle')}</p>
+                </div>
               </div>
+              {isOwnProfile && !showOnboarding && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowOnboarding(true)}
+                  className="text-gold/60 hover:text-gold hover:bg-gold/10 shrink-0"
+                >
+                  <Sparkles className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">{t('businessReconfigure')}</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
 
-
-
-        <div className="max-w-7xl mx-auto p-4 sm:p-6 mt-12 overflow-x-hidden">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-
-            {isOwnProfile && !showOnboarding && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowOnboarding(true)}
-                className="text-gold/60 hover:text-gold hover:bg-gold/10 self-start sm:self-auto"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                {t('businessReconfigure')}
-              </Button>
-            )}
-          </div>
-
-          {/* Profile Summary Card */}
-          <div className="module-card rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 mt-12 overflow-x-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gold overflow-hidden bg-gradient-to-br from-gold/20 to-gold/5 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 overflow-x-hidden">
+          {/* Profile Summary Card - style cohérent Famille */}
+          <div className="module-card rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-gold/5 via-transparent to-gold/5 pointer-events-none" />
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-gold/30 overflow-hidden bg-gradient-to-br from-gold/20 to-gold/5 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
                 {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-xl sm:text-2xl font-serif">{profile.first_name?.[0]}{profile.last_name?.[0]}</span>
+                  <span className="text-xl sm:text-2xl font-serif text-gold/80">{profile.first_name?.[0]}{profile.last_name?.[0]}</span>
                 )}
               </div>
-              <div className="text-center sm:text-left">
+              <div className="text-center sm:text-left flex-1 min-w-0">
                 <h2 className="text-xl sm:text-2xl font-serif text-gold">{profile.first_name} {profile.last_name}</h2>
-                <p className="text-gold/70 text-sm sm:text-base">{profile.job_function || t('businessJobNotSpecified')}</p>
-                <p className="text-gold/50 text-xs sm:text-sm">{profile.activity_domain} • {formatWealth()}</p>
+                <p className="text-gold/70 text-sm sm:text-base mt-0.5">{profile.job_function || t('businessJobNotSpecified')}</p>
+                <p className="text-gold/50 text-xs sm:text-sm mt-0.5">{[profile.activity_domain, formatWealth()].filter(Boolean).join(' • ')}</p>
               </div>
             </div>
           </div>
 
-          {/* Business Images Gallery */}
-          <div className="mb-6">
+          {/* Items principaux (entreprise, poste, projets) - comme Passions / Famille */}
+          {(() => {
+            const mainItems: string[] = [];
+            if (businessContent?.company_name?.trim()) mainItems.push(businessContent.company_name.trim());
+            if (businessContent?.position_title?.trim()) mainItems.push(businessContent.position_title.trim());
+            if (projectsEntries?.length) {
+              projectsEntries.forEach((p: any) => {
+                if (p?.title?.trim()) mainItems.push(p.title.trim());
+              });
+            }
+            if (mainItems.length === 0) return null;
+            return (
+              <div className="module-card rounded-xl p-4 sm:p-6 mb-6 overflow-x-hidden">
+                <div className="flex items-center gap-2 mb-3">
+                  <Briefcase className="w-4 h-4 text-gold/80 shrink-0" />
+                  <h3 className="text-sm font-medium text-gold/80">{t('business')}</h3>
+                </div>
+                <ul className="flex flex-wrap gap-2">
+                  {mainItems.map((label, idx) => (
+                    <li key={idx}>
+                      <span className="inline-flex items-center rounded-md border border-gold/30 bg-gold/5 px-3 py-1.5 text-sm text-foreground">
+                        {label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
+
+          {/* Galerie photos */}
+          <div className="mb-6 sm:mb-8">
             <BusinessImageGallery
               images={businessContent.company_photos || []}
               editable={isOwnProfile}

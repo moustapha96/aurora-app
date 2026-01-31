@@ -13,7 +13,6 @@ export interface MarketplaceItem {
   main_image_url: string | null;
   additional_images: string[];
   offer_end_date: string | null;
-  reservation_until_date: string | null;
   status: 'active' | 'sold' | 'expired' | 'cancelled';
   created_at: string;
   updated_at: string;
@@ -28,7 +27,6 @@ export interface MarketplaceItemFormData {
   main_image_url: string | null;
   additional_images: string[];
   offer_end_date: string | null;
-  reservation_until_date: string | null;
 }
 
 export const MARKETPLACE_CATEGORIES = [
@@ -81,7 +79,6 @@ export const useMarketplace = () => {
       const typedData = (data || []).map(item => ({
         ...item,
         additional_images: item.additional_images || [],
-        reservation_until_date: null,
         status: item.status as 'active' | 'sold' | 'expired' | 'cancelled'
       }));
       
@@ -113,7 +110,6 @@ export const useMarketplace = () => {
       const typedData = (data || []).map(item => ({
         ...item,
         additional_images: item.additional_images || [],
-        reservation_until_date: null,
         status: item.status as 'active' | 'sold' | 'expired' | 'cancelled'
       }));
       

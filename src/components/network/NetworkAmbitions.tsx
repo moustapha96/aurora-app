@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NetworkModule } from "./NetworkModule";
-import { Target, Plus, Trash2, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { Target, Plus, Pencil, Trash2, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 // import { Sparkles } from "lucide-react"; // Commenté car bouton suggestion désactivé
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,12 +14,56 @@ import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+function getAmbitionsImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Impossible de lire l'image"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function AmbitionImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  const resolvedSrc = getAmbitionsImageSrc(src);
+  if (failed || !resolvedSrc) {
+    return (
+      <div className={`flex items-center justify-center bg-muted/50 rounded-lg shrink-0 ${className || "w-14 h-14"}`}>
+        <Target className="w-6 h-6 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className={`rounded-lg object-cover object-center shrink-0 ${className || "w-14 h-14"}`}
+      loading="lazy"
+      decoding="async"
+      crossOrigin={resolvedSrc.startsWith("http") ? "anonymous" : undefined}
+      referrerPolicy={resolvedSrc.startsWith("http") ? "no-referrer" : undefined}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 interface AmbitionItem {
   id: string;
   title: string;
   category?: string;
   timeline?: string;
   description?: string;
+  image_url?: string;
 }
 
 interface NetworkAmbitionsProps {
@@ -51,11 +95,12 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
     title: "",
     category: "",
     timeline: "",
-    description: ""
+    description: "",
+    image_url: ""
   });
 
   const resetForm = () => {
-    setFormData({ title: "", category: "", timeline: "", description: "" });
+    setFormData({ title: "", category: "", timeline: "", description: "", image_url: "" });
     setEditingItem(null);
   };
 
@@ -67,6 +112,37 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
     resetForm();
     setFormData(prev => ({ ...prev, category: CATEGORY_LABELS[category] }));
     setIsDialogOpen(true);
+  };
+
+  const handleOpenEdit = (item: AmbitionItem) => {
+    setEditingItem(item);
+    setFormData({
+      title: item.title,
+      category: item.category || "",
+      timeline: item.timeline || "",
+      description: item.description || "",
+      image_url: item.image_url || ""
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("businessImageFormatNotAllowed") || "Format non supporté");
+      e.target.value = "";
+      return;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setFormData(prev => ({ ...prev, image_url: dataUrl }));
+      toast.success(t("imageUploaded"));
+    } catch {
+      toast.error(t("uploadError"));
+    } finally {
+      e.target.value = "";
+    }
   };
 
   // const handleAISuggest = async () => {
@@ -106,6 +182,7 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
             category: formData.category,
             timeline: formData.timeline,
             description: formData.description,
+            image_url: formData.image_url || null,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingItem.id);
@@ -119,7 +196,8 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
             title: formData.title,
             category: formData.category,
             timeline: formData.timeline,
-            description: formData.description
+            description: formData.description,
+            image_url: formData.image_url || null
           });
         if (error) throw error;
         toast.success(t('networkAmbitionAdded'));
@@ -207,6 +285,9 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
                   <div key={item.id}>
                     <div className="p-2 sm:p-3 bg-muted/30 rounded-lg group">
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                        {item.image_url && getAmbitionsImageSrc(item.image_url) && (
+                          <AmbitionImage src={item.image_url} alt={item.title} className="w-14 h-14 sm:w-16 sm:h-16" />
+                        )}
                         <div className="flex-1 min-w-0 w-full sm:w-auto">
                           <InlineEditableField
                             value={item.title}
@@ -230,6 +311,9 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
                         </div>
                         {isEditable && (
                           <div className="flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenEdit(item)}>
+                              <Pencil className="w-3 h-3" />
+                            </Button>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
                               <Trash2 className="w-3 h-3" />
                             </Button>
@@ -272,6 +356,29 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
             <DialogTitle className="text-base sm:text-lg">{editingItem ? t('edit') : t('add')} {t('networkAmbitionAnAmbition')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label className="text-sm">{t('photo')}</Label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              {formData.image_url && (
+                <div className="relative mt-2 inline-block">
+                  <AmbitionImage src={formData.image_url} alt={t('preview')} className="w-20 h-20 sm:w-24 sm:h-24" />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={() => setFormData(prev => ({ ...prev, image_url: "" }))}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <div>
               <Label className="text-sm">{t('title')} *</Label>
               <Input

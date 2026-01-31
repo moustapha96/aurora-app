@@ -6,15 +6,16 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    // Écoute sur toutes les interfaces IPv4 (plus sûr pour les WS que "::" sur certains environnements)
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
+    // Origin utilisée pour les assets et le client HMR (évite l'échec WebSocket)
+    origin: "http://localhost:8080",
     hmr: {
-      // Utilise toujours localhost côté navigateur pour la connexion WebSocket HMR
       host: "localhost",
       port: 8080,
       protocol: "ws",
+      clientPort: 8080,
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),

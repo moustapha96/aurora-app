@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,48 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { X, Sparkles, Loader2, FileUp } from "lucide-react";
+import { X, Sparkles, Loader2, FileUp, Plane } from "lucide-react";
+
+function getVoyageImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Impossible de lire l'image"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function VoyageImagePreview({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const resolvedSrc = getVoyageImageSrc(src);
+  if (failed || !resolvedSrc) {
+    return (
+      <div className="w-full h-32 flex items-center justify-center bg-muted rounded-lg">
+        <Plane className="w-10 h-10 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className="w-full h-32 object-cover rounded-lg"
+      onError={() => setFailed(true)}
+      crossOrigin={resolvedSrc.startsWith("http") ? "anonymous" : undefined}
+      referrerPolicy={resolvedSrc.startsWith("http") ? "no-referrer" : undefined}
+    />
+  );
+}
 
 interface VoyagesEditorProps {
   open: boolean;
@@ -52,50 +93,24 @@ export const VoyagesEditor = ({ open, onOpenChange, entry, onSave, defaultCatego
     }
   }, [entry, reset, open, defaultCategory]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+    if (!file.type.startsWith("image/")) {
+      toast({ title: t("error"), description: t("businessImageFormatNotAllowed") || "Format non supporté", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
     setUploading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error(t("notAuthenticated"));
-
-      const fileExt = file.name.split(".").pop()?.toLowerCase() || 'jpg';
-      const filePath = `${session.user.id}/voyage-${Date.now()}.${fileExt}`;
-      
-      // Get correct MIME type
-      const mimeTypes: Record<string, string> = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp'
-      };
-      const contentType = mimeTypes[fileExt] || 'image/jpeg';
-      
-      // Create proper File object with correct MIME type
-      const properFile = new File([file], file.name, { 
-        type: contentType, 
-        lastModified: Date.now() 
-      });
-
-      const { error: uploadError } = await supabase.storage
-        .from("personal-content")
-        .upload(filePath, properFile, { contentType });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("personal-content")
-        .getPublicUrl(filePath);
-
-      setValue("image_url", publicUrl);
+      const dataUrl = await fileToDataUrl(file);
+      setValue("image_url", dataUrl);
       toast({ title: t("imageUploaded") });
-    } catch (error) {
+    } catch {
       toast({ title: t("uploadError"), variant: "destructive" });
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -192,7 +207,7 @@ export const VoyagesEditor = ({ open, onOpenChange, entry, onSave, defaultCatego
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {t("aiAurora")}
               </Button>
-              <Button
+              {/* <Button
                 type="button"
                 variant="outline"
                 size="sm"
@@ -213,7 +228,7 @@ export const VoyagesEditor = ({ open, onOpenChange, entry, onSave, defaultCatego
                     toast({ title: t("documentImported"), description: t("analysisInProgress") });
                   }
                 }}
-              />
+              /> */}
             </div>
           </div>
           <div>
@@ -221,13 +236,13 @@ export const VoyagesEditor = ({ open, onOpenChange, entry, onSave, defaultCatego
             <input
               type="file"
               accept="image/*"
-              onChange={handleImageUpload}
+              onChange={handleImageSelect}
               disabled={uploading}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
             {watch("image_url") && (
               <div className="relative mt-2">
-                <img src={watch("image_url")} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
+                <VoyageImagePreview src={watch("image_url")} alt={t("photo")} />
                 <Button
                   type="button"
                   variant="destructive"

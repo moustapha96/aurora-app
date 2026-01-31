@@ -20,9 +20,21 @@ interface FamilyHeritageProps {
   onUpdate?: () => void;
 }
 
+// Résout le src d'image : URL absolue, chemin public (/...), ou chemin en dur
+function getImageSrc(urlOrPath: string | undefined | null): string | null {
+  if (!urlOrPath || !urlOrPath.trim()) return null;
+  const s = urlOrPath.trim();
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("/")) return s;
+  if (s.startsWith("./") || s.startsWith("../")) return s;
+  return s.startsWith("data:") ? s : `/${s.replace(/^\/*/, "")}`;
+}
+
 export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: FamilyHeritageProps) => {
+ 
   const { t } = useLanguage();
-  const hasContent = heritage && (heritage.motto || heritage.values_text || heritage.legacy_vision || heritage.heritage_description);
+  const bannerSrc = getImageSrc(heritage?.banner_image_url);
+  const hasContent = heritage && (heritage.motto || heritage.values_text || heritage.legacy_vision || heritage.heritage_description || bannerSrc);
 
   const handleFieldUpdate = async (field: keyof HeritageData, value: string) => {
     try {
@@ -54,8 +66,18 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
   if (isEditable) {
     return (
       <div className="space-y-6">
+        {/* Bannière / image */}
+        {bannerSrc && (
+          <div className="relative w-full overflow-hidden rounded-lg border border-gold/20 bg-muted/30 aspect-[21/9] sm:aspect-[3/1] max-h-64 sm:max-h-72">
+            <img
+              src={bannerSrc}
+              alt={t('heritageBanner') || "Bannière héritage"}
+              className="w-full h-full object-cover object-center"
+            />
+          </div>
+        )}
         {/* Motto - Full Width */}
-        <div className="relative overflow-hidden rounded-lg border border-gold/30 bg-gradient-to-r from-gold/10 via-gold/5 to-gold/10 p-4 sm:p-6 text-center">
+        {/* <div className="relative overflow-hidden rounded-lg border border-gold/30 bg-gradient-to-r from-gold/10 via-gold/5 to-gold/10 p-4 sm:p-6 text-center">
           <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-gold mx-auto mb-2 sm:mb-3" />
           <p className="text-lg sm:text-xl font-serif text-gold italic">
             « <InlineEditableField
@@ -65,7 +87,7 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
               className="text-lg sm:text-xl font-serif text-gold"
             /> »
           </p>
-        </div>
+        </div> */}
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -78,7 +100,7 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
               <InlineEditableField
                 value={heritage?.values_text || ""}
                 onSave={(value) => handleFieldUpdate("values_text", value)}
-                placeholder={t('describeTransmittedValues')}
+                // placeholder={t('describeTransmittedValues')}
                 multiline
                 className="text-muted-foreground"
               />
@@ -94,7 +116,7 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
               <InlineEditableField
                 value={heritage?.legacy_vision || ""}
                 onSave={(value) => handleFieldUpdate("legacy_vision", value)}
-                placeholder={t('yourVisionForFutureGenerations')}
+                // placeholder={t('yourVisionForFutureGenerations')}
                 multiline
                 className="text-muted-foreground italic"
               />
@@ -123,6 +145,15 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
         <p className="text-muted-foreground text-sm italic">{t('noHeritageContent')}</p>
       ) : (
         <>
+          {bannerSrc && (
+            <div className="relative w-full overflow-hidden rounded-lg border border-gold/20 bg-muted/30 aspect-[21/9] sm:aspect-[3/1] max-h-64 sm:max-h-72">
+              <img
+                src={bannerSrc}
+                alt={t('heritageBanner') || "Bannière héritage"}
+                className="w-full h-full object-cover object-center"
+              />
+            </div>
+          )}
           {heritage?.motto && (
             <div className="relative overflow-hidden rounded-lg border border-gold/30 bg-gradient-to-r from-gold/10 via-gold/5 to-gold/10 p-4 sm:p-6 text-center">
               <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-gold mx-auto mb-2 sm:mb-3" />

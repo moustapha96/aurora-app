@@ -1,3 +1,4 @@
+// React and UI Components
 import React, { useState, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Calendar, Trash2, Loader2, Upload, User, Sparkles, FileText, Crown } from "lucide-react";
@@ -7,11 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Supabase client
 import { supabase } from "@/integrations/supabase/client";
+
+// Utilities
 import { useToast } from "@/hooks/use-toast";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
 import { toast as sonnerToast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+
+// Storage utilities - centralized upload functions with correct RLS path patterns
+import { uploadFamilyImage, uploadFamilyDocument } from "@/lib/storageUploadUtils";
 
 interface LineageEntry {
   id?: string;
@@ -81,6 +89,7 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
     }
   };
 
+  // Handle image upload using centralized utility - ensures correct RLS path: {userId}/lineage/{timestamp}.{ext}
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -95,37 +104,14 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t('notAuthenticated'));
 
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `lineage-${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      // Upload using centralized utility - path: {userId}/lineage/{timestamp}.{ext}
+      const result = await uploadFamilyImage(file, user.id, 'lineage');
       
-      // Get correct MIME type
-      const mimeTypes: Record<string, string> = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp'
-      };
-      const contentType = mimeTypes[fileExt] || 'image/jpeg';
-      
-      // Create proper File object with correct MIME type
-      const properFile = new File([file], file.name, { 
-        type: contentType, 
-        lastModified: Date.now() 
-      });
+      if (!result.success || !result.publicUrl) {
+        throw new Error(result.error || t('importError'));
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from('personal-content')
-        .upload(filePath, properFile, { upsert: true, contentType });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('personal-content')
-        .getPublicUrl(filePath);
-
-      setFormData({ ...formData, image_url: publicUrl });
+      setFormData({ ...formData, image_url: result.publicUrl });
       toast({ title: t('photoImportedSuccess') });
     } catch (error) {
       console.error(error);
@@ -157,6 +143,7 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
     }
   };
 
+  // Handle document import using centralized utility - ensures correct RLS path: {userId}/documents/{timestamp}.{ext}
   const handleDocImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -172,30 +159,18 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t('notAuthenticated'));
 
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'pdf';
-      const fileName = `lineage-doc-${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      // Upload using centralized utility - path: {userId}/documents/{timestamp}.{ext}
+      const result = await uploadFamilyDocument(file, user.id, 'documents');
       
-      // Ensure proper MIME type
-      const mimeTypes: Record<string, string> = {
-        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
-        'gif': 'image/gif', 'webp': 'image/webp', 'pdf': 'application/pdf',
-        'doc': 'application/msword', 'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      };
-      const contentType = mimeTypes[fileExt] || file.type || 'application/octet-stream';
-      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
-
-      const { error: uploadError } = await supabase.storage
-        .from('family-documents')
-        .upload(filePath, properFile, { upsert: true, contentType });
-
-      if (uploadError) throw uploadError;
+      if (!result.success || !result.storagePath) {
+        throw new Error(result.error || t('documentImportError'));
+      }
 
       // Save document reference
       await supabase.from('family_documents').insert({
         user_id: user.id,
         file_name: file.name,
-        file_path: filePath,
+        file_path: result.storagePath,
         file_size: file.size,
         file_type: file.type,
         description: `${t('lineageDocument')}: ${formData.member_name || t('newMember')}`

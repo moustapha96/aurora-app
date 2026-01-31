@@ -930,23 +930,12 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
     }
   };
 
-  // Filter members by approval status
-  // Approuvés / confirmés / rejetés (historique)
-  const approvedOrConfirmedMembers = referredMembers.filter(m => 
-    m.sponsor_approved === true || m.status === 'confirmed' || m.status === 'rejected'
-  );
-  
-  // En attente : uniquement les membres NON approuvés (sponsor_approved !== true) et NON rejetés
+  // En attente : uniquement les membres NON approuvés et NON rejetés
   const pendingApprovalMembers = referredMembers.filter(m => {
-    const isNotApproved = m.sponsor_approved !== true; // false, null, ou undefined
+    const isNotApproved = m.sponsor_approved !== true;
     const isNotRejected = m.status !== 'rejected';
     return isNotApproved && isNotRejected;
   });
-  
-  // Log pour déboguer
-  console.log('Membres totaux:', referredMembers.length);
-  console.log('En attente d\'approbation:', pendingApprovalMembers.length);
-  console.log('Approuvés/confirmés:', approvedOrConfirmedMembers.length);
 
   if (isLoading) {
     return (
@@ -961,19 +950,20 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
 
   return (
     <div className="space-y-6">
-      {/* Statistiques - Full Width */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-       </div>
+      {/* Deux colonnes : Codes d'invitation | Parrainages */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        {/* Colonne gauche : Codes d'invitation */}
+        <div className="space-y-5">
+          <div className="flex items-center gap-2">
+            <Gift className="h-5 w-5 text-gold shrink-0" />
+            <h2 className="text-lg font-semibold text-foreground">{t('singleUseInvitationCodes') || 'Codes d\'invitation'}</h2>
+          </div>
 
-        {/* Colonne gauche : Code de parrainage et Liens */}
-        <div className="space-y-4 sm:space-y-6">
-          {/* Code de parrainage initial — même design que les codes à usage unique */}
+          {/* Code de parrainage initial */}
           {referralCode && (
-            <Card className={`bg-gradient-to-br ${referredMembers.length > 0 ? 'from-muted/20 to-transparent border-muted/40 opacity-70' : 'from-gold/5 to-transparent border-gold/20'}`}>
-              <CardContent className="pt-4 pb-4">
+            <Card className={`rounded-xl border bg-card overflow-hidden ${referredMembers.length > 0 ? 'border-muted/40 from-muted/10 to-transparent' : 'border-gold/20 from-gold/5 to-transparent'}`}>
+              <CardContent className="p-4 sm:p-5">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground mb-1">{t('initialInvitationCode') || 'Code d\'invitation initial'}</p>
@@ -1045,16 +1035,16 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
 
 
           {isEditable && remaining === 0 && (
-            <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-              <p className="text-sm text-yellow-600 dark:text-yellow-400">
+            <div className="rounded-xl p-4 bg-amber-500/10 border border-amber-500/20">
+              <p className="text-sm text-amber-600 dark:text-amber-400">
                 {t('limitReached').replace('{maxReferrals}', maxReferrals.toString())}
               </p>
             </div>
           )}
 
-          {/* Codes d'invitation à usage unique (comptage avec code initial, suppression interdite si dernier code) */}
+          {/* Codes à usage unique */}
           {userId && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <SingleUseInvitationCodes
                 isEditable={isEditable}
                 userId={userId}
@@ -1204,37 +1194,42 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
         )} */}
 
         {isEditable && referralLinks.length >= maxReferralLinks && (
-          <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-            <p className="text-sm text-yellow-600 dark:text-yellow-400">
+          <div className="rounded-xl p-4 sm:p-5 bg-amber-500/10 border border-amber-500/20">
+            <p className="text-sm text-amber-600 dark:text-amber-400">
               {t('referralLinksLimitReached').replace('{maxReferralLinks}', maxReferralLinks.toString())}
             </p>
           </div>
-          )}
+        )}
           </div>
         </div>
 
-        {/* Colonne droite : Liste des membres parrainés */}
+        {/* Colonne droite : Parrainages (liste des membres parrainés) */}
         <div className="space-y-4 sm:space-y-6">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-gold shrink-0" />
+            <h2 className="text-lg font-semibold text-foreground">{t('referrals') || 'Parrainages'}</h2>
+          </div>
+
           {/* Section: Membres en attente d'approbation - TOUJOURS VISIBLE SI isEditable */}
           {isEditable && (
             <div className="space-y-3">
               {pendingApprovalMembers.length > 0 ? (
                 <>
-                  <div className="bg-orange-500/10 border-2 border-orange-500/50 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-2">
-                      <AlertCircle className="h-6 w-6 text-orange-500 animate-pulse" />
-                      {t('pendingApprovalMembers')} 
-                      <Badge variant="destructive" className="ml-2">
+                  <div className="rounded-xl p-4 sm:p-5 bg-orange-500/10 border border-orange-500/30">
+                    <h3 className="text-base font-semibold text-foreground flex items-center gap-2 mb-1">
+                      <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
+                      {t('pendingApprovalMembers')}
+                      <Badge variant="destructive" className="text-xs">
                         {pendingApprovalMembers.length}
                       </Badge>
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {t('waitingForYourApproval')} - {pendingApprovalMembers.length} {pendingApprovalMembers.length === 1 ? t('member') : t('members')}
+                      {t('waitingForYourApproval')} — {pendingApprovalMembers.length} {pendingApprovalMembers.length === 1 ? t('member') : t('members')}
                     </p>
                   </div>
                   {pendingApprovalMembers.map((member) => (
-                    <Card key={member.id} className="border-orange-500/30 bg-orange-500/5">
-                      <CardContent className="pt-6">
+                    <Card key={member.id} className="rounded-xl border border-orange-500/20 bg-card overflow-hidden">
+                      <CardContent className="p-4 sm:p-5">
                         <div className="flex items-center gap-4">
                           <Avatar className="h-12 w-12">
                             <AvatarImage src={member.referred_profile?.avatar_url || undefined} />
@@ -1279,64 +1274,28 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                   ))}
                 </>
               ) : (
-                <div className="bg-muted/30 border border-border rounded-lg p-4 text-center">
-                  <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {t('noPendingApprovals')}
-                  </p>
-                </div>
+                <Card className="rounded-xl border border-border bg-card overflow-hidden">
+                  <CardContent className="p-6 text-center">
+                    <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-foreground">{t('noPendingApprovals')}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('noPendingApprovalsDesc') || 'Aucune demande en attente.'}</p>
+                  </CardContent>
+                </Card>
               )}
             </div>
           )}
-        
 
-          {/* Section: Autres membres */}
-          {referredMembers.length === 0 ? (
-            <div className="text-center py-8">
-              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">{t('noReferredMembers')}</h3>
-              <p className="text-muted-foreground">
-                {isEditable ? t('startSponsoringHint') : t('noReferralsRecorded')}
-              </p>
-            </div>
-          ) : approvedOrConfirmedMembers.length > 0 && (
-            <div className="space-y-3">
-              {pendingApprovalMembers.length > 0 && (
-                <h3 className="text-lg font-semibold text-foreground">{t('approvedMembers')}</h3>
-              )}
-              {approvedOrConfirmedMembers.map((member) => (
-                <Card
-                  key={member.id}
-                  className="hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/profile/${member.referred_profile?.id}`)}
-                >
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={member.referred_profile?.avatar_url || undefined} />
-                        <AvatarFallback className="bg-gold/10 text-gold">
-                          {member.referred_profile?.first_name?.[0]}{member.referred_profile?.last_name?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium text-foreground">
-                            {member.referred_profile?.first_name} {member.referred_profile?.last_name}
-                          </h4>
-                          {getStatusBadge(member)}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {member.sponsor_approved_at 
-                            ? `${t('sponsorValidatedAt')} ${formatDate(member.sponsor_approved_at)}`
-                            : `${t('sponsoredOn')} ${formatDate(member.created_at)}`}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-        )}
+          {referredMembers.length === 0 && (
+            <Card className="rounded-xl border border-border bg-card overflow-hidden">
+              <CardContent className="p-6 sm:p-8 text-center">
+                <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm font-medium text-foreground">{t('noReferredMembers')}</p>
+                <p className="text-xs text-muted-foreground mt-2 max-w-xs mx-auto">
+                  {isEditable ? t('startSponsoringHint') : t('noReferralsRecorded')}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

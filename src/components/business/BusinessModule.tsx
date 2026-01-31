@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { uploadBusinessImage, BusinessSection } from "@/lib/storageUploadUtils";
 
 interface BusinessModuleProps {
   icon: React.ElementType;
@@ -120,28 +121,16 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t("notAuthenticated") || "Non authentifié");
 
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const filePath = `${user.id}/business/${moduleType}-thumbnail-${Date.now()}.${fileExt}`;
+      // Use centralized upload utility with session check + retry
+      // Section is moduleType (bio, achievements, vision, etc.) for thumbnail path
+      const sectionName = `${moduleType}-thumbnail` as unknown as BusinessSection;
+      const result = await uploadBusinessImage(file, user.id, moduleType as BusinessSection);
       
-      // Ensure proper MIME type
-      const mimeTypes: Record<string, string> = {
-        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
-        'gif': 'image/gif', 'webp': 'image/webp'
-      };
-      const contentType = mimeTypes[fileExt] || 'image/jpeg';
-      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
+      if (!result.success || !result.publicUrl) {
+        throw new Error(result.error || t("uploadError") || "Upload failed");
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from('personal-content')
-        .upload(filePath, properFile, { upsert: true, contentType });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('personal-content')
-        .getPublicUrl(filePath);
-
-      onThumbnailChange?.(publicUrl);
+      onThumbnailChange?.(result.publicUrl);
       toast({
         title: t("imageUploaded") || "Image téléchargée",
         description: t("thumbnailUpdated") || "Vignette mise à jour",
@@ -227,28 +216,20 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
       const uploadedUrls: string[] = [];
 
       for (const file of validFiles) {
-        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const filePath = `${user.id}/business/${moduleType}-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+        // Use centralized upload utility with session check + retry
+        // subPath uses moduleType-images for organizing module images
+        const result = await uploadBusinessImage(
+          file, 
+          user.id, 
+          moduleType as BusinessSection, 
+          'images'
+        );
         
-        // Ensure proper MIME type
-        const mimeTypes: Record<string, string> = {
-          'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
-          'gif': 'image/gif', 'webp': 'image/webp'
-        };
-        const contentType = mimeTypes[fileExt] || 'image/jpeg';
-        const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
+        if (!result.success || !result.publicUrl) {
+          throw new Error(result.error || 'Failed to upload image');
+        }
 
-        const { error: uploadError } = await supabase.storage
-          .from('personal-content')
-          .upload(filePath, properFile, { upsert: true, contentType });
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('personal-content')
-          .getPublicUrl(filePath);
-
-        uploadedUrls.push(publicUrl + '?t=' + Date.now());
+        uploadedUrls.push(result.publicUrl);
       }
 
       const newImages = [...images, ...uploadedUrls];

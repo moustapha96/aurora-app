@@ -1,3 +1,4 @@
+// React and UI Components
 import React, { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -5,8 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Pencil, Trash2, Loader2, Upload, User, Sparkles, FileUp } from "lucide-react";
+
+// Supabase client
 import { supabase } from "@/integrations/supabase/client";
+
+// Utilities
 import { useToast } from "@/hooks/use-toast";
+
+// Storage utilities - centralized upload functions with correct RLS path patterns
+import { uploadFamilyImage } from "@/lib/storageUploadUtils";
 
 interface BoardMember {
   id?: string;
@@ -41,6 +49,7 @@ export const BoardEditor = ({ members, onUpdate }: BoardEditorProps) => {
     image_url: ""
   });
 
+  // Handle image upload using centralized utility - ensures correct RLS path: {userId}/board/{timestamp}.{ext}
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -50,28 +59,14 @@ export const BoardEditor = ({ members, onUpdate }: BoardEditorProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `${user.id}/board/${Date.now()}.${fileExt}`;
+      // Upload using centralized utility - path: {userId}/board/{timestamp}.{ext}
+      const result = await uploadFamilyImage(file, user.id, 'board');
       
-      // Ensure proper MIME type
-      const mimeTypes: Record<string, string> = {
-        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
-        'gif': 'image/gif', 'webp': 'image/webp'
-      };
-      const contentType = mimeTypes[fileExt] || 'image/jpeg';
-      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
+      if (!result.success || !result.publicUrl) {
+        throw new Error(result.error || "Erreur lors du téléchargement");
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from('personal-content')
-        .upload(fileName, properFile, { upsert: true, contentType });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('personal-content')
-        .getPublicUrl(fileName);
-
-      setFormData({ ...formData, image_url: publicUrl + '?t=' + Date.now() });
+      setFormData({ ...formData, image_url: result.publicUrl });
       toast({ title: "Photo téléchargée" });
     } catch (error) {
       console.error(error);

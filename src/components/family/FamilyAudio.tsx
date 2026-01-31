@@ -1,11 +1,9 @@
+// React and UI Components
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { 
   Music, 
   Upload, 
@@ -21,6 +19,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+// Supabase client
+import { supabase } from "@/integrations/supabase/client";
+
+// Utilities
+import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+// Storage utilities - centralized upload functions with correct RLS path patterns
+import { uploadFamilyAudio } from "@/lib/storageUploadUtils";
 
 interface FamilyAudioFile {
   id: string;
@@ -76,6 +84,7 @@ export const FamilyAudio = ({ isOwnProfile }: FamilyAudioProps) => {
     }
   };
 
+  // Handle audio file upload using centralized utility - ensures correct RLS path: {userId}/audio/{timestamp}.{ext}
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -100,23 +109,12 @@ export const FamilyAudio = ({ isOwnProfile }: FamilyAudioProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t("notAuthenticated"));
 
-      const filePath = `${user.id}/${Date.now()}-${file.name}`;
+      // Upload using centralized utility - path: {userId}/audio/{timestamp}.{ext}
+      const result = await uploadFamilyAudio(file, user.id);
       
-      // Ensure proper MIME type for audio files
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
-      const mimeTypes: Record<string, string> = {
-        'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'ogg': 'audio/ogg',
-        'm4a': 'audio/mp4', 'aac': 'audio/aac', 'flac': 'audio/flac'
-      };
-      const contentType = mimeTypes[fileExt] || file.type || 'audio/mpeg';
-      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
-      
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('family-documents')
-        .upload(filePath, properFile, { contentType });
-
-      if (uploadError) throw uploadError;
+      if (!result.success || !result.storagePath) {
+        throw new Error(result.error || t("cannotAddAudio"));
+      }
 
       // Save metadata
       const { error: dbError } = await supabase
@@ -124,7 +122,7 @@ export const FamilyAudio = ({ isOwnProfile }: FamilyAudioProps) => {
         .insert({
           user_id: user.id,
           file_name: file.name,
-          file_path: filePath,
+          file_path: result.storagePath,
           file_size: file.size
         });
 

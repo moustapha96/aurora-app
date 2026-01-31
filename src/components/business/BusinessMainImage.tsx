@@ -5,6 +5,7 @@ import { Upload, X, Loader2, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { uploadBusinessImage } from "@/lib/storageUploadUtils";
 
 interface BusinessMainImageProps {
   imageUrl?: string | null;
@@ -113,27 +114,15 @@ export const BusinessMainImage: React.FC<BusinessMainImageProps> = ({
       if (!user) throw new Error(t("notAuthenticated"));
 
       const compressedFile = await compressImage(file);
-      const fileExt = "jpg";
-      const filePath = `${user.id}/business/main-image-${Date.now()}.${fileExt}`;
 
-      // Create proper File object with correct MIME type
-      const properFile = new File([compressedFile], `main-image.${fileExt}`, { 
-        type: 'image/jpeg', 
-        lastModified: Date.now() 
-      });
+      // Use centralized upload utility with session check + retry
+      const result = await uploadBusinessImage(compressedFile, user.id, 'main-image');
+      
+      if (!result.success || !result.publicUrl) {
+        throw new Error(result.error || t("uploadError"));
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from("personal-content")
-        .upload(filePath, properFile, { 
-          upsert: true,
-          contentType: 'image/jpeg'
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("personal-content")
-        .getPublicUrl(filePath);
+      const publicUrl = result.publicUrl;
 
       // Save to database
       const { error: dbError } = await supabase

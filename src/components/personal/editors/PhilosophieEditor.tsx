@@ -8,7 +8,48 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Sparkles, Loader2, FileUp } from "lucide-react";
+import { Sparkles, Loader2, FileUp, Lightbulb, X } from "lucide-react";
+
+function getPhilosophieImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Impossible de lire l'image"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function PhilosophieImagePreview({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const resolvedSrc = getPhilosophieImageSrc(src);
+  if (failed || !resolvedSrc) {
+    return (
+      <div className="w-full h-28 flex items-center justify-center bg-muted rounded-lg shrink-0">
+        <Lightbulb className="w-8 h-8 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className="w-full h-28 object-cover rounded-lg shrink-0"
+      onError={() => setFailed(true)}
+      crossOrigin={resolvedSrc.startsWith("http") ? "anonymous" : undefined}
+      referrerPolicy={resolvedSrc.startsWith("http") ? "no-referrer" : undefined}
+    />
+  );
+}
 
 interface PhilosophieEntry {
   id: string;
@@ -37,6 +78,8 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const CATEGORIES = getCategories(t);
@@ -46,6 +89,9 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
       setTitle(entry.title || "");
       setCategory(entry.category || "mentors");
       setDescription(entry.description || "");
+      setImageUrl(entry.image_url ?? null);
+    } else {
+      setImageUrl(null);
     }
   }, [entry]);
 
@@ -72,6 +118,27 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
     }
   };
 
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("businessImageFormatNotAllowed") || "Format non supporté");
+      e.target.value = "";
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setImageUrl(dataUrl);
+      toast.success(t("imageUploaded"));
+    } catch {
+      toast.error(t("uploadError"));
+    } finally {
+      setUploadingImage(false);
+      e.target.value = "";
+    }
+  };
+
   const handleSave = async () => {
     if (!title.trim()) {
       toast.error(t("titleRequired"));
@@ -87,7 +154,8 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
         user_id: user.id,
         title: title.trim(),
         category,
-        description: description.trim() || null
+        description: description.trim() || null,
+        image_url: imageUrl || null
       };
 
       if (entry?.id) {
@@ -142,6 +210,31 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
           </div>
 
           <div>
+            <Label>{t("photo")}</Label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              disabled={uploadingImage}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            {imageUrl && (
+              <div className="relative mt-2">
+                <PhilosophieImagePreview src={imageUrl} alt={t("photo")} />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2"
+                  onClick={() => setImageUrl(null)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div>
             <Label>{t("description")}</Label>
             <Textarea 
               value={description} 
@@ -161,7 +254,7 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {t("aiAurora")}
               </Button>
-              <Button
+              {/* <Button
                 type="button"
                 variant="outline"
                 size="sm"
@@ -182,13 +275,13 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
                     toast.success(t("documentImportedAnalysisInProgress"));
                   }
                 }}
-              />
+              /> */}
             </div>
           </div>
 
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-            <Button onClick={handleSave} disabled={loading} className="bg-primary text-primary-foreground">
+            <Button onClick={handleSave} disabled={loading || uploadingImage} className="bg-primary text-primary-foreground">
               {t("validate")}
             </Button>
           </div>

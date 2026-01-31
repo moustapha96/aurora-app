@@ -1,3 +1,4 @@
+// React and UI Components
 import React, { useState, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Heart, Calendar, Building, Trash2, Plus, Sparkles, FileUp, Loader2, Upload, X, Image as ImageIcon, File as FileIcon, Download, Eye } from "lucide-react";
@@ -6,11 +7,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+// Supabase client
 import { supabase } from "@/integrations/supabase/client";
+
+// Utilities
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { uploadImage } from "@/lib/imageUploadUtils";
+
+// Storage utilities - centralized upload for documents only
+import { uploadFamilyDocument, getSignedDocumentUrl } from "@/lib/storageUploadUtils";
 
 interface Commitment {
   id?: string;
@@ -27,6 +34,47 @@ interface FamilyCommitmentsProps {
   commitments: Commitment[];
   isEditable?: boolean;
   onUpdate?: () => void;
+}
+
+// Retourne un src utilisable pour <img> : URL (http/https), data URL (base64), ou chemin.
+function getCommitmentImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function isExternalUrl(src: string): boolean {
+  return src.startsWith("http://") || src.startsWith("https://");
+}
+
+// Affiche l'image (URL, data ou chemin) ou le placeholder ; en cas d'erreur affiche le placeholder.
+function CommitmentImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className={`rounded-lg flex-shrink-0 border border-gold/20 bg-gold/5 flex items-center justify-center ${className || "w-14 h-14 sm:w-20 sm:h-20"}`}>
+        <Heart className="w-6 h-6 sm:w-8 sm:h-8 text-gold/40" />
+      </div>
+    );
+  }
+  return (
+    <div className={`rounded-lg overflow-hidden flex-shrink-0 border border-gold/20 ${className || "w-14 h-14 sm:w-20 sm:h-20"}`}>
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover object-center"
+        loading="lazy"
+        decoding="async"
+        crossOrigin={isExternalUrl(src) ? "anonymous" : undefined}
+        referrerPolicy={isExternalUrl(src) ? "no-referrer" : undefined}
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
 }
 
 export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }: FamilyCommitmentsProps) => {
@@ -61,64 +109,41 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
     setDialogOpen(true);
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Convertit le fichier image en data URL base64 pour enregistrement en base (pas d'upload)
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validation du type de fichier (images uniquement)
     if (!file.type.startsWith('image/')) {
       toast.error(t("pleaseSelectAnImage") || "Veuillez sélectionner une image");
       return;
     }
-
-    // Validation de la taille (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error(t("fileTooLarge") || "Le fichier est trop volumineux (max 5MB)");
       return;
     }
 
     setUploadingImage(true);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error(t("notAuthenticated"));
-
-      // Créer un aperçu local
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-
-      // Upload (standardisé) - le chemin DOIT commencer par user.id pour la policy de stockage
-      const fileExt = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const storagePath = `${user.id}/commitments/${Date.now()}.${fileExt}`;
-
-      const imageUrl = await uploadImage("personal-content", storagePath, file);
-      if (!imageUrl) throw new Error(t("imageUploadError") || "Erreur lors du téléchargement de l'image");
-
-      setFormData({ ...formData, image_url: imageUrl });
-
-      toast.success(t("imageUploaded") || "Image téléchargée avec succès");
-    } catch (error: any) {
-      console.error("Image upload error:", error);
-      toast.error(error.message || t("imageUploadError") || "Erreur lors du téléchargement de l'image");
-      setImagePreview("");
-    } finally {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = reader.result as string;
+      setImagePreview(dataUrl);
+      setFormData((prev) => ({ ...prev, image_url: dataUrl }));
       setUploadingImage(false);
-      // Réinitialiser l'input file
-      if (imageInputRef.current) {
-        imageInputRef.current.value = '';
-      }
-    }
+      toast.success(t("imageUploaded") || "Image prête");
+    };
+    reader.onerror = () => {
+      setUploadingImage(false);
+      toast.error(t("imageUploadError") || "Impossible de lire l'image");
+    };
+    reader.readAsDataURL(file);
+    if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
   const removeImage = () => {
     setImagePreview("");
-    setFormData({ ...formData, image_url: "" });
-    if (imageInputRef.current) {
-      imageInputRef.current.value = '';
-    }
+    setFormData((prev) => ({ ...prev, image_url: undefined }));
+    if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
   const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,26 +162,17 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t("notAuthenticated"));
 
-      // Upload vers Supabase Storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `commitments-docs/${user.id}/${Date.now()}-${file.name}`;
+      // Upload using centralized utility - ensures correct RLS path: {userId}/documents/{timestamp}.{ext}
+      // Path format MUST be: {userId}/{section}/... for RLS policies
+      const result = await uploadFamilyDocument(file, user.id, 'documents');
 
-      const { error: uploadError } = await supabase.storage
-        .from('family-documents')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      // Obtenir l'URL signée (bucket privé)
-      const { data } = await supabase.storage
-        .from('family-documents')
-        .createSignedUrl(fileName, 60 * 60 * 24 * 365); // 1 an
-
-      if (data?.signedUrl) {
-        // On stocke le path, pas l'URL signée
-        setFormData({ ...formData, document_url: fileName });
-        toast.success(t("documentUploaded") || "Document téléchargé avec succès");
+      if (!result.success || !result.storagePath) {
+        throw new Error(result.error || t("documentUploadError") || "Erreur lors du téléchargement du document");
       }
+
+      // On stocke le path, pas l'URL signée (bucket privé)
+      setFormData({ ...formData, document_url: result.storagePath });
+      toast.success(t("documentUploaded") || "Document téléchargé avec succès");
     } catch (error: any) {
       console.error("Document upload error:", error);
       toast.error(error.message || t("documentUploadError") || "Erreur lors du téléchargement du document");
@@ -440,19 +456,16 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
               )}
 
               {/* Icône ou Image */}
-              {commitment.image_url ? (
-                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-lg flex-shrink-0 border border-gold/20 overflow-hidden">
-                  <img
-                    src={commitment.image_url}
-                    alt={commitment.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-lg flex-shrink-0 border border-gold/20 bg-gold/5 flex items-center justify-center">
-                  <Heart className="w-6 h-6 sm:w-8 sm:h-8 text-gold/40" />
-                </div>
-              )}
+              {(() => {
+                const imageSrc = getCommitmentImageSrc(commitment.image_url);
+                return imageSrc ? (
+                  <CommitmentImage src={imageSrc} alt={commitment.title} />
+                ) : (
+                  <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-lg flex-shrink-0 border border-gold/20 bg-gold/5 flex items-center justify-center">
+                    <Heart className="w-6 h-6 sm:w-8 sm:h-8 text-gold/40" />
+                  </div>
+                );
+              })()}
 
               {/* Contenu */}
               <div className="flex-1 min-w-0 pr-0 sm:pr-8">
@@ -611,23 +624,23 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
         </div>
       )}
 
-      {/* Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[96vw] sm:w-full max-w-md mx-auto max-h-[92vh] overflow-y-auto bg-background border border-gold/20 p-0">
+      {/* Dialog - responsive: pleine largeur sur mobile, max-w sur desktop */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setImagePreview(""); setFormData((prev) => ({ ...prev, image_url: undefined })); } setDialogOpen(open); }}>
+        <DialogContent className="w-[95vw] sm:w-full max-w-md mx-auto max-h-[90vh] sm:max-h-[92vh] overflow-y-auto overflow-x-hidden bg-background border border-gold/20 p-0 flex flex-col">
           <DialogHeader className="sticky top-0 z-10 bg-background border-b border-gold/10 px-4 py-3 sm:px-6 sm:py-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl font-serif text-gold">
               {t("addCommitment")}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="px-4 py-3 sm:px-6 sm:py-4 space-y-3 sm:space-y-4">
+          <div className="px-4 py-3 sm:px-6 sm:py-4 space-y-3 sm:space-y-4 overflow-y-auto flex-1 min-h-0">
             {/* Titre */}
             <div className="space-y-1.5 sm:space-y-2">
               <Label className="text-xs sm:text-sm font-medium">{t("title")} *</Label>
               <Input
                 value={formData.title || ""}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-10"
+                className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10 w-full"
               />
             </div>
 
@@ -638,29 +651,29 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
                 value={formData.category || ""}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 placeholder={t("philanthropyEducationEnvironment")}
-                className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-10"
+                className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10 w-full"
               />
             </div>
 
-            {/* Organisation */}
-            <div className="space-y-1.5 sm:space-y-2">
-              <Label className="text-xs sm:text-sm font-medium">{t("organization")}</Label>
-              <Input
-                value={formData.organization || ""}
-                onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-10"
-              />
-            </div>
-
-            {/* Année */}
-            <div className="space-y-1.5 sm:space-y-2">
-              <Label className="text-xs sm:text-sm font-medium">{t("startYear")}</Label>
-              <Input
-                value={formData.start_year || ""}
-                onChange={(e) => setFormData({ ...formData, start_year: e.target.value })}
-                placeholder="2020"
-                className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-10"
-              />
+            {/* Organisation + Année en grille sur sm+ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label className="text-xs sm:text-sm font-medium">{t("organization")}</Label>
+                <Input
+                  value={formData.organization || ""}
+                  onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                  className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10 w-full"
+                />
+              </div>
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label className="text-xs sm:text-sm font-medium">{t("startYear")}</Label>
+                <Input
+                  value={formData.start_year || ""}
+                  onChange={(e) => setFormData({ ...formData, start_year: e.target.value })}
+                  placeholder="2020"
+                  className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10 w-full"
+                />
+              </div>
             </div>
 
             {/* Description */}
@@ -699,16 +712,17 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
               
               {imagePreview || formData.image_url ? (
                 <div className="relative">
-                  <div className="relative w-full h-48 sm:h-64 rounded-lg overflow-hidden border border-gold/20">
+                  <div className="relative w-full min-h-[140px] h-40 sm:h-52 md:h-64 rounded-lg overflow-hidden border border-gold/20 bg-muted/20">
                     <img
                       src={imagePreview || formData.image_url}
                       alt={t("imagePreview") || "Aperçu"}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover object-center"
                     />
                     <button
                       type="button"
                       onClick={removeImage}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-background/90 backdrop-blur-sm border border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                      className="absolute top-2 right-2 p-2 sm:p-1.5 rounded-full bg-background/90 backdrop-blur-sm border border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors touch-manipulation"
+                      aria-label={t("removeImage") || "Supprimer l'image"}
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -717,11 +731,11 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
               ) : (
                 <div
                   onClick={() => imageInputRef.current?.click()}
-                  className="border-2 border-dashed border-gold/30 rounded-lg p-6 sm:p-8 text-center cursor-pointer hover:border-gold/50 transition-colors"
+                  className="border-2 border-dashed border-gold/30 rounded-lg p-5 sm:p-6 md:p-8 text-center cursor-pointer hover:border-gold/50 active:border-gold/50 transition-colors min-h-[120px] sm:min-h-[140px] flex flex-col items-center justify-center touch-manipulation"
                 >
-                  <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-2 text-gold/40" />
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {t("clickToUploadImage") || "Cliquez pour télécharger une image"}
+                  <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-2 text-gold/40 flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground mb-1 sm:mb-2 px-2">
+                    {t("clickToUploadImage") || "Cliquez pour choisir une image"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {t("maxFileSize") || "Taille max: 5MB"}
@@ -794,25 +808,25 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="sticky bottom-0 bg-background border-t border-gold/10 px-4 py-3 sm:px-6 sm:py-4">
-            <div className="flex gap-2">
+          {/* Footer - sticky, boutons pleine largeur sur mobile */}
+          <div className="sticky bottom-0 bg-background border-t border-gold/10 px-4 py-3 sm:px-6 sm:py-4 flex-shrink-0">
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
               <Button
                 variant="outline"
                 onClick={() => setDialogOpen(false)}
-                className="flex-1 text-sm h-10"
+                className="flex-1 text-sm h-10 min-h-[44px] sm:min-h-0 touch-manipulation"
               >
                 {t("cancel")}
               </Button>
               <Button
                 onClick={handleAddNew}
-                disabled={saving}
-                className="flex-1 bg-gold hover:bg-gold/90 text-primary-foreground font-medium text-sm h-10"
+                disabled={saving || uploadingImage}
+                className="flex-1 bg-gold hover:bg-gold/90 text-primary-foreground font-medium text-sm h-10 min-h-[44px] sm:min-h-0 touch-manipulation"
               >
-                {saving && (
-                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                {(saving || uploadingImage) && (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1 flex-shrink-0" />
                 )}
-                {saving ? t("adding") : t("add")}
+                {saving ? t("adding") : uploadingImage ? (t("uploading") || "...") : t("add")}
               </Button>
             </div>
           </div>

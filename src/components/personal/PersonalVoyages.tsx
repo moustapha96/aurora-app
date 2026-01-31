@@ -8,6 +8,40 @@ import { useToast } from "@/hooks/use-toast";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+function getVoyageImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function VoyageImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const resolvedSrc = getVoyageImageSrc(src);
+  if (failed || !resolvedSrc) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-muted/50 rounded-lg">
+        <Plane className="w-6 h-6 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className="w-full h-full object-cover object-center rounded-lg"
+      loading="lazy"
+      decoding="async"
+      crossOrigin={resolvedSrc.startsWith("http") ? "anonymous" : undefined}
+      referrerPolicy={resolvedSrc.startsWith("http") ? "no-referrer" : undefined}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 interface VoyageEntry {
   id: string;
   destination: string;
@@ -136,8 +170,13 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
           <div className="ml-5 mt-1 space-y-2">
             {items.map((item) => (
               <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
+                <div className="flex gap-3 justify-between items-start">
+                  {item.image_url && getVoyageImageSrc(item.image_url) && (
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-lg overflow-hidden bg-muted/50">
+                      <VoyageImage src={item.image_url} alt={item.destination} />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
                     <InlineEditableField
                       value={item.destination}
                       onSave={(value) => handleInlineUpdate(item.id, "destination", value)}
@@ -164,7 +203,7 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
                     ) : item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
                   </div>
                   {isEditable && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
                         <Trash2 className="w-3 h-3" />
                       </Button>

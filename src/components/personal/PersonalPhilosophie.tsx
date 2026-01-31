@@ -8,6 +8,40 @@ import { PhilosophieEditor } from "./editors/PhilosophieEditor";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+function getPhilosophieImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function PhilosophieImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const resolvedSrc = getPhilosophieImageSrc(src);
+  if (failed || !resolvedSrc) {
+    return (
+      <div className="w-10 h-10 flex items-center justify-center bg-muted/50 rounded object-cover shrink-0">
+        <Lightbulb className="w-5 h-5 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className="w-10 h-10 rounded object-cover object-center shrink-0"
+      loading="lazy"
+      decoding="async"
+      crossOrigin={resolvedSrc.startsWith("http") ? "anonymous" : undefined}
+      referrerPolicy={resolvedSrc.startsWith("http") ? "no-referrer" : undefined}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 interface PhilosophieEntry {
   id: string;
   title: string;
@@ -113,12 +147,11 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
           <div className="ml-5 mt-1 space-y-2">
             {categoryEntries.map((entry) => (
               <div key={entry.id} className="p-2 bg-muted/30 rounded-lg group">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 flex gap-2">
-                    {entry.image_url && (
-                      <img src={entry.image_url} alt="" className="w-10 h-10 rounded object-cover" />
-                    )}
-                    <div className="flex-1">
+                <div className="flex justify-between items-start gap-2">
+                  {entry.image_url && getPhilosophieImageSrc(entry.image_url) && (
+                    <PhilosophieImage src={entry.image_url} alt={entry.title} />
+                  )}
+                  <div className="flex-1 min-w-0">
                       <InlineEditableField
                         value={entry.title}
                         onSave={(value) => handleInlineUpdate(entry.id, "title", value)}
@@ -137,10 +170,9 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
                       ) : entry.description && (
                         <p className="text-xs text-muted-foreground line-clamp-2">{entry.description}</p>
                       )}
-                    </div>
                   </div>
                   {isEditable && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(entry.id)}>
                         <Trash2 className="w-3 h-3" />
                       </Button>

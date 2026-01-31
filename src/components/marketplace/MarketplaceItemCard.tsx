@@ -51,7 +51,7 @@ export const MarketplaceItemCard = ({
   const [loadingSeller, setLoadingSeller] = useState(false);
 
   const offerEnded = item.offer_end_date ? new Date(item.offer_end_date) <= new Date() : false;
-  const maxReservationDate = item.reservation_until_date || item.offer_end_date || null;
+  const maxReservationDate = item.offer_end_date || null;
 
   useEffect(() => {
     if (!showDetails) {

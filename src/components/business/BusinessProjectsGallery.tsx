@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { uploadBusinessImage } from "@/lib/storageUploadUtils";
 
 interface Project {
   id: string;
@@ -178,28 +179,21 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
 
       for (const file of filesToUpload) {
         const compressedFile = await compressImage(file);
-        const filePath = `${user.id}/business/projects/${selectedProject.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
 
-        // Create proper File object with correct MIME type
-        const properFile = new File([compressedFile], 'project-image.jpg', { 
-          type: 'image/jpeg', 
-          lastModified: Date.now() 
-        });
+        // Use centralized upload utility with session check + retry
+        // subPath is the project ID for organizing project images
+        const result = await uploadBusinessImage(
+          compressedFile, 
+          user.id, 
+          'projects', 
+          selectedProject.id
+        );
+        
+        if (!result.success || !result.publicUrl) {
+          throw new Error(result.error || 'Failed to upload image');
+        }
 
-        const { error: uploadError } = await supabase.storage
-          .from("personal-content")
-          .upload(filePath, properFile, { 
-            upsert: true,
-            contentType: 'image/jpeg'
-          });
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("personal-content")
-          .getPublicUrl(filePath);
-
-        uploadedUrls.push(publicUrl);
+        uploadedUrls.push(result.publicUrl);
       }
 
       const newImages = [...currentImages, ...uploadedUrls];

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, Shield, Bell, Database, AlertTriangle, Save, Clock, FlaskConical, Mail, Eye, EyeOff, Send, CheckCircle, XCircle, Loader2, Lock, CreditCard } from 'lucide-react';
+import { Settings, Shield, Bell, Database, AlertTriangle, Save, Clock, FlaskConical, Mail, Eye, EyeOff, Send, CheckCircle, XCircle, Loader2, Lock, CreditCard, Fingerprint, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -78,12 +78,37 @@ const AdminSettings = () => {
     pricesCount?: number;
   } | null>(null);
 
+  // Veriff config state
+  const [veriffConfig, setVeriffConfig] = useState({
+    apiKey: '',
+    sharedSecret: '',
+    baseUrl: 'https://stationapi.veriff.com'
+  });
+  const [savingVeriff, setSavingVeriff] = useState(false);
+  const [showVeriffApiKey, setShowVeriffApiKey] = useState(false);
+  const [showVeriffSecret, setShowVeriffSecret] = useState(false);
+  const [testingVeriff, setTestingVeriff] = useState(false);
+  const [veriffTestResult, setVeriffTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+
+  // Lovable AI state
+  const [testingLovableAI, setTestingLovableAI] = useState(false);
+  const [lovableAITestResult, setLovableAITestResult] = useState<{
+    success: boolean;
+    message: string;
+    model?: string;
+    responseTime?: string;
+  } | null>(null);
+
   useEffect(() => {
     loadInactivityTimeout();
     loadTestMode();
     loadEmailConfig();
     loadCaptchaConfig();
     loadStripeConfig();
+    loadVeriffConfig();
   }, []);
 
   const loadStripeConfig = async () => {
@@ -169,6 +194,127 @@ const AdminSettings = () => {
       toast.error(errorMessage);
     } finally {
       setTestingStripe(false);
+    }
+  };
+
+  // ==================== VERIFF CONFIG ====================
+  const loadVeriffConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', [
+          'veriff_api_key',
+          'veriff_shared_secret',
+          'veriff_base_url'
+        ]);
+
+      if (error) throw error;
+
+      const configMap: Record<string, string> = {};
+      data?.forEach(item => {
+        configMap[item.setting_key] = item.setting_value || '';
+      });
+
+      setVeriffConfig({
+        apiKey: configMap['veriff_api_key'] || '',
+        sharedSecret: configMap['veriff_shared_secret'] || '',
+        baseUrl: configMap['veriff_base_url'] || 'https://stationapi.veriff.com'
+      });
+    } catch (error) {
+      console.error('Error loading Veriff config:', error);
+    }
+  };
+
+  const saveVeriffConfig = async () => {
+    setSavingVeriff(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-veriff-config', {
+        body: {
+          veriff_api_key: veriffConfig.apiKey,
+          veriff_shared_secret: veriffConfig.sharedSecret,
+          veriff_base_url: veriffConfig.baseUrl
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(t('adminVeriffConfigSaved') || 'Configuration Veriff sauvegardée');
+    } catch (error: any) {
+      console.error('Error saving Veriff config:', error);
+      toast.error(error?.message || t('adminErrorSaving'));
+    } finally {
+      setSavingVeriff(false);
+    }
+  };
+
+  const testVeriffConnection = async () => {
+    setTestingVeriff(true);
+    setVeriffTestResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-veriff-connection');
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        setVeriffTestResult({
+          success: true,
+          message: t('adminVeriffConnectionSuccess') || 'Connexion Veriff réussie'
+        });
+        toast.success(t('adminVeriffConnectionSuccess') || 'Connexion Veriff réussie');
+      } else {
+        setVeriffTestResult({
+          success: false,
+          message: data?.error || t('adminVeriffConnectionFailed') || 'Échec de connexion Veriff'
+        });
+        toast.error(data?.error || t('adminVeriffConnectionFailed') || 'Échec de connexion Veriff');
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || t('adminVeriffConnectionFailed') || 'Échec de connexion Veriff';
+      setVeriffTestResult({
+        success: false,
+        message: errorMessage
+      });
+      toast.error(errorMessage);
+    } finally {
+      setTestingVeriff(false);
+    }
+  };
+
+  // ==================== LOVABLE AI TEST ====================
+  const testLovableAI = async () => {
+    setTestingLovableAI(true);
+    setLovableAITestResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-lovable-ai');
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        setLovableAITestResult({
+          success: true,
+          message: t('adminLovableAIConnectionSuccess') || 'Connexion Lovable AI réussie',
+          model: data.model,
+          responseTime: data.responseTime
+        });
+        toast.success(t('adminLovableAIConnectionSuccess') || 'Connexion Lovable AI réussie');
+      } else {
+        setLovableAITestResult({
+          success: false,
+          message: data?.error || t('adminLovableAIConnectionFailed') || 'Échec de connexion Lovable AI'
+        });
+        toast.error(data?.error || t('adminLovableAIConnectionFailed') || 'Échec de connexion Lovable AI');
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || t('adminLovableAIConnectionFailed') || 'Échec de connexion Lovable AI';
+      setLovableAITestResult({
+        success: false,
+        message: errorMessage
+      });
+      toast.error(errorMessage);
+    } finally {
+      setTestingLovableAI(false);
     }
   };
 
@@ -1288,6 +1434,255 @@ const AdminSettings = () => {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Veriff Configuration */}
+          <Card className={veriffConfig.apiKey ? 'border-green-500/50' : 'border-orange-500/50'}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Fingerprint className={`h-5 w-5 ${veriffConfig.apiKey ? 'text-green-500' : 'text-orange-500'}`} />
+                {t('adminVeriffConfiguration') || 'Configuration Veriff'}
+                {veriffConfig.apiKey ? (
+                  <span className="ml-2 px-2 py-0.5 bg-green-500/20 text-green-500 text-xs rounded-full">
+                    {t('adminConfigured') || 'Configuré'}
+                  </span>
+                ) : (
+                  <span className="ml-2 px-2 py-0.5 bg-orange-500/20 text-orange-500 text-xs rounded-full">
+                    {t('adminNotConfigured') || 'Non configuré'}
+                  </span>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {t('adminVeriffConfigurationDesc') || 'Configuration de la vérification d\'identité via Veriff'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4">
+                <p className="text-sm text-blue-500 font-medium">
+                  🔐 {t('adminVeriffInfo') || 'Veriff permet la vérification d\'identité des membres'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('adminVeriffInfoDesc') || 'Obtenez vos clés API sur le dashboard Veriff Station'}
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="veriff-api-key">{t('adminVeriffApiKey') || 'Clé API Veriff'}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="veriff-api-key"
+                      type={showVeriffApiKey ? 'text' : 'password'}
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      value={veriffConfig.apiKey}
+                      onChange={(e) => setVeriffConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowVeriffApiKey(!showVeriffApiKey)}
+                    >
+                      {showVeriffApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="veriff-shared-secret">{t('adminVeriffSharedSecret') || 'Secret Partagé (Webhook HMAC)'}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="veriff-shared-secret"
+                      type={showVeriffSecret ? 'text' : 'password'}
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      value={veriffConfig.sharedSecret}
+                      onChange={(e) => setVeriffConfig(prev => ({ ...prev, sharedSecret: e.target.value }))}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowVeriffSecret(!showVeriffSecret)}
+                    >
+                      {showVeriffSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t('adminVeriffSharedSecretDesc') || 'Utilisé pour valider les signatures HMAC des webhooks Veriff'}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="veriff-base-url">{t('adminVeriffBaseUrl') || 'URL de base API'}</Label>
+                  <Input
+                    id="veriff-base-url"
+                    type="text"
+                    placeholder="https://stationapi.veriff.com"
+                    value={veriffConfig.baseUrl}
+                    onChange={(e) => setVeriffConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Test Connection */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-medium">{t('adminVeriffTestConnection') || 'Tester la connexion'}</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t('adminVeriffTestConnectionDesc') || 'Vérifie que les clés API sont valides'}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={testVeriffConnection}
+                    disabled={testingVeriff || !veriffConfig.apiKey}
+                    variant="outline"
+                  >
+                    {testingVeriff ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t('testing') || 'Test...'}
+                      </>
+                    ) : (
+                      <>
+                        <FlaskConical className="h-4 w-4 mr-2" />
+                        {t('adminTestButton') || 'Tester'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {veriffTestResult && (
+                  <div className={`p-4 rounded-lg flex items-start gap-3 ${veriffTestResult.success ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                    {veriffTestResult.success ? (
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                    )}
+                    <p className={`font-medium ${veriffTestResult.success ? 'text-green-500' : 'text-red-500'}`}>
+                      {veriffTestResult.message}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end">
+                <Button 
+                  onClick={saveVeriffConfig}
+                  disabled={savingVeriff}
+                >
+                  {savingVeriff ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {t('saving')}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      {t('adminSaveVeriffConfig') || 'Sauvegarder Veriff'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Lovable AI Configuration */}
+          <Card className="border-purple-500/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-500" />
+                {t('adminLovableAIConfiguration') || 'Lovable AI'}
+                <span className="ml-2 px-2 py-0.5 bg-purple-500/20 text-purple-500 text-xs rounded-full">
+                  {t('adminAutoConfigured') || 'Auto-configuré'}
+                </span>
+              </CardTitle>
+              <CardDescription>
+                {t('adminLovableAIConfigurationDesc') || 'Intelligence artificielle pour l\'analyse de documents et suggestions'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-4">
+                <p className="text-sm text-purple-500 font-medium">
+                  ✨ {t('adminLovableAIInfo') || 'Lovable AI est pré-configuré automatiquement'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('adminLovableAIInfoDesc') || 'Aucune clé API requise - le service est géré par Lovable Cloud'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">{t('adminProvider') || 'Fournisseur'}</p>
+                  <p className="font-medium text-foreground">Lovable AI Gateway</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">{t('adminModels') || 'Modèles'}</p>
+                  <p className="font-medium text-foreground">Gemini 2.5 Flash</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">{t('adminEndpoint') || 'Endpoint'}</p>
+                  <p className="font-medium text-foreground text-xs">ai.gateway.lovable.dev</p>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">{t('adminStatus') || 'Statut'}</p>
+                  <p className="font-medium text-green-500">{t('adminActive') || 'Actif'}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Test Connection */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-medium">{t('adminLovableAITestConnection') || 'Tester la connexion'}</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t('adminLovableAITestConnectionDesc') || 'Vérifie que le service AI est accessible'}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={testLovableAI}
+                    disabled={testingLovableAI}
+                    variant="outline"
+                  >
+                    {testingLovableAI ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t('testing') || 'Test...'}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        {t('adminTestButton') || 'Tester'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {lovableAITestResult && (
+                  <div className={`p-4 rounded-lg flex items-start gap-3 ${lovableAITestResult.success ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+                    {lovableAITestResult.success ? (
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`font-medium ${lovableAITestResult.success ? 'text-green-500' : 'text-red-500'}`}>
+                        {lovableAITestResult.message}
+                      </p>
+                      {lovableAITestResult.success && lovableAITestResult.model && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t('adminModel') || 'Modèle'}: {lovableAITestResult.model} | {t('adminResponseTime') || 'Temps de réponse'}: {lovableAITestResult.responseTime}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 

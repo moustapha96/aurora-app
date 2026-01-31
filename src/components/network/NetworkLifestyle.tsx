@@ -14,6 +14,49 @@ import { toast } from "sonner";
 import { TruncatedText } from "@/components/ui/truncated-text";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+function getLifestyleImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Impossible de lire l'image"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function LifestyleImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  const resolvedSrc = getLifestyleImageSrc(src);
+  if (failed || !resolvedSrc) {
+    return (
+      <div className={`flex items-center justify-center bg-muted/50 rounded-lg shrink-0 ${className || "w-14 h-14"}`}>
+        <Utensils className="w-6 h-6 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className={`rounded-lg object-cover object-center shrink-0 ${className || "w-14 h-14"}`}
+      loading="lazy"
+      decoding="async"
+      crossOrigin={resolvedSrc.startsWith("http") ? "anonymous" : undefined}
+      referrerPolicy={resolvedSrc.startsWith("http") ? "no-referrer" : undefined}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 interface LifestyleItem {
   id: string;
   title: string;
@@ -101,40 +144,22 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
     setIsDialogOpen(true);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("businessImageFormatNotAllowed") || "Format non supporté");
+      e.target.value = "";
+      return;
+    }
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error(t('notAuthenticated'));
-
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `${user.id}/lifestyle/${Date.now()}.${fileExt}`;
-      
-      // Ensure proper MIME type
-      const mimeTypes: Record<string, string> = {
-        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
-        'gif': 'image/gif', 'webp': 'image/webp'
-      };
-      const contentType = mimeTypes[fileExt] || 'image/jpeg';
-      const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
-      
-      const { error: uploadError } = await supabase.storage
-        .from('personal-content')
-        .upload(fileName, properFile, { contentType });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('personal-content')
-        .getPublicUrl(fileName);
-
-      setFormData(prev => ({ ...prev, image_url: publicUrl + '?t=' + Date.now() }));
+      const dataUrl = await fileToDataUrl(file);
+      setFormData(prev => ({ ...prev, image_url: dataUrl }));
       toast.success(t('imageUploaded'));
-    } catch (error) {
-      console.error('Error uploading image:', error);
+    } catch {
       toast.error(t('uploadError'));
+    } finally {
+      e.target.value = "";
     }
   };
 
@@ -266,6 +291,9 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                   <div key={item.id}>
                     <div className="p-2 sm:p-3 bg-muted/30 rounded-lg group">
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                        {item.image_url && getLifestyleImageSrc(item.image_url) && (
+                          <LifestyleImage src={item.image_url} alt={item.title} className="w-14 h-14 sm:w-16 sm:h-16" />
+                        )}
                         <div className="flex-1 min-w-0 w-full sm:w-auto">
                           <h4 className="font-medium text-sm text-foreground break-words">{item.title}</h4>
                           {item.organization && <TruncatedText text={item.organization} className="text-xs mt-1" />}
@@ -327,7 +355,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
               <div className="flex items-center gap-3 mt-1">
                 {formData.image_url ? (
                   <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden">
-                    <img src={formData.image_url} alt={t('preview')} className="w-full h-full object-cover" />
+                    <LifestyleImage src={formData.image_url} alt={t('preview')} className="w-full h-full" />
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -341,7 +369,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                   <label className="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
                     <Image className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground mt-1">{t('add')}</span>
-                    <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                    <input type="file" className="hidden" accept="image/*" onChange={handleImageSelect} />
                   </label>
                 )}
               </div>

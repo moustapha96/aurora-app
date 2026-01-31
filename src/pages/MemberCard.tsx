@@ -27,7 +27,14 @@ const MemberCard = () => {
   const [imageError, setImageError] = useState(false);
   const [connectionsCount, setConnectionsCount] = useState(0);
   const [businessContent, setBusinessContent] = useState<any>(null);
+  const [businessProjects, setBusinessProjects] = useState<any[]>([]);
+  const [businessTimeline, setBusinessTimeline] = useState<any[]>([]);
+  const [businessPress, setBusinessPress] = useState<any[]>([]);
   const [familyContent, setFamilyContent] = useState<any>(null);
+  const [familyBoard, setFamilyBoard] = useState<any[]>([]);
+  const [familyClose, setFamilyClose] = useState<any[]>([]);
+  const [familyLineage, setFamilyLineage] = useState<any[]>([]);
+  const [familyInfluential, setFamilyInfluential] = useState<any[]>([]);
   const [personalContent, setPersonalContent] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
@@ -102,44 +109,46 @@ const MemberCard = () => {
 
   const loadBusinessContent = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.log('[MemberCard] No user found for business content');
+    if (!user) return;
+
+    const [contentRes, projectsRes, timelineRes, pressRes] = await Promise.all([
+      supabase.from('business_content').select('*').eq('user_id', user.id).maybeSingle(),
+      supabase.from('business_projects').select('id, title').eq('user_id', user.id).order('display_order'),
+      supabase.from('business_timeline').select('title').eq('user_id', user.id).order('display_order'),
+      supabase.from('business_press').select('title').eq('user_id', user.id).order('display_order')
+    ]);
+
+    if (contentRes.error) {
+      console.error('[MemberCard] Error loading business content:', contentRes.error);
       return;
     }
-
-    console.log('[MemberCard] Loading business content for user:', user.id);
-
-    const { data, error } = await supabase
-      .from('business_content')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('[MemberCard] Error loading business content:', error);
-      return;
-    }
-
-    console.log('[MemberCard] Business content loaded:', data);
-    setBusinessContent(data);
+    setBusinessContent(contentRes.data);
+    setBusinessProjects(projectsRes.data || []);
+    setBusinessTimeline(timelineRes.data || []);
+    setBusinessPress(pressRes.data || []);
   };
 
   const loadFamilyContent = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('family_content')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    const [contentRes, boardRes, closeRes, lineageRes, influentialRes] = await Promise.all([
+      supabase.from('family_content').select('*').eq('user_id', user.id).maybeSingle(),
+      supabase.from('family_board').select('member_name').eq('user_id', user.id).order('display_order'),
+      supabase.from('family_close').select('member_name').eq('user_id', user.id).order('display_order'),
+      supabase.from('family_lineage').select('member_name').eq('user_id', user.id).order('display_order'),
+      supabase.from('family_influential').select('person_name').eq('user_id', user.id).order('display_order')
+    ]);
 
-    if (error) {
-      console.error('[MemberCard] Error loading family content:', error);
+    if (contentRes.error) {
+      console.error('[MemberCard] Error loading family content:', contentRes.error);
       return;
     }
-
-    setFamilyContent(data);
+    setFamilyContent(contentRes.data);
+    setFamilyBoard(boardRes.data || []);
+    setFamilyClose(closeRes.data || []);
+    setFamilyLineage(lineageRes.data || []);
+    setFamilyInfluential(influentialRes.data || []);
   };
 
   const loadPersonalContent = async () => {
@@ -325,22 +334,56 @@ const MemberCard = () => {
       title: t('business'),
       icon: Briefcase,
       route: "/business",
-      items: businessContent ? [
-        businessContent.company_name || t('notProvided'),
-        businessContent.position_title || t('notProvided'),
-        businessContent.achievements || t('notProvided')
-      ] : [t('clickToAddBusiness')]
+      items: (() => {
+        const items: string[] = [];
+        if (businessContent?.company_name?.trim()) items.push(businessContent.company_name.trim());
+        if (businessContent?.position_title?.trim()) items.push(businessContent.position_title.trim());
+        if (businessProjects?.length) {
+          businessProjects.forEach((p: any) => {
+            if (p?.title?.trim()) items.push(p.title.trim());
+          });
+        }
+        if (businessTimeline?.length) {
+          businessTimeline.forEach((e: any) => {
+            if (e?.title?.trim()) items.push(e.title.trim());
+          });
+        }
+        if (businessPress?.length) {
+          businessPress.forEach((p: any) => {
+            if (p?.title?.trim()) items.push(p.title.trim());
+          });
+        }
+        return items.length > 0 ? items : [t('clickToAddBusiness')];
+      })()
     },
     {
       title: t('familySocial'),
       icon: Heart,
       route: "/family",
-      items: familyContent ? [
-        familyContent.family_text?.substring(0, 50) || t('family'),
-        familyContent.philanthropy_text?.substring(0, 50) || t('philanthropy'),
-        familyContent.network_text?.substring(0, 50) || t('network')
-      ].filter(item => item !== t('family') && item !== t('philanthropy') && item !== t('network') || familyContent.family_text || familyContent.philanthropy_text || familyContent.network_text)
-        : [t('clickToAddFamily')]
+      items: (() => {
+        const items: string[] = [];
+        if (familyBoard?.length) {
+          familyBoard.forEach((m: any) => {
+            if (m?.member_name?.trim()) items.push(m.member_name.trim());
+          });
+        }
+        if (familyClose?.length) {
+          familyClose.forEach((m: any) => {
+            if (m?.member_name?.trim()) items.push(m.member_name.trim());
+          });
+        }
+        if (familyLineage?.length) {
+          familyLineage.forEach((m: any) => {
+            if (m?.member_name?.trim()) items.push(m.member_name.trim());
+          });
+        }
+        if (familyInfluential?.length) {
+          familyInfluential.forEach((p: any) => {
+            if (p?.person_name?.trim()) items.push(p.person_name.trim());
+          });
+        }
+        return items.length > 0 ? items : [t('clickToAddFamily')];
+      })()
     },
     {
       title: t('personal'),

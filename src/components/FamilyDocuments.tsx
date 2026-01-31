@@ -24,6 +24,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB pour stockage base64 en base
+
+/** Indique si le contenu est déjà une URL utilisable (data: ou http). */
+function isInlineUrl(pathOrUrl: string): boolean {
+  return pathOrUrl.startsWith("data:") || pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://");
+}
+
+/** Normalise une URL (data: ou http) pour affichage (retire retours à la ligne). */
+function getDocumentDisplayUrl(url: string): string {
+  if (!url || typeof url !== "string") return "";
+  const s = String(url).trim();
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  return s;
+}
+
 interface FamilyDocument {
   id: string;
   file_name: string;
@@ -45,8 +60,10 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null); // pour PDF iframe (évite CSP)
   const [previewType, setPreviewType] = useState<string>("");
   const [previewName, setPreviewName] = useState<string>("");
+  const [previewDoc, setPreviewDoc] = useState<FamilyDocument | null>(null);
 
   useEffect(() => {
     loadDocuments();
@@ -72,6 +89,30 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
     }
   };
 
+  const getMimeType = (file: File): string => {
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const mimeTypes: Record<string, string> = {
+      'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'gif': 'image/gif', 'webp': 'image/webp', 'svg': 'image/svg+xml',
+      'pdf': 'application/pdf',
+      'doc': 'application/msword', 'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel', 'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'txt': 'text/plain', 'csv': 'text/csv',
+      'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'ogg': 'audio/ogg', 'm4a': 'audio/mp4',
+      'mp4': 'video/mp4', 'webm': 'video/webm',
+      'zip': 'application/zip', 'rar': 'application/x-rar-compressed'
+    };
+    return mimeTypes[ext] || file.type || 'application/octet-stream';
+  };
+
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Impossible de lire le fichier"));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -81,46 +122,39 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t("notAuthenticated"));
 
+      let added = 0;
       for (const file of Array.from(files)) {
-        const filePath = `${user.id}/${Date.now()}-${file.name}`;
-        
-        // Ensure proper MIME type
-        const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
-        const mimeTypes: Record<string, string> = {
-          'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
-          'gif': 'image/gif', 'webp': 'image/webp', 'pdf': 'application/pdf',
-          'doc': 'application/msword', 'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'txt': 'text/plain'
-        };
-        const contentType = mimeTypes[fileExt] || file.type || 'application/octet-stream';
-        const properFile = new File([file], file.name, { type: contentType, lastModified: Date.now() });
-        
-        // Upload to storage
-        const { error: uploadError } = await supabase.storage
-          .from('family-documents')
-          .upload(filePath, properFile, { contentType });
-
-        if (uploadError) throw uploadError;
-
-        // Save metadata
-        const { error: dbError } = await supabase
-          .from('family_documents')
-          .insert({
-            user_id: user.id,
-            file_name: file.name,
-            file_path: filePath,
-            file_type: file.type,
-            file_size: file.size
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          toast({
+            title: t("error"),
+            description: (t("fileTooLarge") || "Fichier trop volumineux").replace("{max}", "5") + " MB",
+            variant: "destructive"
           });
+          continue;
+        }
+        const contentType = getMimeType(file);
+        const dataUrl = await fileToDataUrl(file);
+        const normalizedDataUrl = dataUrl.replace(/\r?\n/g, "");
+
+        const { error: dbError } = await supabase.from('family_documents').insert({
+          user_id: user.id,
+          file_name: file.name,
+          file_path: normalizedDataUrl,
+          file_type: contentType,
+          file_size: file.size
+        });
 
         if (dbError) throw dbError;
+        added++;
       }
 
-      toast({
-        title: t("documentsAdded"),
-        description: `${files.length} ${t("documentsAddedSuccessfully")}`
-      });
-      loadDocuments();
+      if (added > 0) {
+        toast({
+          title: t("documentsAdded"),
+          description: `${added} ${t("documentsAddedSuccessfully")}`
+        });
+        loadDocuments();
+      }
     } catch (error) {
       console.error('Error uploading:', error);
       toast({
@@ -136,64 +170,77 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
 
   const handleDelete = async (doc: FamilyDocument) => {
     try {
-      // Delete from storage
-      await supabase.storage
-        .from('family-documents')
-        .remove([doc.file_path]);
-
-      // Delete metadata
-      const { error } = await supabase
-        .from('family_documents')
-        .delete()
-        .eq('id', doc.id);
-
+      if (!isInlineUrl(doc.file_path)) {
+        await supabase.storage.from('family-documents').remove([doc.file_path]);
+      }
+      const { error } = await supabase.from('family_documents').delete().eq('id', doc.id);
       if (error) throw error;
-
-      toast({
-        title: t("documentDeleted"),
-        description: t("documentDeletedSuccessfully")
-      });
+      toast({ title: t("documentDeleted"), description: t("documentDeletedSuccessfully") });
       loadDocuments();
     } catch (error) {
       console.error('Error deleting:', error);
-      toast({
-        title: t("error"),
-        description: t("cannotDeleteDocument"),
-        variant: "destructive"
-      });
+      toast({ title: t("error"), description: t("cannotDeleteDocument"), variant: "destructive" });
     }
   };
 
   const handlePreview = async (doc: FamilyDocument) => {
     try {
+      setPreviewDoc(doc);
+      setPreviewType(doc.file_type || "");
+      setPreviewName(doc.file_name || "");
+      if (previewBlobUrl) {
+        URL.revokeObjectURL(previewBlobUrl);
+        setPreviewBlobUrl(null);
+      }
+
+      if (isInlineUrl(doc.file_path)) {
+        const displayUrl = getDocumentDisplayUrl(doc.file_path);
+        setPreviewUrl(displayUrl);
+        if (displayUrl && (doc.file_type || "").toLowerCase() === "application/pdf") {
+          try {
+            const res = await fetch(displayUrl);
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            setPreviewBlobUrl(blobUrl);
+          } catch {
+            setPreviewUrl(displayUrl);
+          }
+        }
+        return;
+      }
+
       const { data, error } = await supabase.storage
         .from('family-documents')
-        .createSignedUrl(doc.file_path, 3600); // 1 hour expiry
-
+        .createSignedUrl(doc.file_path, 3600);
       if (error) throw error;
-
-      setPreviewUrl(data.signedUrl);
-      setPreviewType(doc.file_type);
-      setPreviewName(doc.file_name);
+      setPreviewUrl(data?.signedUrl || null);
     } catch (error) {
       console.error('Error getting preview:', error);
-      toast({
-        title: t("error"),
-        description: t("cannotDisplayDocument"),
-        variant: "destructive"
-      });
+      setPreviewDoc(null);
+      setPreviewUrl(null);
+      setPreviewBlobUrl(null);
+      toast({ title: t("error"), description: t("cannotDisplayDocument"), variant: "destructive" });
     }
   };
 
   const handleDownload = async (doc: FamilyDocument) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('family-documents')
-        .download(doc.file_path);
-
+      if (doc.file_path.startsWith('data:')) {
+        const src = getDocumentDisplayUrl(doc.file_path);
+        const res = await fetch(src);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = doc.file_name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+      const { data, error } = await supabase.storage.from('family-documents').download(doc.file_path);
       if (error) throw error;
-
-      // Create download link
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
@@ -204,18 +251,17 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading:', error);
-      toast({
-        title: t("error"),
-        description: t("cannotDownloadDocument"),
-        variant: "destructive"
-      });
+      toast({ title: t("error"), description: t("cannotDownloadDocument"), variant: "destructive" });
     }
   };
 
   const getFileIcon = (type: string) => {
-    if (type.startsWith('image/')) return <FileImage className="w-5 h-5" />;
-    if (type.includes('spreadsheet') || type.includes('excel')) return <FileSpreadsheet className="w-5 h-5" />;
-    if (type.includes('pdf')) return <FileText className="w-5 h-5" />;
+    if (!type) return <FileIcon className="w-5 h-5" />;
+    const t = type.toLowerCase();
+    if (t.startsWith('image/')) return <FileImage className="w-5 h-5" />;
+    if (t.includes('spreadsheet') || t.includes('excel') || t.includes('sheet')) return <FileSpreadsheet className="w-5 h-5" />;
+    if (t.includes('pdf')) return <FileText className="w-5 h-5" />;
+    if (t.startsWith('audio/') || t.includes('audio')) return <FileIcon className="w-5 h-5" />;
     return <FileIcon className="w-5 h-5" />;
   };
 
@@ -226,7 +272,9 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
   };
 
   const canPreviewInBrowser = (type: string) => {
-    return type.startsWith('image/') || type === 'application/pdf';
+    if (!type) return false;
+    const t = type.toLowerCase();
+    return t.startsWith('image/') || t === 'application/pdf';
   };
 
   if (isLoading) {
@@ -268,7 +316,7 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
                 id="doc-upload"
                 type="file"
                 multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                accept="*/*"
                 onChange={handleFileUpload}
                 className="hidden"
                 disabled={isUploading}
@@ -335,24 +383,52 @@ export const FamilyDocuments = ({ isOwnProfile }: FamilyDocumentsProps) => {
       </Card>
 
       {/* Preview Dialog */}
-      <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+      <Dialog
+        open={!!previewUrl || !!previewBlobUrl}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
+            setPreviewUrl(null);
+            setPreviewBlobUrl(null);
+            setPreviewDoc(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>{previewName}</DialogTitle>
+            <DialogTitle className="truncate pr-8">{previewName}</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-auto">
-            {previewType.startsWith('image/') ? (
-              <img 
-                src={previewUrl || ''} 
+          <div className="flex-1 overflow-auto min-h-0 flex items-center justify-center">
+            {previewUrl && (previewType || "").toLowerCase().startsWith("image/") ? (
+              <img
+                src={getDocumentDisplayUrl(previewUrl)}
                 alt={previewName}
-                className="max-w-full h-auto mx-auto"
+                className="max-w-full h-auto mx-auto object-contain"
+                crossOrigin={(previewUrl || "").startsWith("http") ? "anonymous" : undefined}
+                onError={() => toast({ title: t("error"), description: t("cannotDisplayDocument"), variant: "destructive" })}
               />
-            ) : previewType === 'application/pdf' ? (
+            ) : (previewBlobUrl || previewUrl) && (previewType || "").toLowerCase() === "application/pdf" ? (
               <iframe
-                src={previewUrl || ''}
-                className="w-full h-[70vh]"
+                src={previewBlobUrl || getDocumentDisplayUrl(previewUrl || "")}
+                className="w-full min-h-[70vh] border-0 rounded flex-1"
                 title={previewName}
               />
+            ) : previewUrl || previewBlobUrl ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <p className="text-sm text-muted-foreground text-center px-4">
+                  {t("previewNotAvailableForFileType") || "Aperçu non disponible pour ce type de fichier."}
+                </p>
+                {previewDoc && (
+                  <Button
+                    onClick={() => handleDownload(previewDoc)}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    {t("download")}
+                  </Button>
+                )}
+              </div>
             ) : null}
           </div>
         </DialogContent>

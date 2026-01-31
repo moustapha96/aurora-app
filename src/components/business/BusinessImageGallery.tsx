@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, X, Loader2, Building2, ChevronLeft, ChevronRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Upload, X, Loader2, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -13,10 +12,61 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
+// Retourne un src utilisable pour <img> : URL (http/https), data URL (base64), ou chemin.
+function getGalleryImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function isExternalUrl(src: string): boolean {
+  return src.startsWith("http://") || src.startsWith("https://");
+}
+
+// Affiche l'image (URL, data ou chemin) ou un placeholder en cas d'erreur.
+function GalleryImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const resolvedSrc = getGalleryImageSrc(src);
+  if (failed || !resolvedSrc) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gold/10 text-gold/60 text-sm">
+        <Building2 className="w-8 h-8 opacity-50" />
+        {failed && <span>Erreur de chargement</span>}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={resolvedSrc}
+      alt={alt}
+      className="w-full h-full object-cover object-center"
+      loading="lazy"
+      decoding="async"
+      crossOrigin={isExternalUrl(resolvedSrc) ? "anonymous" : undefined}
+      referrerPolicy={isExternalUrl(resolvedSrc) ? "no-referrer" : undefined}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+// Convertit un File en data URL base64 (pour enregistrement en base, pas d'upload).
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Impossible de lire l'image"));
+    reader.readAsDataURL(file);
+  });
+}
+
 interface BusinessImageGalleryProps {
   images?: string[] | null;
   editable?: boolean;
-  onImagesChange: (images: string[]) => void;
+  onImagesChange: (images: string[]) => void | Promise<void>;
 }
 
 const MAX_SIZE_MB = 2;
@@ -48,13 +98,6 @@ export const BusinessImageGallery: React.FC<BusinessImageGalleryProps> = ({
     }
     return [];
   }, [images]);
-
-  // Log pour déboguer
-  useEffect(() => {
-    console.log('BusinessImageGallery - images reçues:', images);
-    console.log('BusinessImageGallery - imageList normalisée:', imageList);
-    console.log('BusinessImageGallery - hasImages:', imageList.length > 0);
-  }, [images, imageList]);
 
   const compressImage = async (file: File): Promise<File> => {
     return new Promise((resolve) => {
@@ -162,69 +205,21 @@ export const BusinessImageGallery: React.FC<BusinessImageGalleryProps> = ({
 
     setIsUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error(t("notAuthenticated"));
-
-      const uploadedUrls: string[] = [];
-
+      const dataUrls: string[] = [];
       for (const file of validFiles) {
         const compressedFile = await compressImage(file);
-        const fileExt = "jpg";
-        const filePath = `${user.id}/business/images/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-
-        // Create proper File object with correct MIME type
-        const properFile = new File([compressedFile], `gallery-image.${fileExt}`, { 
-          type: 'image/jpeg', 
-          lastModified: Date.now() 
-        });
-
-        const { error: uploadError } = await supabase.storage
-          .from("personal-content")
-          .upload(filePath, properFile, { 
-            upsert: true,
-            contentType: 'image/jpeg'
-          });
-
-        if (uploadError) throw uploadError;
-
-        // Obtenir l'URL publique de l'image
-        const { data: { publicUrl } } = supabase.storage
-          .from("personal-content")
-          .getPublicUrl(filePath);
-        
-        // Vérifier que l'URL est valide
-        if (!publicUrl) {
-          throw new Error('Impossible de générer l\'URL publique de l\'image');
-        }
-        
-        console.log('Image uploadée avec succès:', {
-          filePath,
-          publicUrl,
-          fileSize: compressedFile.size
-        });
-
-        uploadedUrls.push(publicUrl);
+        const dataUrl = await fileToDataUrl(compressedFile);
+        dataUrls.push(dataUrl);
       }
 
-      // Mettre à jour la base de données
-      const newImages = [...imageList, ...uploadedUrls];
-      const { error: dbError } = await supabase
-        .from("business_content")
-        .upsert({
-          user_id: user.id,
-          company_photos: newImages,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" });
-
-      if (dbError) throw dbError;
-
-      onImagesChange(newImages);
-      toast({ 
+      const newImages = [...imageList, ...dataUrls];
+      await Promise.resolve(onImagesChange(newImages));
+      toast({
         title: t("businessImagesUploaded") || t("businessImageUploaded"),
-        description: `${uploadedUrls.length} ${uploadedUrls.length === 1 ? (t("image") || "image") : (t("images") || "images")} ${t("added") || "ajoutée(s)"}`
+        description: `${dataUrls.length} ${dataUrls.length === 1 ? (t("image") || "image") : (t("images") || "images")} ${t("added") || "ajoutée(s)"}`,
       });
     } catch (error: any) {
-      console.error("Upload error:", error);
+      console.error("Image add error:", error);
       toast({
         title: t("error"),
         description: error.message || t("uploadError"),
@@ -236,58 +231,13 @@ export const BusinessImageGallery: React.FC<BusinessImageGalleryProps> = ({
     }
   };
 
+  // Supprime une image de la galerie ; la persistance est gérée par le parent via onImagesChange.
   const handleRemove = async (index: number) => {
+    const newImages = imageList.filter((_, i) => i !== index);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Récupérer l'URL de l'image à supprimer
-      const imageToRemove = imageList[index];
-      console.log('Suppression de l\'image:', imageToRemove);
-
-      // Supprimer le fichier du storage Supabase
-      if (imageToRemove) {
-        try {
-          // Extraire le chemin de l'objet depuis l'URL
-          // Format typique: https://.../storage/v1/object/public/personal-content/userId/business/images/filename.jpg
-          const url = new URL(imageToRemove);
-          const pathParts = url.pathname.split('/personal-content/');
-          if (pathParts.length > 1) {
-            const objectPath = pathParts[1];
-            console.log('Chemin de l\'objet à supprimer:', objectPath);
-            
-            const { error: storageError } = await supabase.storage
-              .from("personal-content")
-              .remove([objectPath]);
-            
-            if (storageError) {
-              console.warn('Erreur lors de la suppression du fichier dans le storage:', storageError);
-              // On continue malgré l'erreur pour ne pas bloquer la suppression côté base
-            } else {
-              console.log('Fichier supprimé du storage avec succès');
-            }
-          }
-        } catch (parseError) {
-          console.warn('Impossible de parser l\'URL pour la suppression du storage:', parseError);
-        }
-      }
-
-      const newImages = imageList.filter((_, i) => i !== index);
-
-      const { error } = await supabase
-        .from("business_content")
-        .upsert({
-          user_id: user.id,
-          company_photos: newImages,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" });
-
-      if (error) throw error;
-
-      onImagesChange(newImages);
+      await Promise.resolve(onImagesChange(newImages));
       toast({ title: t("businessImageRemoved") });
-    } catch (error) {
-      console.error("Remove error:", error);
+    } catch {
       toast({ title: t("error"), variant: "destructive" });
     }
   };
@@ -302,37 +252,17 @@ export const BusinessImageGallery: React.FC<BusinessImageGalleryProps> = ({
           {hasImages ? (
             <div className="relative">
               {imageList.length === 1 ? (
-                <div className="relative aspect-video sm:aspect-[21/9] bg-black/10">
-                  <img
-                    src={imageList[0]}
-                    alt={t("businessMainImage")}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      console.error('Erreur de chargement de l\'image:', imageList[0]);
-                      const target = e.target as HTMLImageElement;
-                      // Ne pas cacher l'image, mais afficher un placeholder
-                      target.style.display = 'none';
-                      const parent = target.parentElement;
-                      if (parent && !parent.querySelector('.error-placeholder')) {
-                        const errorDiv = document.createElement('div');
-                        errorDiv.className = 'error-placeholder absolute inset-0 flex items-center justify-center bg-gold/10 text-gold/60 text-sm';
-                        errorDiv.textContent = t("errorLoadingImage") || 'Erreur de chargement';
-                        parent.appendChild(errorDiv);
-                      }
-                    }}
-                    onLoad={() => {
-                      console.log('Image chargée avec succès:', imageList[0]);
-                    }}
-                  />
+                <div className="relative aspect-video sm:aspect-[21/9] bg-black/10 overflow-hidden">
+                  <GalleryImage src={imageList[0]} alt={t("businessMainImage")} />
                   {editable && (
-                    <div className="absolute top-2 right-2 flex gap-2">
+                    <div className="absolute top-2 right-2 flex gap-2 z-10">
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading || !canAddMore}
-                        className="bg-black/70 hover:bg-black/90 text-white border-0"
+                        className="bg-black/70 hover:bg-black/90 text-white border-0 h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+                        aria-label={t("businessUploadImage")}
                       >
                         {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                       </Button>
@@ -340,7 +270,8 @@ export const BusinessImageGallery: React.FC<BusinessImageGalleryProps> = ({
                         variant="secondary"
                         size="sm"
                         onClick={() => handleRemove(0)}
-                        className="bg-black/70 hover:bg-red-600 text-white border-0"
+                        className="bg-black/70 hover:bg-red-600 text-white border-0 h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+                        aria-label={t("remove") || "Supprimer"}
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -352,35 +283,15 @@ export const BusinessImageGallery: React.FC<BusinessImageGalleryProps> = ({
                   <CarouselContent>
                     {imageList.map((imageUrl, index) => (
                       <CarouselItem key={index}>
-                        <div className="relative aspect-video sm:aspect-[21/9] bg-black/10">
-                          <img
-                            src={imageUrl}
-                            alt={`${t("businessMainImage")} ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            onError={(e) => {
-                              console.error('Erreur de chargement de l\'image:', imageUrl, 'index:', index);
-                              const target = e.target as HTMLImageElement;
-                              // Ne pas cacher l'image, mais afficher un placeholder
-                              target.style.display = 'none';
-                              const parent = target.parentElement;
-                              if (parent && !parent.querySelector('.error-placeholder')) {
-                                const errorDiv = document.createElement('div');
-                                errorDiv.className = 'error-placeholder absolute inset-0 flex items-center justify-center bg-gold/10 text-gold/60 text-sm';
-                                errorDiv.textContent = t("errorLoadingImage") || 'Erreur de chargement';
-                                parent.appendChild(errorDiv);
-                              }
-                            }}
-                            onLoad={() => {
-                              console.log('Image chargée avec succès:', imageUrl, 'index:', index);
-                            }}
-                          />
+                        <div className="relative aspect-video sm:aspect-[21/9] bg-black/10 overflow-hidden">
+                          <GalleryImage src={imageUrl} alt={`${t("businessMainImage")} ${index + 1}`} />
                           {editable && (
                             <Button
                               variant="secondary"
                               size="sm"
                               onClick={() => handleRemove(index)}
-                              className="absolute top-2 right-2 bg-black/70 hover:bg-red-600 text-white border-0"
+                              className="absolute top-2 right-2 z-10 bg-black/70 hover:bg-red-600 text-white border-0 h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+                              aria-label={t("remove") || "Supprimer"}
                             >
                               <X className="w-4 h-4" />
                             </Button>

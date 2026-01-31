@@ -25,8 +25,7 @@ const getInitialFormData = (item?: MarketplaceItem | null): MarketplaceItemFormD
   currency: item?.currency || 'EUR',
   main_image_url: item?.main_image_url || null,
   additional_images: item?.additional_images || [],
-  offer_end_date: item?.offer_end_date || null,
-  reservation_until_date: item?.reservation_until_date || null
+  offer_end_date: item?.offer_end_date || null
 });
 
 export const MarketplaceItemForm = ({
@@ -166,8 +165,7 @@ export const MarketplaceItemForm = ({
         currency: 'EUR',
         main_image_url: null,
         additional_images: [],
-        offer_end_date: null,
-        reservation_until_date: null
+        offer_end_date: null
       });
     }
   };
@@ -406,21 +404,6 @@ export const MarketplaceItemForm = ({
             <p className="text-xs text-muted-foreground">{t('offerEndDateHint')}</p>
           </div>
 
-          {/* Reservation Until Date */}
-          <div className="space-y-1.5">
-            <Label htmlFor="reservationDate" className="text-sm font-semibold text-foreground">{t('reservationUntilDate')}</Label>
-            <Input
-              id="reservationDate"
-              type="date"
-              value={formData.reservation_until_date ? new Date(formData.reservation_until_date).toISOString().split('T')[0] : ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                reservation_until_date: e.target.value ? new Date(e.target.value + 'T00:00:00').toISOString() : null
-              }))}
-              className="h-9 text-base"
-            />
-            <p className="text-xs text-muted-foreground">{t('reservationUntilDateHint')}</p>
-          </div>
 
           <DialogFooter className="flex flex-row justify-end gap-2 sm:gap-2 pt-2">
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)} className="h-7 text-xs px-2.5 min-w-[4rem]">

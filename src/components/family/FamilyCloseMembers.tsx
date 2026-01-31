@@ -1,15 +1,23 @@
+// React and UI Components
 import React, { useState, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
-import { User, Briefcase, Trash2, Plus, Sparkles, Upload, Loader2, FileText } from "lucide-react";
+import { User, Briefcase, Trash2, Plus, Sparkles, Loader2, FileText, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+// Supabase client
 import { supabase } from "@/integrations/supabase/client";
+
+// Utilities
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
 import { useLanguage } from "@/contexts/LanguageContext";
+
+// Storage utilities - centralized upload functions with correct RLS path patterns
+import { uploadFamilyDocument } from "@/lib/storageUploadUtils";
 
 interface CloseFamilyMember {
   id?: string;
@@ -27,15 +35,70 @@ interface FamilyCloseMembersProps {
   onUpdate?: () => void;
 }
 
+// Retourne un src utilisable pour <img> : URL (http/https, ex. Supabase Storage), data URL (base64), ou chemin relatif (/).
+// Les data URLs sont nettoyées (retours à la ligne supprimés) pour afficher correctement.
+function getMemberImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  // URLs absolues : Supabase Storage (https://xxx.supabase.co/storage/...), CDN, etc.
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) {
+    return s.replace(/\r?\n/g, "");
+  }
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  // Chemin sans préfixe : considérer comme chemin public (ex. "logo.png" -> "/logo.png")
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function isExternalUrl(src: string): boolean {
+  return src.startsWith("http://") || src.startsWith("https://");
+}
+
+// Affiche l'image membre (URL, data ou chemin) ou le placeholder ; en cas d'erreur de chargement, affiche le placeholder.
+function MemberImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-gold/5">
+        <User className="w-16 h-16 text-gold/20" />
+      </div>
+    );
+  }
+  return (
+    <>
+      <div className="absolute inset-0">
+        <img
+          src={src}
+          alt={alt}
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          loading="lazy"
+          decoding="async"
+          crossOrigin={isExternalUrl(src) ? "anonymous" : undefined}
+          referrerPolicy={isExternalUrl(src) ? "no-referrer" : undefined}
+          onError={() => setFailed(true)}
+        />
+      </div>
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent pointer-events-none" />
+    </>
+  );
+}
+
 export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: FamilyCloseMembersProps) => {
+  console.log("members", members);
   const { t } = useLanguage();
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newFormData, setNewFormData] = useState<Partial<CloseFamilyMember>>({});
   const [saving, setSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isImportingDoc, setIsImportingDoc] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const docInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
+  // Handle document import using centralized utility - ensures correct RLS path: {userId}/documents/{timestamp}.{ext}
   const handleDocImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -51,37 +114,18 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t('notAuthenticated'));
 
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'pdf';
-      const fileName = `close-doc-${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      // Upload using centralized utility - path: {userId}/documents/{timestamp}.{ext}
+      const result = await uploadFamilyDocument(file, user.id, 'documents');
       
-      // Get correct MIME type for documents
-      const mimeTypes: Record<string, string> = {
-        'pdf': 'application/pdf',
-        'doc': 'application/msword',
-        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png'
-      };
-      const contentType = mimeTypes[fileExt] || 'application/octet-stream';
-      
-      // Create proper File object with correct MIME type
-      const properFile = new File([file], file.name, { 
-        type: contentType, 
-        lastModified: Date.now() 
-      });
+      if (!result.success || !result.storagePath) {
+        throw new Error(result.error || t('documentImportError'));
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from('family-documents')
-        .upload(filePath, properFile, { upsert: true, contentType });
-
-      if (uploadError) throw uploadError;
-
+      // Save document reference in database
       await supabase.from('family_documents').insert({
         user_id: user.id,
         file_name: file.name,
-        file_path: filePath,
+        file_path: result.storagePath,
         file_size: file.size,
         file_type: file.type,
         description: `${t('familyDocument')}: ${newFormData.member_name || t('newMember')}`
@@ -109,6 +153,34 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
     }
   };
 
+  // Convertit un fichier image en data URL base64 (data:image/jpeg;base64,...) pour enregistrement en base
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error(t('imageReadError') || "Impossible de lire l'image"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error(t('pleaseSelectImage') || 'Veuillez sélectionner une image (JPG, PNG, etc.)');
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    e.target.value = '';
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+    imageInputRef.current?.value && (imageInputRef.current.value = '');
+  };
+
   const handleAddNew = async () => {
     const memberName = (newFormData.member_name || "").trim();
     const relationType = (newFormData.relation_type || "").trim();
@@ -122,6 +194,16 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t('notAuthenticated'));
 
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        setUploadingImage(true);
+        try {
+          imageUrl = await fileToDataUrl(imageFile);
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+
       const { error } = await supabase.from("family_close").insert({
         user_id: user.id,
         relation_type: relationType,
@@ -129,17 +211,19 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
         birth_year: (newFormData.birth_year || "").trim() || null,
         occupation: (newFormData.occupation || "").trim() || null,
         description: (newFormData.description || "").trim() || null,
-        image_url: (newFormData.image_url || "").trim() || null,
+        image_url: imageUrl,
       });
       if (error) throw error;
       toast.success(t('memberAdded'));
       setNewDialogOpen(false);
       setNewFormData({});
+      clearImage();
       onUpdate?.();
     } catch (error: any) {
       toast.error(error.message);
     } finally {
       setSaving(false);
+      setUploadingImage(false);
     }
   };
 
@@ -157,8 +241,8 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
   };
 
   const handleOpenDialog = () => {
-    console.log('[FamilyCloseMembers] Opening dialog');
     setNewFormData({ relation_type: "", member_name: "" });
+    clearImage();
     setNewDialogOpen(true);
   };
 
@@ -183,7 +267,9 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {members.map((member, idx) => (
+          {members.map((member, idx) => {
+            const imageSrc = getMemberImageSrc(member.image_url);
+            return (
             <div 
               key={member.id || idx}
               className="relative overflow-hidden rounded-lg border border-gold/20 bg-gradient-to-br from-gold/5 to-transparent"
@@ -197,14 +283,9 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
                 </button>
               )}
               <div className="aspect-[4/5] relative">
-                {member.image_url ? (
+                {imageSrc ? (
                   <div className="absolute inset-0">
-                    <img 
-                      src={member.image_url} 
-                      alt={member.member_name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+                    <MemberImage src={imageSrc} alt={member.member_name} />
                   </div>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-gold/5">
@@ -271,11 +352,12 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
                 </div>
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 
-      <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
+      <Dialog open={newDialogOpen} onOpenChange={(open) => { setNewDialogOpen(open); if (!open) clearImage(); }}>
         <DialogContent className="w-[95vw] max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-background border border-gold/20 p-0" data-scroll>
           <DialogHeader className="sticky top-0 z-10 bg-background border-b border-gold/10 px-4 py-3 sm:px-6 sm:py-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl font-serif text-gold">
@@ -339,13 +421,36 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
             </div>
 
             <div className="space-y-1.5 sm:space-y-2">
-              <Label className="text-xs sm:text-sm font-medium text-foreground">{t('imageUrl')}</Label>
-              <Input 
-                value={newFormData.image_url || ""} 
-                onChange={(e) => setNewFormData({ ...newFormData, image_url: e.target.value })}
-                placeholder="https://..."
-                className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10"
+              <Label className="text-xs sm:text-sm font-medium text-foreground">{t('image')}</Label>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={handleImageChange}
               />
+              {imagePreview ? (
+                <div className="mt-2 flex items-center gap-3 p-3 rounded-lg border border-gold/20 bg-gold/5">
+                  <img src={imagePreview} alt="" className="w-14 h-14 rounded-lg object-cover border border-gold/20" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground truncate">{imageFile?.name}</p>
+                    <p className="text-xs text-muted-foreground">{t('imageSelected') || 'Image sélectionnée'}</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" onClick={clearImage} className="shrink-0 text-muted-foreground hover:text-destructive">
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-2 border-gold/30 text-gold hover:bg-gold/10"
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  <ImagePlus className="w-4 h-4 mr-2" />
+                  {t('chooseImage') || 'Choisir une image'}
+                </Button>
+              )}
             </div>
 
             {/* Hidden document input */}
@@ -407,18 +512,18 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
               <div className="flex gap-2 w-full">
                 <Button 
                   variant="outline" 
-                  onClick={() => setNewDialogOpen(false)}
+                  onClick={() => { clearImage(); setNewDialogOpen(false); }}
                   className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
                 >
                   {t('cancel')}
                 </Button>
                 <Button 
                   onClick={handleAddNew} 
-                  disabled={saving} 
+                  disabled={saving || uploadingImage} 
                   className="flex-1 bg-gold hover:bg-gold/90 text-primary-foreground font-medium text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  {saving ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-1" /> : null}
-                  {saving ? t('adding') : t('add')}
+                  {(saving || uploadingImage) ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-1" /> : null}
+                  {(saving || uploadingImage) ? (uploadingImage ? (t('uploading') || "...") : t('adding')) : t('add')}
                 </Button>
               </div>
             </div>

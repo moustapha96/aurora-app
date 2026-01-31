@@ -331,15 +331,20 @@
 //   );
 // };
 
-import React, { useState } from "react";
+// React and UI Components
+import React, { useState, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Star, Quote, Trash2, Plus, Sparkles, FileUp, Loader2 } from "lucide-react";
+import { Star, Quote, Trash2, Plus, Sparkles, Loader2, ImagePlus, X, FileUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+// Supabase client
 import { supabase } from "@/integrations/supabase/client";
+
+// Utilities
 import { toast } from "sonner";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -359,16 +364,90 @@ interface FamilyInfluentialProps {
   onUpdate?: () => void;
 }
 
+// Retourne un src utilisable pour <img> : URL (http/https), data URL (base64), ou chemin.
+function getInfluentialImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function isExternalUrl(src: string): boolean {
+  return src.startsWith("http://") || src.startsWith("https://");
+}
+
+// Affiche l'image (URL, data ou chemin) ou le placeholder ; en cas d'erreur affiche le placeholder.
+function InfluentialImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className={`rounded-full overflow-hidden flex-shrink-0 border-2 border-gold/30 bg-gold/10 flex items-center justify-center ${className || "w-12 h-12 sm:w-16 sm:h-16"}`}>
+        <Star className="w-5 h-5 sm:w-6 sm:h-6 text-gold/60" />
+      </div>
+    );
+  }
+  return (
+    <div className={`rounded-full overflow-hidden flex-shrink-0 border-2 border-gold/30 ${className || "w-12 h-12 sm:w-16 sm:h-16"}`}>
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover object-center"
+        loading="lazy"
+        decoding="async"
+        crossOrigin={isExternalUrl(src) ? "anonymous" : undefined}
+        referrerPolicy={isExternalUrl(src) ? "no-referrer" : undefined}
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
+}
+
 export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: FamilyInfluentialProps) => {
   const { t } = useLanguage();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<InfluentialPerson>>({});
   const [saving, setSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const openNewDialog = () => {
     setFormData({ person_name: "" });
+    clearImage();
     setDialogOpen(true);
+  };
+
+  // Convertit le fichier image en data URL base64 pour enregistrement en base
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error(t("imageReadError") || "Impossible de lire l'image"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error(t("pleaseSelectImage") || "Veuillez sélectionner une image (JPG, PNG, etc.)");
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    e.target.value = '';
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+    imageInputRef.current?.value && (imageInputRef.current.value = '');
   };
 
   const updateField = async (personId: string, field: keyof InfluentialPerson, value: string) => {
@@ -394,13 +473,23 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t("notAuthenticated"));
 
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        setUploadingImage(true);
+        try {
+          imageUrl = await fileToDataUrl(imageFile);
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+
       const { error } = await supabase.from("family_influential").insert({
         user_id: user.id,
         person_name: formData.person_name,
         relationship: formData.relationship || null,
         context: formData.context || null,
         description: formData.description || null,
-        image_url: formData.image_url || null,
+        image_url: imageUrl,
       });
 
       if (error) throw error;
@@ -408,11 +497,13 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
       toast.success(t("personAdded"));
       setDialogOpen(false);
       setFormData({});
+      clearImage();
       onUpdate?.();
     } catch (error: any) {
       toast.error(error.message);
     } finally {
       setSaving(false);
+      setUploadingImage(false);
     }
   };
 
@@ -496,19 +587,16 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
               )}
 
               {/* Avatar */}
-              {person.image_url ? (
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-gold/30">
-                  <img
-                    src={person.image_url}
-                    alt={person.person_name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
+              {(() => {
+                const imageSrc = getInfluentialImageSrc(person.image_url);
+                return imageSrc ? (
+                  <InfluentialImage src={imageSrc} alt={person.person_name} />
+                ) : (
                 <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full flex-shrink-0 border-2 border-gold/30 bg-gold/10 flex items-center justify-center">
                   <Star className="w-5 h-5 sm:w-6 sm:h-6 text-gold/60" />
                 </div>
-              )}
+              );
+              })()}
 
               {/* Contenu */}
               <div className="flex-1 min-w-0 pr-0 sm:pr-8">
@@ -588,7 +676,7 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
       )}
 
       {/* Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) clearImage(); }}>
         <DialogContent className="w-[96vw] sm:w-full max-w-md mx-auto max-h-[92vh] overflow-y-auto bg-background border border-gold/20 p-0">
           <DialogHeader className="sticky top-0 z-10 bg-background border-b border-gold/10 px-4 py-3 sm:px-6 sm:py-4">
             <DialogTitle className="text-base sm:text-lg md:text-xl font-serif text-gold">
@@ -634,7 +722,7 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <Label className="text-xs sm:text-sm font-medium">{t("descriptionCitation")}</Label>
                 <div className="flex gap-1">
-                  <Button
+                  {/* <Button
                     type="button"
                     variant="ghost"
                     size="sm"
@@ -654,7 +742,7 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
                     onChange={() =>
                       toast.success(t("documentImportedAnalysisInProgress"))
                     }
-                  />
+                  /> */}
                   <Button
                     type="button"
                     variant="ghost"
@@ -682,12 +770,36 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
 
             {/* Image */}
             <div className="space-y-1.5 sm:space-y-2">
-              <Label className="text-xs sm:text-sm font-medium">{t("imageUrl")}</Label>
-              <Input
-                value={formData.image_url || ""}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                className="bg-background/50 border-gold/20 focus:border-gold/50 text-sm h-10"
+              <Label className="text-xs sm:text-sm font-medium">{t("image")}</Label>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={handleImageChange}
               />
+              {imagePreview ? (
+                <div className="mt-2 flex items-center gap-3 p-3 rounded-lg border border-gold/20 bg-gold/5">
+                  <img src={imagePreview} alt="" className="w-14 h-14 rounded-lg object-cover border border-gold/20" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground truncate">{imageFile?.name}</p>
+                    <p className="text-xs text-muted-foreground">{t("imageSelected") || "Image sélectionnée"}</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" onClick={clearImage} className="shrink-0 text-muted-foreground hover:text-destructive">
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-2 border-gold/30 text-gold hover:bg-gold/10"
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  <ImagePlus className="w-4 h-4 mr-2" />
+                  {t("chooseImage") || "Choisir une image"}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -696,18 +808,18 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={() => setDialogOpen(false)}
+                onClick={() => { clearImage(); setDialogOpen(false); }}
                 className="flex-1 text-sm h-10"
               >
                 {t("cancel")}
               </Button>
               <Button
                 onClick={handleAddNew}
-                disabled={saving}
+                disabled={saving || uploadingImage}
                 className="flex-1 bg-gold hover:bg-gold/90 text-primary-foreground font-medium text-sm h-10"
               >
-                {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-                {saving ? t("adding") : t("add")}
+                {(saving || uploadingImage) && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                {(saving || uploadingImage) ? (uploadingImage ? (t("uploading") || "...") : t("adding")) : t("add")}
               </Button>
             </div>
           </div>
