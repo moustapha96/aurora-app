@@ -2738,7 +2738,7 @@ export const ja: Record<string, string> = {
   // Family Influential Person Dialog
   addPerson: "人物を追加",
   name: "名前",
-  relation: "関係",
+  relation: "つながり",
   mentorFriendSponsor: "メンター、友人、スポンサー...",
   context: "文脈",
   businessArtPolitics: "ビジネス、芸術、政治...",
@@ -2752,6 +2752,10 @@ export const ja: Record<string, string> = {
 
   // Family Close Members Dialog
   addMember: "メンバーを追加",
+  addBoardMember: "ボードメンバーを追加",
+  editBoardMember: "ボードメンバーを編集",
+  advisorLawyerCoach: "アドバイザー、弁護士、コーチ...",
+  memberModified: "メンバーを更新しました",
   firstNameLastName: "名 姓",
   spouseSonDaughter: "配偶者、息子、娘...",
   birthYear: "生年",

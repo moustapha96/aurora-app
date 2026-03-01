@@ -2737,6 +2737,10 @@ export const zh: Record<string, string> = {
 
   // Family Close Members Dialog
   addMember: "添加成员",
+  addBoardMember: "添加董事会成员",
+  editBoardMember: "编辑董事会成员",
+  advisorLawyerCoach: "顾问、律师、教练...",
+  memberModified: "成员已更新",
   firstNameLastName: "名 姓",
   spouseSonDaughter: "配偶、儿子、女儿...",
   birthYear: "出生年份",

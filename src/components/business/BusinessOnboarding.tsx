@@ -53,12 +53,12 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
       title: t('businessImportInfo'),
       description: t('businessImportDescription'),
     },
-    {
-      id: "ai" as OnboardingMode,
-      icon: Sparkles,
-      title: t('businessAIGenerate'),
-      description: t('businessAIDescription'),
-    },
+    // {
+    //   id: "ai" as OnboardingMode,
+    //   icon: Sparkles,
+    //   title: t('businessAIGenerate'),
+    //   description: t('businessAIDescription'),
+    // },
     {
       id: "concierge" as OnboardingMode,
       icon: Phone,
@@ -262,6 +262,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
     setConciergeFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+
   const handleConciergeSubmit = async () => {
     if (!conciergeMessage.trim()) {
       toast({
@@ -303,14 +304,14 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             >
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-gold/10 group-hover:bg-gold/20 transition-colors">
-                    <mode.icon className="w-4 h-4 text-gold" />
+                  <div className="p-1.5 rounded-lg bg-gold/10 group-hover:bg-gold/20 transition-colors">
+                    <mode.icon className="w-3 h-3 text-gold" />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-medium text-gold mb-1 text-sm">{mode.title}</h3>
                     <p className="text-xs text-gold/60">{mode.description}</p>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all" />
+                  <ArrowRight className="w-3 h-3 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all" />
                 </div>
               </CardContent>
             </Card>
@@ -401,7 +402,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
   if (currentStep === "ai-generating") {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 text-gold animate-spin mb-4" />
+        <Loader2 className="w-5 h-5 text-gold animate-spin mb-4" />
         <p className="text-gold/70 text-sm">{t('businessAnalyzingAndCreatingProfile')}</p>
       </div>
     );
@@ -593,7 +594,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
               <div className="space-y-2 mt-2">
                 {conciergeFiles.map((file, index) => (
                   <div key={index} className="flex items-center gap-2 p-2 bg-gold/10 border border-gold/30 rounded-lg">
-                    <FileText className="w-4 h-4 text-gold" />
+                    <FileText className="w-3 h-3 text-gold" />
                     <div className="flex-1">
                       <p className="text-gold font-medium text-xs">{file.name}</p>
                       <p className="text-gold/50 text-[10px]">{(file.size / 1024).toFixed(1)} KB</p>
@@ -659,7 +660,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             />
             {uploadedFile ? (
               <div className="flex items-center gap-2 p-3 bg-gold/10 border border-gold/30 rounded-lg">
-                <FileText className="w-5 h-5 text-gold" />
+                <FileText className="w-4 h-4 text-gold" />
                 <div className="flex-1">
                   <p className="text-gold font-medium text-sm">{uploadedFile.name}</p>
                   <p className="text-gold/50 text-xs">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
@@ -678,7 +679,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-gold/30 rounded-lg p-6 text-center cursor-pointer hover:border-gold/50 transition-colors"
               >
-                <Upload className="w-8 h-8 text-gold/50 mx-auto mb-2" />
+                <Upload className="w-5 h-5 text-gold/50 mx-auto mb-2" />
                 <p className="text-gold/70 text-sm">{t('businessClickToUploadCV')}</p>
                 <p className="text-gold/40 text-xs mt-1">{t('businessPDFWordTextMax5MB')}</p>
               </div>

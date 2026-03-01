@@ -330,7 +330,7 @@ export const FamilyBoard = ({ members, isEditable = false, onUpdate }: FamilyBoa
         <DialogContent className="w-[95vw] sm:w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden">
           <DialogHeader className="flex-shrink-0 px-1">
             <DialogTitle className="text-base sm:text-lg">
-              {editingMember ? t('editMember') || t('edit') : t('addMember')}
+              {editingMember ? t('editBoardMember') : t('addBoardMember')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 overflow-y-auto flex-1 min-h-0 pr-1">
@@ -407,7 +407,7 @@ export const FamilyBoard = ({ members, isEditable = false, onUpdate }: FamilyBoa
                   onClick={() => imageInputRef.current?.click()}
                 >
                   <ImagePlus className="w-4 h-4 mr-2" />
-                  {t('chooseImage') || 'Choisir une image'}
+                  {t('chooseImage')}
                 </Button>
               )}
             </div>
@@ -415,7 +415,7 @@ export const FamilyBoard = ({ members, isEditable = false, onUpdate }: FamilyBoa
           <DialogFooter className="flex-shrink-0 gap-2 flex-wrap sm:flex-nowrap pt-4 border-t border-gold/10">
             <Button variant="outline" onClick={closeDialog} className="flex-1 sm:flex-initial">{t('cancel')}</Button>
             <Button onClick={handleSave} disabled={saving || uploadingImage} className="flex-1 sm:flex-initial bg-gold hover:bg-gold/90 text-primary-foreground">
-              {(saving || uploadingImage) ? (uploadingImage ? (t('uploading') || "...") : "...") : (editingMember ? t('save') : t('add'))}
+              {(saving || uploadingImage) ? (uploadingImage ? t('uploading') : t('saving')) : (editingMember ? t('save') : t('add'))}
             </Button>
           </DialogFooter>
         </DialogContent>

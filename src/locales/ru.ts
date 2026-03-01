@@ -2721,7 +2721,7 @@ export const ru: Record<string, string> = {
    // Family Influential Person Dialog
    addPerson: "Добавить человека",
    name: "Имя",
-   relation: "Отношение",
+   relation: "Связь",
    mentorFriendSponsor: "Наставник, Друг, Спонсор...",
    context: "Контекст",
    businessArtPolitics: "Бизнес, Искусство, Политика...",
@@ -2735,6 +2735,10 @@ export const ru: Record<string, string> = {
 
    // Family Close Members Dialog
    addMember: "Добавить члена",
+   addBoardMember: "Добавить члена совета",
+   editBoardMember: "Редактировать члена совета",
+   advisorLawyerCoach: "Советник, Юрист, Коуч...",
+   memberModified: "Член обновлён",
    firstNameLastName: "Имя Фамилия",
    spouseSonDaughter: "Супруг(а), Сын, Дочь...",
    birthYear: "Год рождения",

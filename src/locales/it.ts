@@ -2847,7 +2847,7 @@ export const it: Record<string, string> = {
   // Family Influential Person Dialog
   addPerson: "Aggiungi persona",
   name: "Nome",
-  relation: "Relazione",
+  relation: "Legame",
   mentorFriendSponsor: "Mentore, Amico, Sponsor...",
   context: "Contesto",
   businessArtPolitics: "Business, Arte, Politica...",
@@ -2861,6 +2861,10 @@ export const it: Record<string, string> = {
 
   // Family Close Members Dialog
   addMember: "Aggiungi membro",
+  addBoardMember: "Aggiungi un membro del board",
+  editBoardMember: "Modifica membro del board",
+  advisorLawyerCoach: "Consulente, Avvocato, Coach...",
+  memberModified: "Membro aggiornato",
   firstNameLastName: "Nome Cognome",
   spouseSonDaughter: "Coniuge, Figlio, Figlia...",
   birthYear: "Anno di nascita",

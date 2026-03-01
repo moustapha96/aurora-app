@@ -347,15 +347,6 @@ const Settings = () => {
 
           {/* Biometric Authentication - Link to dedicated page */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Fingerprint className="h-5 w-5" />
-                {t('biometricAuthSettings')}
-              </CardTitle>
-              <CardDescription>
-                {t('configureBiometric')}
-              </CardDescription>
-            </CardHeader>
             <CardContent>
               <Button 
                 variant="outline" 

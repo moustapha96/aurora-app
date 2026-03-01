@@ -2835,7 +2835,7 @@ export const en: Record<string, string> = {
   // Family Influential Person Dialog
   addPerson: "Add person",
   name: "Name",
-  relation: "Relation",
+  relation: "Link",
   mentorFriendSponsor: "Mentor, Friend, Sponsor...",
   context: "Context",
   businessArtPolitics: "Business, Art, Politics...",
@@ -2849,6 +2849,10 @@ export const en: Record<string, string> = {
 
   // Family Close Members Dialog
   addMember: "Add member",
+  addBoardMember: "Add a board member",
+  editBoardMember: "Edit board member",
+  advisorLawyerCoach: "Advisor, Lawyer, Coach...",
+  memberModified: "Member updated",
   lineageAIOccupationInstruction: "Write a description focused only on their career and professional role (title/function indicated), without straying from this context.",
   firstNameLastName: "First Name Last Name",
   spouseSonDaughter: "Spouse, Son, Daughter...",
