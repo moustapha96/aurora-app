@@ -393,10 +393,12 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
               />
             </div>
             <div className="flex justify-between pt-4">
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
                 {t('networkEventsAISuggestButton')}
               </Button>
+              */}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isGenerating}>
                   {t('cancel')}

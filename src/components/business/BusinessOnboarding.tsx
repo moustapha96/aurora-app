@@ -377,6 +377,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
           >
             {t('back')}
           </Button>
+          {/* IA Aurora - commenté pour désactivation temporaire
           <Button
             size="sm"
             onClick={handleAIGenerate}
@@ -390,6 +391,7 @@ export const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComple
             )}
             {t('businessGenerateMyProfile')}
           </Button>
+          */}
         </div>
       </div>
     );

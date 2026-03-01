@@ -332,6 +332,7 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
             <div>
               <div className="flex items-center justify-between mb-1">
                 <Label className="text-sm">{t('description')}</Label>
+                {/* IA Aurora - commenté pour désactivation temporaire
                 <Button
                   type="button"
                   variant="ghost"
@@ -347,6 +348,7 @@ export const CommitmentsEditor = ({ commitments, onUpdate }: CommitmentsEditorPr
                   )}
                   {t('ai')}
                 </Button>
+                */}
               </div>
               <Textarea 
                 value={formData.description} 

@@ -15,12 +15,13 @@ export const PersonalOnboarding = ({ onSelectMode }: PersonalOnboardingProps) =>
       title: "Import",
       description: "Importez vos données depuis un fichier ou une autre source"
     },
+    /* IA Aurora - commenté pour désactivation temporaire
     {
       id: "ai",
       icon: Sparkles,
       title: "IA Aurora",
       description: "Laissez notre IA vous guider avec des suggestions personnalisées"
-    },
+    }, */,
     {
       id: "concierge",
       icon: Crown,

@@ -27,12 +27,13 @@ export const NetworkOnboarding = ({ onSelect }: NetworkOnboardingProps) => {
       title: t("importData"),
       description: t("importDataDesc")
     },
+    /* IA Aurora - commenté pour désactivation temporaire
     {
       id: "ai",
       icon: Sparkles,
       title: t("aiAurora"),
       description: t("aiAuroraDesc")
-    },
+    }, */,
     {
       id: "concierge",
       icon: Crown,

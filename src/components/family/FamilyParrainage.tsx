@@ -7,13 +7,66 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { SingleUseInvitationCodes } from "./SingleUseInvitationCodes";
+
+// Même logique d'affichage que FamilyCloseMembers : src image normalisé + fallback erreur
+function getMemberImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
+function isExternalUrl(src: string): boolean {
+  return src.startsWith("http://") || src.startsWith("https://");
+}
+
+// Avatar rond style FamilyCloseMembers : image ou placeholder User, avec fallback erreur
+function ParrainageMemberAvatar({
+  src,
+  alt,
+  size = "md",
+}: {
+  src: string | null;
+  alt: string;
+  size?: "sm" | "md";
+}) {
+  const [failed, setFailed] = useState(false);
+  const showImage = src && !failed;
+  const isSm = size === "sm";
+  const wrapperClass = isSm
+    ? "w-6 h-6 rounded-full overflow-hidden flex-shrink-0 border-2 border-gold/20 bg-gold/10 flex items-center justify-center"
+    : "w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-gold/20 bg-gold/10 flex items-center justify-center";
+
+  if (showImage) {
+    return (
+      <div className={wrapperClass}>
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-full object-cover object-center"
+          loading="lazy"
+          decoding="async"
+          crossOrigin={isExternalUrl(src) ? "anonymous" : undefined}
+          referrerPolicy={isExternalUrl(src) ? "no-referrer" : undefined}
+          onError={() => setFailed(true)}
+        />
+      </div>
+    );
+  }
+  return (
+    <div className={wrapperClass} title={alt}>
+      <User className={isSm ? "w-3 h-3 text-gold/60" : "w-5 h-5 sm:w-6 sm:h-6 text-gold/60"} />
+    </div>
+  );
+}
 
 interface ReferredMember {
   id: string;
@@ -87,21 +140,21 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
   const [newLinkName, setNewLinkName] = useState("");
   const [creatingLink, setCreatingLink] = useState(false);
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
-  
+
   // Sponsor approval states
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<ReferredMember | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [processingApproval, setProcessingApproval] = useState(false);
-  
+
   // Invitation states
   const [newInviteCode, setNewInviteCode] = useState<string>("");
   const [newInviteLink, setNewInviteLink] = useState<string>("");
   const [inviteLinkName, setInviteLinkName] = useState<string>("");
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
-  
+
   // Secondary referral codes states
   const [secondaryCodes, setSecondaryCodes] = useState<SecondaryReferralCode[]>([]);
   const [newCodeDialogOpen, setNewCodeDialogOpen] = useState(false);
@@ -129,7 +182,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
       if (settingsData) {
         const referralsSetting = settingsData.find(s => s.setting_key === 'max_referrals_per_user');
         const linksSetting = settingsData.find(s => s.setting_key === 'max_referral_links_per_user');
-        
+
         if (referralsSetting?.setting_value) {
           setMaxReferrals(parseInt(referralsSetting.setting_value, 10) || 10);
         }
@@ -390,7 +443,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
       let newCode: string = "";
       let codeExists = true;
       let attempts = 0;
-      
+
       while (codeExists && attempts < 10) {
         newCode = generateReferralCode();
         // Vérifier l'unicité dans single_use_invitation_codes
@@ -399,7 +452,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
           .select('id')
           .eq('invitation_code', newCode)
           .maybeSingle();
-        
+
         if (!existingCode) {
           codeExists = false;
         }
@@ -624,7 +677,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
       const inviteUrl = `${window.location.origin}/register?link=${linkCode}`;
       setNewInviteCode(linkCode);
       setNewInviteLink(inviteUrl);
-      
+
       toast.success(t('inviteLinkCreatedSuccessfully') || 'Lien d\'invitation créé avec succès');
       setInviteLinkName("");
       loadData();
@@ -835,8 +888,8 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
     const localeMap: Record<string, string> = {
-      'fr': 'fr-FR', 'en': 'en-US', 'es': 'es-ES', 'de': 'de-DE', 
-      'it': 'it-IT', 'pt': 'pt-BR', 'ar': 'ar-SA', 'zh': 'zh-CN', 
+      'fr': 'fr-FR', 'en': 'en-US', 'es': 'es-ES', 'de': 'de-DE',
+      'it': 'it-IT', 'pt': 'pt-BR', 'ar': 'ar-SA', 'zh': 'zh-CN',
       'ja': 'ja-JP', 'ru': 'ru-RU'
     };
     return new Date(dateString).toLocaleDateString(localeMap[language] || 'fr-FR', {
@@ -851,12 +904,12 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
     if (member.status === 'rejected' && member.rejection_reason) {
       return <Badge className="bg-red-500/10 text-red-500 border-red-500/20"><XCircle className="w-3 h-3 mr-1" />{t('rejected')}</Badge>;
     }
-    
+
     // Si en attente d'approbation du parrain
     if (!member.sponsor_approved && member.status === 'pending') {
       return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20"><Clock className="w-3 h-3 mr-1" />{t('pendingSponsorApproval')}</Badge>;
     }
-    
+
     switch (member.status) {
       case 'confirmed':
         return <Badge className="bg-green-500/10 text-green-500 border-green-500/20"><CheckCircle2 className="w-3 h-3 mr-1" />{t('confirmed')}</Badge>;
@@ -872,13 +925,13 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
   // Approve a member's registration
   const approveMember = async () => {
     if (!selectedMember) return;
-    
+
     setProcessingApproval(true);
     try {
       const { error } = await (supabase as any)
         .from('referrals')
-        .update({ 
-          sponsor_approved: true, 
+        .update({
+          sponsor_approved: true,
           sponsor_approved_at: new Date().toISOString(),
           rejection_reason: null
         })
@@ -902,12 +955,12 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
   // Reject a member's registration
   const rejectMember = async () => {
     if (!selectedMember) return;
-    
+
     setProcessingApproval(true);
     try {
       const { error } = await (supabase as any)
         .from('referrals')
-        .update({ 
+        .update({
           status: 'rejected',
           rejection_reason: rejectionReason || null,
           sponsor_approved: false
@@ -949,352 +1002,114 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
   const remaining = Math.max(0, maxReferrals - currentCount);
 
   return (
-    <div className="space-y-6">
-      {/* Deux colonnes : Codes d'invitation | Parrainages */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+    <div className="w-full min-w-0 space-y-6">
+      {/* Colonne : Codes d'invitation */}
+      <div className="w-full min-w-0 space-y-5">
+        <div className="flex items-center gap-2">
+          <Gift className="h-5 w-5 text-gold shrink-0" />
+          <h2 className="text-lg font-semibold text-foreground">{t('singleUseInvitationCodes') || 'Codes d\'invitation'}</h2>
+        </div>
 
-        {/* Colonne gauche : Codes d'invitation */}
-        <div className="space-y-5">
-          <div className="flex items-center gap-2">
-            <Gift className="h-5 w-5 text-gold shrink-0" />
-            <h2 className="text-lg font-semibold text-foreground">{t('singleUseInvitationCodes') || 'Codes d\'invitation'}</h2>
-          </div>
-
-          {/* Code de parrainage initial */}
-          {referralCode && (
-            <Card className={`rounded-xl border bg-card overflow-hidden ${referredMembers.length > 0 ? 'border-muted/40 from-muted/10 to-transparent' : 'border-gold/20 from-gold/5 to-transparent'}`}>
-              <CardContent className="p-4 sm:p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground mb-1">{t('initialInvitationCode') || 'Code d\'invitation initial'}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className={`text-base font-mono font-bold ${referredMembers.length > 0 ? 'text-muted-foreground line-through' : 'text-gold'}`}>
-                        {referralCode}
-                      </p>
-                      {referredMembers.length > 0 ? (
-                        <Badge variant="secondary" className="text-xs">
-                          {t('used') || 'Utilisé'}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs border-green-500/50 text-green-600">
-                          {t('available') || 'Disponible'}
-                        </Badge>
-                      )}
-                    </div>
-                    {referredMembers.length > 0 && (
-                      <div className="mt-2 flex items-center gap-2 p-2 rounded-md bg-muted/30">
-                        {referredMembers[0]?.referred_profile ? (
-                          <>
-                            <Avatar className="h-6 w-6 shrink-0">
-                              <AvatarImage src={referredMembers[0].referred_profile.avatar_url || undefined} />
-                              <AvatarFallback className="text-xs bg-gold/20 text-gold">
-                                {referredMembers[0].referred_profile.first_name?.[0]}
-                                {referredMembers[0].referred_profile.last_name?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-foreground">
-                                {t('codeUsedBy') || 'Utilisé par'}: {[referredMembers[0].referred_profile.first_name, referredMembers[0].referred_profile.last_name].filter(Boolean).join(' ') || t('unknownMember')}
-                                {referredMembers.length > 1 && ` +${referredMembers.length - 1} ${t('other') || 'autre(s)'}`}
-                              </p>
-                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                                <Calendar className="w-3 h-3 shrink-0" />
-                                {referredMembers.length} {referredMembers.length === 1 ? (t('member') || 'membre') : (t('members') || 'membres')} {t('referred') || 'parrainé(s)'}
-                              </p>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-muted-foreground shrink-0" />
-                            <p className="text-xs text-muted-foreground">
-                              {t('codeUsedBy') || 'Utilisé par'}: {referredMembers.length} {referredMembers.length === 1 ? (t('member') || 'membre') : (t('members') || 'membres')} {t('referred') || 'parrainé(s)'}
-                            </p>
-                          </div>
-                        )}
+        {/* Code de parrainage initial */}
+        {referralCode && (
+          <div className={`rounded-lg border overflow-hidden p-4 sm:p-5 ${referredMembers.length > 0 ? 'bg-gold/5 border-gold/10' : 'bg-gold/5 border-gold/20'}`}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground mb-1">{t('initialInvitationCode') || 'Code d\'invitation initial'}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className={`text-base font-mono font-bold ${referredMembers.length > 0 ? 'text-muted-foreground line-through' : 'text-gold'}`}>
+                    {referralCode}
+                  </p>
+                  {referredMembers.length > 0 ? (
+                    <Badge variant="secondary" className="text-xs">
+                      {t('used') || 'Utilisé'}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs border-green-500/50 text-green-600">
+                      {t('available') || 'Disponible'}
+                    </Badge>
+                  )}
+                </div>
+                {referredMembers.length > 0 && (
+                  <div className="mt-2 flex items-center gap-3 p-3 rounded-lg bg-gold/5 border border-gold/10">
+                    {referredMembers[0]?.referred_profile ? (
+                      <>
+                        <ParrainageMemberAvatar
+                          src={getMemberImageSrc(referredMembers[0].referred_profile.avatar_url)}
+                          alt={[referredMembers[0].referred_profile.first_name, referredMembers[0].referred_profile.last_name].filter(Boolean).join(' ') || t('unknownMember')}
+                          size="sm"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground">
+                            {t('codeUsedBy') || 'Utilisé par'}: {[referredMembers[0].referred_profile.first_name, referredMembers[0].referred_profile.last_name].filter(Boolean).join(' ') || t('unknownMember')}
+                            {referredMembers.length > 1 && ` +${referredMembers.length - 1} ${t('other') || 'autre(s)'}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Calendar className="w-3 h-3 shrink-0" />
+                            {referredMembers.length} {referredMembers.length === 1 ? (t('member') || 'membre') : (t('members') || 'membres')} {t('referred') || 'parrainé(s)'}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-gold/60 shrink-0" />
+                        <p className="text-xs text-muted-foreground">
+                          {t('codeUsedBy') || 'Utilisé par'}: {referredMembers.length} {referredMembers.length === 1 ? (t('member') || 'membre') : (t('members') || 'membres')} {t('referred') || 'parrainé(s)'}
+                        </p>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={copyToClipboard}
-                      className="h-8 w-8 p-0 text-gold hover:bg-gold/10"
-                    >
-                      {copied ? (
-                        <Check className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-
-          {isEditable && remaining === 0 && (
-            <div className="rounded-xl p-4 bg-amber-500/10 border border-amber-500/20">
-              <p className="text-sm text-amber-600 dark:text-amber-400">
-                {t('limitReached').replace('{maxReferrals}', maxReferrals.toString())}
-              </p>
-            </div>
-          )}
-
-          {/* Codes à usage unique */}
-          {userId && (
-            <div className="space-y-3">
-              <SingleUseInvitationCodes
-                isEditable={isEditable}
-                userId={userId}
-                onUpdate={onUpdate}
-                hasInitialCode={!!referralCode}
-                initialCodeUsed={referredMembers.length > 0}
-              />
-            </div>
-          )}
-
-          {/* Section Liens de Partage */}
-          <div className="space-y-4">
-        {/* <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Link2 className="h-5 w-5 text-gold" />
-              {t('customShareLinks')}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {t('trackInvitations').replace('{referralLinksLength}', referralLinks.length.toString()).replace('{maxReferralLinks}', maxReferralLinks.toString())}
-            </p>
-          </div>
-          {isEditable && referralLinks.length < maxReferralLinks && (
-            <Button
-              onClick={() => setNewLinkDialogOpen(true)}
-              variant="outline"
-              size="sm"
-              className="border-gold/30 text-gold hover:bg-gold/10"
-            >
-              <Plus className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">{t('createLink')}</span>
-            </Button>
-          )}
-        </div> */}
-
-
-        {/* {referralLinks.length === 0 ? (
-          <Card className="bg-muted/30">
-            <CardContent className="pt-6">
-              <div className="text-center py-6">
-                <Link2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h4 className="font-medium text-foreground mb-2">{t('noShareLink')}</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {t('createCustomLinksHint')}
-                </p>
-                {isEditable && (
-                  <Button
-                    onClick={() => setNewLinkDialogOpen(true)}
-                    variant="outline"
-                    size="sm"
-                    className="border-gold/30 text-gold hover:bg-gold/10"
-                  >
-                    <Plus className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">{t('createYourFirstLink')}</span>
-                  </Button>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {referralLinks.map((link) => {
-              const linkUrl = `${window.location.origin}/register?link=${link.link_code}`;
-              return (
-                <Card key={link.id} className={`${!link.is_active ? 'opacity-60' : ''}`}>
-                  <CardContent className="pt-6">
-                    <div className="space-y-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-medium text-foreground">
-                              {link.link_name || `${t('link')} ${link.link_code}`}
-                            </h4>
-                            {!link.is_active && (
-                              <Badge variant="outline" className="text-xs">{t('inactive')}</Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 p-2 rounded bg-muted/50 border border-border">
-                            <code className="text-xs font-mono text-foreground flex-1 break-all">
-                              {linkUrl}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyLinkToClipboard(link)}
-                              className="h-7 w-7 p-0"
-                            >
-                              {copiedLinkId === link.id ? (
-                                <Check className="h-3.5 w-3.5 text-green-500" />
-                              ) : (
-                                <Copy className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">{t('clicks')}</p>
-                          <p className="font-semibold text-foreground">{link.click_count}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">{t('registrations')}</p>
-                          <p className="font-semibold text-foreground">{link.registration_count}</p>
-                        </div>
-                      </div>
-
-                      {isEditable && (
-                        <div className="flex items-center justify-between pt-2 ">
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={link.is_active}
-                              onCheckedChange={() => toggleLinkActive(link)}
-                            />
-                            <Label className="text-sm">
-                              {link.is_active ? t('active') : t('inactive')}
-                            </Label>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => shareLink(link)}
-                              className="border-gold/30 text-gold hover:bg-gold/10"
-                            >
-                              <Share2 className="h-3.5 w-3.5 sm:mr-1.5" />
-                              <span className="hidden sm:inline">{t('share')}</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteLink(link)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={copyToClipboard}
+                  className="h-8 w-8 p-0 text-gold hover:bg-gold/10"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
-        )} */}
+        )}
 
-        {isEditable && referralLinks.length >= maxReferralLinks && (
-          <div className="rounded-xl p-4 sm:p-5 bg-amber-500/10 border border-amber-500/20">
+
+        {isEditable && remaining === 0 && (
+          <div className="rounded-xl p-4 bg-amber-500/10 border border-amber-500/20">
             <p className="text-sm text-amber-600 dark:text-amber-400">
-              {t('referralLinksLimitReached').replace('{maxReferralLinks}', maxReferralLinks.toString())}
+              {t('limitReached').replace('{maxReferrals}', maxReferrals.toString())}
             </p>
           </div>
         )}
-          </div>
-        </div>
 
-        {/* Colonne droite : Parrainages (liste des membres parrainés) */}
-        <div className="space-y-4 sm:space-y-6">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-gold shrink-0" />
-            <h2 className="text-lg font-semibold text-foreground">{t('referrals') || 'Parrainages'}</h2>
+        {/* Codes à usage unique */}
+        {userId && (
+          <div className="space-y-3">
+            <SingleUseInvitationCodes
+              isEditable={isEditable}
+              userId={userId}
+              onUpdate={onUpdate}
+              hasInitialCode={!!referralCode}
+              initialCodeUsed={referredMembers.length > 0}
+            />
           </div>
+        )}
 
-          {/* Section: Membres en attente d'approbation - TOUJOURS VISIBLE SI isEditable */}
-          {isEditable && (
-            <div className="space-y-3">
-              {pendingApprovalMembers.length > 0 ? (
-                <>
-                  <div className="rounded-xl p-4 sm:p-5 bg-orange-500/10 border border-orange-500/30">
-                    <h3 className="text-base font-semibold text-foreground flex items-center gap-2 mb-1">
-                      <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
-                      {t('pendingApprovalMembers')}
-                      <Badge variant="destructive" className="text-xs">
-                        {pendingApprovalMembers.length}
-                      </Badge>
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {t('waitingForYourApproval')} — {pendingApprovalMembers.length} {pendingApprovalMembers.length === 1 ? t('member') : t('members')}
-                    </p>
-                  </div>
-                  {pendingApprovalMembers.map((member) => (
-                    <Card key={member.id} className="rounded-xl border border-orange-500/20 bg-card overflow-hidden">
-                      <CardContent className="p-4 sm:p-5">
-                        <div className="flex items-center gap-4">
-                          <Avatar className="h-12 w-12">
-                            <AvatarImage src={member.referred_profile?.avatar_url || undefined} />
-                            <AvatarFallback className="bg-gold/10 text-gold">
-                              {member.referred_profile?.first_name?.[0]}{member.referred_profile?.last_name?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium text-foreground">
-                                {member.referred_profile?.first_name} {member.referred_profile?.last_name}
-                              </h4>
-                              {getStatusBadge(member)}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {t('waitingForYourApproval')}
-                            </p>
-                          </div>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-green-500/30 text-green-600 hover:bg-green-500/10 flex-1 sm:flex-initial"
-                              onClick={(e) => { e.stopPropagation(); setSelectedMember(member); setApproveDialogOpen(true); }}
-                            >
-                              <ThumbsUp className="w-4 h-4 sm:mr-2" />
-                              <span className="hidden sm:inline">{t('approve')}</span>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-red-500/30 text-red-600 hover:bg-red-500/10 flex-1 sm:flex-initial"
-                              onClick={(e) => { e.stopPropagation(); setSelectedMember(member); setRejectDialogOpen(true); }}
-                            >
-                              <ThumbsDown className="w-4 h-4 sm:mr-2" />
-                              <span className="hidden sm:inline">{t('reject')}</span>
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </>
-              ) : (
-                <Card className="rounded-xl border border-border bg-card overflow-hidden">
-                  <CardContent className="p-6 text-center">
-                    <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                    <p className="text-sm font-medium text-foreground">{t('noPendingApprovals')}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{t('noPendingApprovalsDesc') || 'Aucune demande en attente.'}</p>
-                  </CardContent>
-                </Card>
-              )}
+        {/* Section Liens de Partage */}
+        <div className="space-y-4">
+
+          {isEditable && referralLinks.length >= maxReferralLinks && (
+            <div className="rounded-xl p-4 sm:p-5 bg-amber-500/10 border border-amber-500/20">
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                {t('referralLinksLimitReached').replace('{maxReferralLinks}', maxReferralLinks.toString())}
+              </p>
             </div>
-          )}
-
-          {referredMembers.length === 0 && (
-            <Card className="rounded-xl border border-border bg-card overflow-hidden">
-              <CardContent className="p-6 sm:p-8 text-center">
-                <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-sm font-medium text-foreground">{t('noReferredMembers')}</p>
-                <p className="text-xs text-muted-foreground mt-2 max-w-xs mx-auto">
-                  {isEditable ? t('startSponsoringHint') : t('noReferralsRecorded')}
-                </p>
-              </CardContent>
-            </Card>
           )}
         </div>
       </div>
@@ -1411,7 +1226,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                     </div>
                   </div>
 
-                  <div className="bg-muted/50 border border-border rounded-lg p-4">
+                  <div className="bg-gold/5 border border-gold/10 rounded-lg p-4">
                     <p className="text-sm text-muted-foreground">
                       {t('inviteLinkInstructions') || 'Partagez ce lien avec le nouveau membre. Il pourra s\'inscrire en utilisant ce code d\'invitation unique.'}
                     </p>
@@ -1477,7 +1292,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               </p>
             </div>
 
-            <div className="bg-muted/50 border border-border rounded-lg p-4">
+            <div className="bg-gold/5 border border-gold/10 rounded-lg p-4">
               <p className="text-sm text-muted-foreground">
                 {t('secondaryCodeInfo') || 'Un nouveau code unique sera généré automatiquement au format AURORA-XXXXXX. Ce code pourra être utilisé pour parrainer de nouveaux membres.'}
               </p>
@@ -1541,7 +1356,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
                 {t('giveNameToLinkHint')}
               </p>
             </div>
-            <div className="p-3 rounded-lg bg-muted/50 border border-border">
+            <div className="p-3 rounded-lg bg-gold/5 border border-gold/10">
               <p className="text-xs text-muted-foreground mb-1">{t('associatedReferralCode')}</p>
               <p className="font-mono font-semibold text-foreground">{referralCode}</p>
             </div>
@@ -1590,24 +1405,21 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
             </DialogDescription>
           </DialogHeader>
           {selectedMember && (
-            <Card className="bg-muted/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={selectedMember.referred_profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-gold/10 text-gold">
-                      {selectedMember.referred_profile?.first_name?.[0]}{selectedMember.referred_profile?.last_name?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h4 className="font-medium text-foreground">
-                      {selectedMember.referred_profile?.first_name} {selectedMember.referred_profile?.last_name}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">{formatDate(selectedMember.created_at)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 sm:p-4 bg-gold/5 rounded-lg border border-gold/10">
+              <ParrainageMemberAvatar
+                src={getMemberImageSrc(selectedMember.referred_profile?.avatar_url)}
+                alt={[selectedMember.referred_profile?.first_name, selectedMember.referred_profile?.last_name].filter(Boolean).join(' ') || t('unknownMember')}
+              />
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-foreground">
+                  {selectedMember.referred_profile?.first_name} {selectedMember.referred_profile?.last_name}
+                </h4>
+                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                  <Calendar className="w-3 h-3 shrink-0" />
+                  {formatDate(selectedMember.created_at)}
+                </p>
+              </div>
+            </div>
           )}
           <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-end">
             <Button
@@ -1644,23 +1456,17 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
             </DialogDescription>
           </DialogHeader>
           {selectedMember && (
-            <Card className="bg-muted/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={selectedMember.referred_profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-gold/10 text-gold">
-                      {selectedMember.referred_profile?.first_name?.[0]}{selectedMember.referred_profile?.last_name?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h4 className="font-medium text-foreground">
-                      {selectedMember.referred_profile?.first_name} {selectedMember.referred_profile?.last_name}
-                    </h4>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 sm:p-4 bg-gold/5 rounded-lg border border-gold/10">
+              <ParrainageMemberAvatar
+                src={getMemberImageSrc(selectedMember.referred_profile?.avatar_url)}
+                alt={[selectedMember.referred_profile?.first_name, selectedMember.referred_profile?.last_name].filter(Boolean).join(' ') || t('unknownMember')}
+              />
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-foreground">
+                  {selectedMember.referred_profile?.first_name} {selectedMember.referred_profile?.last_name}
+                </h4>
+              </div>
+            </div>
           )}
           <div className="space-y-2">
             <Label htmlFor="rejectionReason">{t('rejectionReason')}</Label>

@@ -178,6 +178,7 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
           <div>
             <Label>{t("description")}</Label>
             <Textarea {...register("description")} placeholder={t("describeYourGastronomicPassion")} rows={4} />
+            {/* IA Aurora - commenté pour désactivation temporaire
             <Button
               type="button"
               variant="outline"
@@ -189,6 +190,7 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {t("aiSuggestion")}
             </Button>
+            */}
           </div>
           <div>
             <Label>{t("photo")}</Label>

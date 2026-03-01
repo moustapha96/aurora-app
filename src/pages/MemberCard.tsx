@@ -60,10 +60,10 @@ const MemberCard = () => {
     const handleAvatarUpdate = async (event: CustomEvent<{ avatarUrl: string; userId: string }>) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user && user.id === event.detail.userId && profile) {
-        // Add cache-buster to ensure fresh image
-        const { getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
-        const avatarUrlWithCache = getAvatarDisplayUrl(event.detail.avatarUrl) || event.detail.avatarUrl;
-        setProfile((prev: any) => ({ ...prev, avatar_url: avatarUrlWithCache }));
+        const { getSignedAvatarDisplayUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+        const signed = await getSignedAvatarDisplayUrl(event.detail.avatarUrl);
+        const displayUrl = signed || getAvatarDisplayUrl(event.detail.avatarUrl) || event.detail.avatarUrl;
+        setProfile((prev: any) => (prev ? { ...prev, avatar_url: displayUrl } : prev));
       }
     };
 
@@ -258,10 +258,11 @@ const MemberCard = () => {
       setProfile(newProfile);
     } else {
       console.log('[MemberCard] Profile loaded:', data);
-      // Add cache-buster to avatar URL for fresh display
+      // URL signée pour l'affichage (évite le JSON métadonnées renvoyé par l'URL publique)
       if (data.avatar_url) {
-        const { getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
-        data.avatar_url = getAvatarDisplayUrl(data.avatar_url) || data.avatar_url;
+        const { getSignedAvatarDisplayUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+        const signed = await getSignedAvatarDisplayUrl(data.avatar_url);
+        data.avatar_url = signed || getAvatarDisplayUrl(data.avatar_url) || data.avatar_url;
       }
       setProfile(data);
     }
@@ -293,7 +294,7 @@ const MemberCard = () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error(t('notAuthenticated'));
 
-          const { uploadAvatar, dispatchAvatarUpdate, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+          const { uploadAvatar, dispatchAvatarUpdate, getSignedAvatarDisplayUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
           
           const cleanUrl = await uploadAvatar(user.id, base64);
           
@@ -308,9 +309,9 @@ const MemberCard = () => {
 
           if (updateError) throw updateError;
 
-          // Add cache-buster for local display only
-          const displayUrl = getAvatarDisplayUrl(cleanUrl) || cleanUrl;
-          setProfile({ ...profile, avatar_url: displayUrl });
+          const displayUrl = await getSignedAvatarDisplayUrl(cleanUrl) || getAvatarDisplayUrl(cleanUrl) || cleanUrl;
+          setProfile((prev) => (prev ? { ...prev, avatar_url: displayUrl } : prev));
+          setImageError(false);
 
           // Dispatch custom event for real-time sync
           dispatchAvatarUpdate(cleanUrl, user.id);
@@ -320,6 +321,7 @@ const MemberCard = () => {
           toast.error(error.message || t('uploadError'));
         } finally {
           setUploading(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
         }
       };
       reader.readAsDataURL(file);
@@ -328,6 +330,8 @@ const MemberCard = () => {
       setUploading(false);
     }
   };
+
+  const MAX_ITEMS_PER_SECTION = 5;
 
   const profileSections = [
     {
@@ -353,7 +357,7 @@ const MemberCard = () => {
             if (p?.title?.trim()) items.push(p.title.trim());
           });
         }
-        return items.length > 0 ? items : [t('clickToAddBusiness')];
+        return (items.length > 0 ? items : [t('clickToAddBusiness')]).slice(0, MAX_ITEMS_PER_SECTION);
       })()
     },
     {
@@ -382,7 +386,7 @@ const MemberCard = () => {
             if (p?.person_name?.trim()) items.push(p.person_name.trim());
           });
         }
-        return items.length > 0 ? items : [t('clickToAddFamily')];
+        return (items.length > 0 ? items : [t('clickToAddFamily')]).slice(0, MAX_ITEMS_PER_SECTION);
       })()
     },
     {
@@ -391,7 +395,6 @@ const MemberCard = () => {
       route: "/personal",
       items: personalContent ? (() => {
         const items: string[] = [];
-        // Ajouter tous les titres des sports personnalisés
         if (personalContent.sports && Array.isArray(personalContent.sports) && personalContent.sports.length > 0) {
           personalContent.sports.forEach((sport: any) => {
             if (sport && sport.title && sport.title.trim()) {
@@ -429,28 +432,26 @@ const MemberCard = () => {
             items.push(title.trim());
           }
         }
-        console.log('[MemberCard] Personal items to display:', items);
-        return items.length > 0 ? items : [t('clickToAddPersonal')];
+        return (items.length > 0 ? items : [t('clickToAddPersonal')]).slice(0, MAX_ITEMS_PER_SECTION);
       })() : [t('clickToAddPersonal')]
     },
     {
       title: t('influenceNetwork'),
       icon: Globe,
       route: "/network",
-      items: [t('exclusiveClubs'), t('globalForums'), t('socialMediaLabel')]
+      items: [t('exclusiveClubs'), t('globalForums'), t('socialMediaLabel')].slice(0, MAX_ITEMS_PER_SECTION)
     },
     {
       title: t('integratedServices'),
       icon: Settings,
       route: "/services",
-      items: [t('concierge'), t('metaverse'), t('marketplace')]
+      items: [t('concierge'), t('metaverse'), t('marketplace')].slice(0, MAX_ITEMS_PER_SECTION)
     },
     {
       title: t('members'),
       icon: Users,
       route: "/members",
-      items: [t('memberDirectory'), t('detailedProfiles'),
-        ]
+      items: [t('memberDirectory'), t('detailedProfiles')].slice(0, MAX_ITEMS_PER_SECTION)
     }
   ];
 
@@ -616,12 +617,7 @@ const MemberCard = () => {
             {currentUserEmail && (
               <p className="text-gold/50 text-xs mb-4">{currentUserEmail}</p>
             )}
-{/* 
-            {profile.account_number && (
-              <div className="text-xs sm:text-sm text-gold/60 font-mono tracking-wider">
-                {profile.account_number}
-              </div>
-            )} */}
+
 
 
           </div>
@@ -717,20 +713,7 @@ const MemberCard = () => {
                     )}
                   </div>
 
-                  {section.title === t('business') && (
-                    <div className="flex items-center gap-2 sm:gap-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gold/20 flex-wrap flex-shrink-0">
-                      <div className="text-xs text-gold/60">{t('forbes30')}</div>
-                      <div className="text-xs text-gold/60">{t('ey')}</div>
-                      <div className="text-xs text-gold/60">{t('harvardMBA')}</div>
-                    </div>
-                  )}
-
-                  {/* {section.title === t('members') && (
-                    <div className="flex items-center mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gold/20 flex-shrink-0">
-                      <Users className="w-4 h-4 text-gold mr-2" />
-                      <span className="text-xs text-gold/60">{t('exclusiveLabel')}</span>
-                    </div>
-                  )} */}
+                    
                 </div>
               </div>
             ))}

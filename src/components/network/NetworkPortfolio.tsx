@@ -3,9 +3,13 @@ import { NetworkModule } from "./NetworkModule";
 import { ImageIcon, Trash2, Loader2, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { InlineEditableField } from "@/components/ui/inline-editable-field";
 
 function getPortfolioImageSrc(url: string | undefined | null): string | null {
   if (url == null || typeof url !== "string") return null;
@@ -91,10 +95,28 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
   const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [addTitle, setAddTitle] = useState("");
+  const [addDescription, setAddDescription] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [descriptionPopup, setDescriptionPopup] = useState<{ title: string; content: string } | null>(null);
+
+  const DESCRIPTION_TRUNCATE_LENGTH = 30;
 
   const selectedImage = selectedImageIndex !== null ? data[selectedImageIndex]?.image_url : null;
   const selectedItem = selectedImageIndex !== null ? data[selectedImageIndex] : null;
+
+  const updateField = async (itemId: string, field: "title" | "description", value: string | null) => {
+    try {
+      const { error } = await supabase
+        .from("network_clubs")
+        .update({ [field]: value ?? null })
+        .eq("id", itemId);
+      if (error) throw error;
+      onUpdate();
+    } catch {
+      toast.error(t("error") || "Erreur");
+    }
+  };
 
   const navigateImage = (direction: 'prev' | 'next') => {
     if (selectedImageIndex === null) return;
@@ -173,7 +195,8 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
         .from('network_clubs')
         .insert({
           user_id: user.id,
-          title: "Photo Portfolio",
+          title: (addTitle || "").trim() || t("portfolioPhoto") || "Photo Portfolio",
+          description: (addDescription || "").trim() || null,
           image_url: dataUrl,
           club_type: "portfolio"
         });
@@ -182,6 +205,8 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
 
       toast.success(t("photoAddedToPortfolio") || "Photo ajoutée au portfolio");
       setIsDialogOpen(false);
+      setAddTitle("");
+      setAddDescription("");
       onUpdate();
     } catch (error) {
       console.error('Add portfolio image error:', error);
@@ -289,26 +314,68 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
                     </div>
                   )}
                   
-                  {/* Title and delete at bottom */}
-                  <div className="flex items-end">
-                    <div className="flex-1">
-                      {item.title && (
-                        <p className="text-white text-xs font-medium truncate">{item.title}</p>
+                  {/* Title, description and delete at bottom */}
+                  <div className="flex flex-col gap-0.5 min-w-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-start gap-1 min-w-0">
+                      <div className="flex-1 min-w-0">
+                        {isEditable ? (
+                          <InlineEditableField
+                            value={item.title || ""}
+                            onSave={(v) => updateField(item.id, "title", v)}
+                            placeholder={t("title") || "Titre"}
+                            className="text-white text-xs font-medium bg-transparent border-none p-0 min-h-0 placeholder:text-white/60"
+                          />
+                        ) : (
+                          item.title && <p className="text-white text-xs font-medium truncate">{item.title}</p>
+                        )}
+                        {(item.description || isEditable) && (
+                          <div className="mt-0.5">
+                            {isEditable ? (
+                              <InlineEditableField
+                                value={item.description || ""}
+                                onSave={(v) => updateField(item.id, "description", v)}
+                                placeholder={t("description") || "Description"}
+                                className="text-white/90 text-[10px] sm:text-xs bg-transparent border-none p-0 min-h-0 line-clamp-2 placeholder:text-white/50"
+                                multiline
+                              />
+                            ) : item.description ? (
+                              <>
+                                <p className="text-white/90 text-[10px] sm:text-xs break-words">
+                                  {item.description.length > DESCRIPTION_TRUNCATE_LENGTH
+                                    ? `${item.description.slice(0, DESCRIPTION_TRUNCATE_LENGTH)}…`
+                                    : item.description}
+                                </p>
+                                {item.description.length > DESCRIPTION_TRUNCATE_LENGTH && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDescriptionPopup({ title: item.title || t("description"), content: item.description! });
+                                    }}
+                                    className="text-white/90 text-[10px] sm:text-xs underline mt-0.5 focus:outline-none"
+                                  >
+                                    {t("seeMore") || "Voir plus"}
+                                  </button>
+                                )}
+                              </>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                      {isEditable && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 flex-shrink-0 text-white hover:text-destructive hover:bg-white/20"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item.id);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       )}
                     </div>
-                    {isEditable && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-white hover:text-destructive hover:bg-white/20"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(item.id);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -325,39 +392,59 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
       </div>
 
       {/* Add Photo Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setAddTitle(""); setAddDescription(""); } }}>
+        <DialogContent className="w-[95vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center">Ajouter une photo</DialogTitle>
+            <DialogTitle className="text-center text-base sm:text-lg">{t("addPhoto") || "Ajouter une photo"}</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col items-center justify-center py-6">
-            <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-muted-foreground/30 rounded-lg cursor-pointer hover:bg-muted/50 hover:border-gold transition-colors">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                className="hidden"
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm">{t("title") || "Titre"}</Label>
+              <Input
+                className="mt-1 text-sm"
+                value={addTitle}
+                onChange={(e) => setAddTitle(e.target.value)}
+                placeholder={t("portfolioPhoto") || "Photo portfolio"}
               />
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-12 h-12 animate-spin text-gold mb-3" />
-                  <span className="text-sm text-muted-foreground">Compression et upload...</span>
-                </>
-              ) : (
-                <>
-                  <ImageIcon className="w-12 h-12 text-muted-foreground mb-3" />
-                  <span className="text-base text-muted-foreground font-medium">Cliquez pour sélectionner</span>
-                  <span className="text-xs text-muted-foreground/70 mt-1">La photo sera ajoutée automatiquement</span>
-                </>
-              )}
-            </label>
+            </div>
+            <div>
+              <Label className="text-sm">{t("description") || "Description"}</Label>
+              <Textarea
+                className="mt-1 text-sm min-h-[72px] resize-none"
+                value={addDescription}
+                onChange={(e) => setAddDescription(e.target.value)}
+                placeholder={t("optionalDescription") || "Optionnel"}
+              />
+            </div>
+            <div>
+              <Label className="text-sm">{t("image") || "Image"}</Label>
+              <label className="mt-1 flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-muted-foreground/30 rounded-lg cursor-pointer hover:bg-muted/50 hover:border-gold transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-10 h-10 animate-spin text-gold mb-2" />
+                    <span className="text-xs text-muted-foreground">{t("uploading") || "Envoi..."}</span>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="w-10 h-10 text-muted-foreground mb-2" />
+                    <span className="text-sm text-muted-foreground font-medium">{t("chooseImage") || "Choisir une image"}</span>
+                  </>
+                )}
+              </label>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Fullscreen Image Viewer with Navigation */}
       <Dialog open={selectedImageIndex !== null} onOpenChange={() => setSelectedImageIndex(null)}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/95 group">
+        <DialogContent className="max-w-4xl max-h-[95vh] p-0 overflow-hidden bg-black/95 group flex flex-col">
           {/* Close button */}
           <Button
             variant="ghost"
@@ -404,10 +491,10 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
             </Button>
           )}
 
-          {/* Image with swipe support */}
+          {/* Image with swipe support - scrollable if needed */}
           {selectedImage && (
             <div 
-              className="relative touch-pan-x"
+              className="flex-1 min-h-0 overflow-auto flex items-start justify-center touch-pan-x"
               onTouchStart={(e) => {
                 const touch = e.touches[0];
                 (e.currentTarget as any).startX = touch.clientX;
@@ -425,11 +512,59 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
             </div>
           )}
 
+          {/* Title and description always visible below the image */}
+          {selectedItem && (
+            <div className={`flex-shrink-0 px-4 py-3 border-t border-white/10 bg-black/60 ${data.length > 1 ? "pb-10" : ""}`}>
+              {isEditable ? (
+                <div className="space-y-2">
+                  <InlineEditableField
+                    value={selectedItem.title || ""}
+                    onSave={(v) => updateField(selectedItem.id, "title", v)}
+                    placeholder={t("title") || "Titre"}
+                    className="text-white font-medium text-sm sm:text-base bg-transparent border-none p-0 min-h-0 placeholder:text-white/50"
+                  />
+                  <InlineEditableField
+                    value={selectedItem.description || ""}
+                    onSave={(v) => updateField(selectedItem.id, "description", v)}
+                    placeholder={t("description") || "Description"}
+                    className="text-white/80 text-xs sm:text-sm bg-transparent border-none p-0 min-h-0 whitespace-pre-wrap placeholder:text-white/40 block"
+                    multiline
+                  />
+                </div>
+              ) : (
+                <>
+                  {selectedItem.title && <p className="text-white font-medium text-sm sm:text-base">{selectedItem.title}</p>}
+                  {selectedItem.description && (
+                    <p className="text-white/90 text-xs sm:text-sm mt-1 sm:mt-2 whitespace-pre-wrap break-words leading-relaxed">
+                      {selectedItem.description}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {/* Image counter */}
           {data.length > 1 && selectedImageIndex !== null && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm pointer-events-none">
               {selectedImageIndex + 1} / {data.length}
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Popup description complète (si > 30 caractères) */}
+      <Dialog open={!!descriptionPopup} onOpenChange={(open) => !open && setDescriptionPopup(null)}>
+        <DialogContent className="w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-serif text-gold">
+              {descriptionPopup?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {descriptionPopup && (
+            <p className="text-sm text-foreground whitespace-pre-wrap break-words py-2">
+              {descriptionPopup.content}
+            </p>
           )}
         </DialogContent>
       </Dialog>

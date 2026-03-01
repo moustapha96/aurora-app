@@ -259,17 +259,7 @@ export const SingleUseInvitationCodes = ({ isEditable = false, userId, onUpdate,
             ({usedCodesCount}/{totalCodesWithInitial} {t('used') || 'utilisés'} • max {maxTotalCodes})
           </span>
         </div>
-        {isEditable && canCreateMore && (
-          <Button
-            onClick={() => setCreateDialogOpen(true)}
-            variant="outline"
-            size="sm"
-            className="border-gold/30 text-gold hover:bg-gold/10"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            {t('createCode') || 'Créer'}
-          </Button>
-        )}
+       
       </div>
 
       {/* Message si limite atteinte */}

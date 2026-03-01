@@ -304,6 +304,7 @@ export const InfluentialEditor = ({ people, onUpdate }: InfluentialEditorProps) 
                     className="hidden"
                     onChange={() => toast({ title: "Document importé - Analyse en cours..." })}
                   />
+                  {/* IA Aurora - commenté pour désactivation temporaire
                   <Button
                     type="button"
                     variant="ghost"
@@ -319,6 +320,7 @@ export const InfluentialEditor = ({ people, onUpdate }: InfluentialEditorProps) 
                     )}
                     IA
                   </Button>
+                  */}
                 </div>
               </div>
               <Textarea 

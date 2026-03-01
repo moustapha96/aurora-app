@@ -109,6 +109,7 @@ export const NetworkModule = ({
                     className="min-h-[200px]"
                   />
                   <div className="flex flex-col sm:flex-row justify-between gap-2">
+                    {/* IA Aurora - commenté pour désactivation temporaire
                     <Button
                       variant="outline"
                       onClick={handleAISuggest}
@@ -123,6 +124,7 @@ export const NetworkModule = ({
                       )}
                       {t('networkModuleAISuggestButton')}
                     </Button>
+                    */}
                     <div className="flex gap-2 justify-end">
                       <Button
                         variant="outline"

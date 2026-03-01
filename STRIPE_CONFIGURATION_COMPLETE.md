@@ -55,9 +55,9 @@ Où trouver : [Stripe Dashboard > Developers > API keys](https://dashboard.strip
 
 Assurez-vous que les migrations suivantes sont appliquées :
 
-- ✅ `20260104121539_eacd53a5-1760-41be-8348-18b6130909c7.sql` (marketplace_items)
-- ✅ `20260114205224_a1c8e66f-60b7-492c-9599-c144eeef2eda.sql` (marketplace_payments)
-- ✅ `20260128000000_fix_marketplace_payments_rls.sql` (fix RLS policies)
+- ✅ `20250104121539_eacd53a5-1760-41be-8348-18b6130909c7.sql` (marketplace_items)
+- ✅ `20250114205224_a1c8e66f-60b7-492c-9599-c144eeef2eda.sql` (marketplace_payments)
+- ✅ `20250128000000_fix_marketplace_payments_rls.sql` (fix RLS policies)
 
 ### ✅ 5. Edge Functions
 

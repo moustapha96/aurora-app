@@ -102,6 +102,10 @@ const AdminSettings = () => {
     responseTime?: string;
   } | null>(null);
 
+  // Veriff required after registration state
+  const [veriffRequired, setVeriffRequired] = useState(true);
+  const [savingVeriffRequired, setSavingVeriffRequired] = useState(false);
+
   useEffect(() => {
     loadInactivityTimeout();
     loadTestMode();
@@ -109,6 +113,7 @@ const AdminSettings = () => {
     loadCaptchaConfig();
     loadStripeConfig();
     loadVeriffConfig();
+    loadVeriffRequired();
   }, []);
 
   const loadStripeConfig = async () => {
@@ -194,6 +199,49 @@ const AdminSettings = () => {
       toast.error(errorMessage);
     } finally {
       setTestingStripe(false);
+    }
+  };
+
+  // ==================== VERIFF REQUIRED ====================
+  const loadVeriffRequired = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('setting_value')
+        .eq('setting_key', 'veriff_required_after_registration')
+        .maybeSingle();
+
+      if (!error && data?.setting_value !== null) {
+        setVeriffRequired(data.setting_value !== 'false');
+      }
+    } catch (error) {
+      console.error('Error loading veriff required setting:', error);
+    }
+  };
+
+  const saveVeriffRequired = async (value: boolean) => {
+    setSavingVeriffRequired(true);
+    try {
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert({
+          setting_key: 'veriff_required_after_registration',
+          setting_value: value.toString(),
+          description: 'Si activé, la vérification Veriff est obligatoire après inscription'
+        }, { onConflict: 'setting_key' });
+
+      if (error) throw error;
+
+      setVeriffRequired(value);
+      toast.success(value 
+        ? (t('adminVeriffRequiredEnabled') || 'Vérification Veriff obligatoire activée')
+        : (t('adminVeriffRequiredDisabled') || 'Vérification Veriff optionnelle - connexion directe autorisée')
+      );
+    } catch (error) {
+      console.error('Error saving veriff required:', error);
+      toast.error(t('adminErrorSaving'));
+    } finally {
+      setSavingVeriffRequired(false);
     }
   };
 
@@ -1466,6 +1514,28 @@ const AdminSettings = () => {
                   {t('adminVeriffInfoDesc') || 'Obtenez vos clés API sur le dashboard Veriff Station'}
                 </p>
               </div>
+
+              {/* Veriff Required Toggle */}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label className="font-medium">
+                    {t('adminVeriffRequiredLabel') || 'Vérification obligatoire après inscription'}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {veriffRequired 
+                      ? (t('adminVeriffRequiredOnDesc') || 'Les nouveaux membres doivent passer la vérification Veriff avant de pouvoir se connecter')
+                      : (t('adminVeriffRequiredOffDesc') || 'Les nouveaux membres peuvent se connecter directement sans vérification Veriff')
+                    }
+                  </p>
+                </div>
+                <Switch
+                  checked={veriffRequired}
+                  onCheckedChange={(checked) => saveVeriffRequired(checked)}
+                  disabled={savingVeriffRequired}
+                />
+              </div>
+
+              <Separator />
 
               <div className="space-y-4">
                 <div className="space-y-2">

@@ -153,6 +153,7 @@ export const FamilyModule = ({
 
           <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
             <div className="flex justify-end">
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button
                 variant="outline"
                 size="sm"
@@ -168,6 +169,7 @@ export const FamilyModule = ({
                 <span className="hidden sm:inline">{t('aiSuggestion')}</span>
                 <span className="sm:hidden">{t('ai')}</span>
               </Button>
+              */}
             </div>
             <Textarea
               value={editedContent}

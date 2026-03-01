@@ -87,8 +87,19 @@ export const BusinessTimeline: React.FC<BusinessTimelineProps> = ({
             <div>
               <CardTitle className="text-lg font-serif text-gold">{t("businessTimelineCareer")}</CardTitle>
               <p className="text-sm text-gold/60">{t("businessTimelineSubtitle")}</p>
+            </div>
           </div>
-          </div>
+          {editable && onAdd && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenDialog()}
+              className="border-gold/30 text-gold hover:bg-gold/10 shrink-0"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              {t("businessAddStep")}
+            </Button>
+          )}
         </CardHeader>
 
         <CardContent>

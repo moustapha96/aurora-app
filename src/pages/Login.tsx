@@ -591,9 +591,25 @@ const Login = () => {
         console.error('Error fetching profile:', profileError);
       }
 
+      // Check if Veriff verification is required (admin setting)
+      let veriffRequired = true;
+      try {
+        const { data: veriffSetting } = await supabase
+          .from('admin_settings')
+          .select('setting_value')
+          .eq('setting_key', 'veriff_required_after_registration')
+          .maybeSingle();
+        if (veriffSetting?.setting_value === 'false') {
+          veriffRequired = false;
+        }
+      } catch (e) {
+        console.error('Error checking veriff required setting:', e);
+      }
+
       // Les admins peuvent se connecter même sans vérification d'identité
       // account_active permet aussi de se connecter sans vérification Veriff
-      const canAccess = profile?.identity_verified || profile?.account_active;
+      // Si veriff n'est pas requis, on laisse passer directement
+      const canAccess = profile?.identity_verified || profile?.account_active || !veriffRequired;
       // Vérifier si le profil existe déjà (utilisateur s'est déjà connecté au moins une fois)
       const profileExists = !!profile;
       

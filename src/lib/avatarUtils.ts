@@ -65,25 +65,8 @@ export const uploadAvatar = async (
 
     const cleanUrl = cleanAvatarUrl(urlData.publicUrl);
     console.log('[Avatar] Final clean URL:', cleanUrl);
-    
-    // Verify file exists and has correct Content-Type (helpful for debugging)
-    try {
-      // Wait a bit for storage to propagate
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const response = await fetch(cleanUrl + '?t=' + Date.now(), { method: 'HEAD' });
-      if (!response.ok) {
-        console.warn('[Avatar] File may not be accessible yet, status:', response.status);
-      } else {
-        const contentType = response.headers.get('content-type');
-        console.log('[Avatar] File verified accessible. content-type:', contentType);
-        if (contentType && !contentType.startsWith('image/')) {
-          console.error('[Avatar] Wrong content-type detected:', contentType);
-        }
-      }
-    } catch (e) {
-      console.warn('[Avatar] Could not verify file accessibility:', e);
-    }
-    
+    // L’affichage utilise une URL signée (getSignedAvatarDisplayUrl) pour obtenir le fichier image,
+    // car l’URL publique peut renvoyer du JSON métadonnées au lieu du binaire.
     return cleanUrl;
   } catch (error) {
     console.error('[Avatar] Error in uploadAvatar:', error);
@@ -203,16 +186,62 @@ export const cleanAvatarUrl = (url: string): string => {
   }
 };
 
+/** Extrait le chemin dans le bucket (ex: "userId/avatar.png") depuis une URL publique Supabase avatars */
+export const getAvatarStoragePathFromPublicUrl = (url: string | null | undefined): string | null => {
+  if (!url || typeof url !== 'string') return null;
+  const clean = cleanAvatarUrl(url).trim();
+  if (!clean) return null;
+  // Format: https://xxx.supabase.co/storage/v1/object/public/avatars/USER_ID/avatar.png
+  const match = clean.match(/\/storage\/v1\/object\/public\/avatars\/(.+)$/);
+  return match ? match[1] : null;
+};
+
+/** Indique si l'URL est une URL publique Supabase avatars (souvent renvoie du JSON au lieu du fichier) */
+export const isSupabasePublicAvatarUrl = (url: string | null | undefined): boolean => {
+  return !!url && typeof url === 'string' && url.includes('/storage/v1/object/public/avatars/');
+};
+
 /**
- * Adds a cache-buster to an avatar URL for display
+ * Retourne une URL d'affichage pour l'avatar.
+ * Pour les URLs publiques Supabase avatars, utilise une URL signée pour obtenir le fichier image
+ * (l'URL publique peut renvoyer du JSON métadonnées au lieu du binaire).
+ * Sinon retourne l'URL avec cache-buster.
  */
 export const getAvatarDisplayUrl = (url: string | null | undefined): string | null => {
   if (!url) return null;
-  // Skip base64 images
   if (url.startsWith('data:')) return null;
-  
   const cleanUrl = cleanAvatarUrl(url);
   return `${cleanUrl}?t=${Date.now()}`;
+};
+
+/**
+ * URL signée pour afficher l'avatar (renvoie le fichier binaire, pas du JSON).
+ * À utiliser pour l'affichage quand avatar_url est une URL publique Supabase avatars.
+ * @param publicUrl - URL publique ou chemin (userId/avatar.png)
+ * @param expiresInSeconds - validité en secondes (défaut 1h)
+ */
+export const getSignedAvatarDisplayUrl = async (
+  publicUrl: string | null | undefined,
+  expiresInSeconds = 3600
+): Promise<string | null> => {
+  if (!publicUrl) return null;
+  if (publicUrl.startsWith('data:')) return null;
+
+  let path: string | null = null;
+  if (isSupabasePublicAvatarUrl(publicUrl)) {
+    path = getAvatarStoragePathFromPublicUrl(publicUrl);
+  } else if (!publicUrl.startsWith('http') && publicUrl.includes('/')) {
+    path = publicUrl; // déjà un chemin
+  }
+
+  if (!path) return getAvatarDisplayUrl(publicUrl);
+
+  const { data, error } = await supabase.storage.from('avatars').createSignedUrl(path, expiresInSeconds);
+  if (error) {
+    console.warn('[Avatar] createSignedUrl failed:', error.message);
+    return getAvatarDisplayUrl(publicUrl);
+  }
+  return data?.signedUrl ?? getAvatarDisplayUrl(publicUrl);
 };
 
 /**

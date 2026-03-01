@@ -325,9 +325,9 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
               </div>
             )}
 
-            {/* IA Aurora + Import buttons */}
+            {/* IA Aurora + Import buttons - IA Aurora commenté pour désactivation temporaire */}
             <div className="flex gap-2 pt-2 border-t border-border">
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={handleAIGenerate}
@@ -336,7 +336,7 @@ const PoloObjectives: React.FC<PoloObjectivesProps> = ({ userId, objectives, isE
               >
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
                 {t('aiAurora')}
-              </Button>
+              </Button> */}
               <Button
                 variant="outline"
                 size="sm"

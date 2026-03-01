@@ -680,6 +680,7 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
             <div className="space-y-1.5 sm:space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs sm:text-sm font-medium">{t("description")}</Label>
+                {/* IA Aurora - commenté pour désactivation temporaire
                 <Button
                   type="button"
                   variant="ghost"
@@ -695,6 +696,7 @@ export const FamilyCommitments = ({ commitments, isEditable = false, onUpdate }:
                   )}
                   {t("ai")}
                 </Button>
+                */}
               </div>
               <Textarea
                 value={formData.description || ""}

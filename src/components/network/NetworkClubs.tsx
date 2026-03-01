@@ -266,10 +266,12 @@ export const NetworkClubs = ({ data, isEditable, onUpdate }: NetworkClubsProps) 
               />
             </div>
             <div className="flex justify-between pt-4">
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button variant="outline" onClick={handleAISuggest} disabled={isGenerating}>
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
                 {t('auroraSuggestion')}
               </Button>
+              */}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t('cancel')}</Button>
                 <Button onClick={handleSave} disabled={isLoading}>

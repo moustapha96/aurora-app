@@ -296,7 +296,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
           </div>
 
           {editable && (
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
               {onThumbnailChange && (
                 <>
                   <input
@@ -331,6 +331,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
               >
                 <Maximize2 className="w-4 h-4" />
               </Button>
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button
                 variant="outline"
                 size="sm"
@@ -344,9 +345,9 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
                 ) : (
                   <Sparkles className="w-4 h-4 sm:mr-2" />
                 )}
-                {/* <span className="hidden sm:inline">{t("aiAurora")}</span> */}
                 <span className="hidden sm:inline">{t("ai")} </span>
               </Button>
+              */}
             </div>
           )}
         </CardHeader>
@@ -366,7 +367,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
           {/* Section Images */}
           {editable && onImagesChange && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Label className="text-sm font-medium text-gold/80">
                   {t("images") || "Images"} ({images.length}/10)
                 </Label>
@@ -376,7 +377,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
                     size="sm"
                     onClick={() => imagesInputRef.current?.click()}
                     disabled={isUploadingImages}
-                    className="border-gold/30 text-gold hover:bg-gold/10 h-8 text-xs"
+                    className="border-gold/30 text-gold hover:bg-gold/10 h-8 text-xs shrink-0"
                   >
                     {isUploadingImages ? (
                       <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -458,9 +459,9 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
       {/* Dialog plein écran */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full flex flex-col p-0 bg-background border-gold/20">
-          <DialogHeader className="px-6 py-4 border-b border-gold/10 flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-serif text-gold flex items-center gap-3">
+          <DialogHeader className="px-4 py-4 pl-4 pr-12 sm:px-6 sm:pr-14 border-b border-gold/10 flex-shrink-0">
+            <div className="flex items-center justify-between gap-4">
+              <DialogTitle className="text-xl font-serif text-gold flex items-center gap-3 min-w-0 flex-1">
                 {thumbnailUrl && (
                   <img 
                     src={thumbnailUrl} 
@@ -478,7 +479,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
                   {subtitle && <p className="text-sm text-gold/60 font-normal">{subtitle}</p>}
                 </div>
               </DialogTitle>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3 sm:gap-3 flex-shrink-0">
                 {editable && onThumbnailChange && (
                   <>
                     <input
@@ -493,7 +494,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploadingThumbnail}
-                      className="border-gold/30 text-gold hover:bg-gold/10"
+                      className="border-gold/30 text-gold hover:bg-gold/10 min-w-[min-content]"
                     >
                       {isUploadingThumbnail ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -504,23 +505,25 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
                     </Button>
                   </>
                 )}
+                {/* IA Aurora - commenté pour désactivation temporaire
                 {editable && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleAISuggest}
                     disabled={isGenerating}
-                    className="border-gold/30 text-gold hover:bg-gold/10"
+                    className="border-gold/30 text-gold hover:bg-gold/10 min-w-[min-content]"
                     title={t("aiAurora")}
                   >
                     {isGenerating ? (
                       <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
                     ) : (
-                      <Sparkles className="w-4 h-4 sm:mr-2" />
+                      <Sparkles className="w-4 h-4" />
                     )}
                     <span className="hidden sm:inline">{t("aiAurora")}</span>
                   </Button>
                 )}
+                */}
               </div>
             </div>
           </DialogHeader>
@@ -537,7 +540,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
                 {/* Section Images dans le Dialog */}
                 {onImagesChange && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <Label className="text-sm font-medium text-gold/80">
                         {t("images") || "Images"} ({images.length}/10)
                       </Label>
@@ -547,7 +550,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
                           size="sm"
                           onClick={() => imagesInputRef.current?.click()}
                           disabled={isUploadingImages}
-                          className="border-gold/30 text-gold hover:bg-gold/10 h-8 text-xs"
+                          className="border-gold/30 text-gold hover:bg-gold/10 h-8 text-xs shrink-0"
                         >
                           {isUploadingImages ? (
                             <Loader2 className="w-3 h-3 mr-1 animate-spin" />

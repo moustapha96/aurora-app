@@ -128,8 +128,27 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
     }
     setIsGenerating(true);
     try {
+      // Contexte explicite pour que l'IA reste dans l'occupation (titre/fonction) saisie par l'utilisateur
+      const occupationContext = formData.title?.trim()
+        ? [
+            `${t('fullName')}: ${formData.member_name}`,
+            `${t('titleFunction')} (occupation): ${formData.title}`,
+            formData.generation ? `${t('generation')}: ${formData.generation}` : null,
+            formData.origin_location ? `${t('origin')}: ${formData.origin_location}` : null,
+            formData.birth_year ? `${t('birthYear')}: ${formData.birth_year}` : null,
+          ].filter(Boolean).join(". ")
+        : [
+            `${t('fullName')}: ${formData.member_name}`,
+            formData.generation ? `${t('generation')}: ${formData.generation}` : null,
+            formData.origin_location ? `${t('origin')}: ${formData.origin_location}` : null,
+          ].filter(Boolean).join(". ");
+      const instruction = formData.title?.trim()
+        ? ` ${t('lineageAIOccupationInstruction') || "Rédige une description centrée uniquement sur son parcours et son rôle professionnel (titre/fonction indiqué), sans t'écarter de ce contexte."}`
+        : "";
+      const currentContent = occupationContext + instruction;
+
       const { data, error } = await supabase.functions.invoke('family-ai-suggest', {
-        body: { moduleType: 'lineage', context: `${formData.member_name} ${formData.title || ''} ${formData.generation || ''}` }
+        body: { module: 'lineage', currentContent }
       });
       if (error) throw error;
       if (data?.suggestion) {
@@ -293,93 +312,120 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
               <div className="h-px flex-1 bg-gold/20" />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {members.map((member, idx) => (
                 <div 
                   key={member.id || idx} 
-                  className="relative p-3 bg-gold/5 rounded-lg border border-gold/10 flex gap-3 hover:border-gold/20 transition-colors"
+                  className="relative p-4 bg-gold/5 rounded-xl border border-gold/10 hover:border-gold/20 transition-colors flex flex-col gap-3"
                 >
                   {isEditable && member.id && (
                     <button
                       onClick={(e) => handleDelete(e, member.id!)}
-                      className="absolute top-2 right-2 p-1 rounded-full bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
+                      className="absolute top-3 right-3 p-1.5 rounded-full bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors z-10"
                       title={t('delete')}
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  
-                  {member.image_url && (
-                    <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border border-gold/20">
-                      <img 
-                        src={member.image_url} 
-                        alt={member.member_name}
-                        className="w-full h-full object-cover"
-                      />
+
+                  <div className="flex gap-3 min-w-0">
+                    {/* Avatar : image ou placeholder */}
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-gold/20 bg-muted/30 flex items-center justify-center">
+                      {member.image_url ? (
+                        <img
+                          src={member.image_url}
+                          alt={member.member_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-7 h-7 sm:w-8 sm:h-8 text-muted-foreground" />
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 pr-8">
+                      {isEditable && member.id ? (
+                        <>
+                          <p className="font-semibold text-foreground text-sm sm:text-base">
+                            <InlineEditableField
+                              value={member.member_name}
+                              onSave={(v) => updateField(member.id!, "member_name", v)}
+                              placeholder={t('name')}
+                            />
+                          </p>
+                          <p className="text-sm text-gold/90 mt-0.5">
+                            <InlineEditableField
+                              value={member.title || ""}
+                              onSave={(v) => updateField(member.id!, "title", v)}
+                              placeholder={t('titleFunction')}
+                              className="text-sm"
+                            />
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
+                              <InlineEditableField
+                                value={member.origin_location || ""}
+                                onSave={(v) => updateField(member.id!, "origin_location", v)}
+                                placeholder={t('origin')}
+                                className="text-xs"
+                              />
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3 flex-shrink-0" />
+                              <InlineEditableField
+                                value={member.birth_year || ""}
+                                onSave={(v) => updateField(member.id!, "birth_year", v)}
+                                placeholder={t('year')}
+                                className="text-xs"
+                              />
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-semibold text-foreground text-sm sm:text-base">{member.member_name}</p>
+                          {member.title && (
+                            <p className="text-sm text-gold/90 mt-0.5">{member.title}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+                            {member.origin_location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                {member.origin_location}
+                              </span>
+                            )}
+                            {member.birth_year && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3 flex-shrink-0" />
+                                {member.birth_year}
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {(member.description || (isEditable && member.id)) && (
+                    <div className="border-t border-gold/10 pt-3 mt-0">
+                      {isEditable && member.id ? (
+                        <div className="text-xs sm:text-sm text-muted-foreground">
+                          <InlineEditableField
+                            value={member.description || ""}
+                            onSave={(v) => updateField(member.id!, "description", v)}
+                            placeholder={t('description')}
+                            multiline
+                            className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap block w-full"
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                          {member.description}
+                        </p>
+                      )}
                     </div>
                   )}
-                  <div className="flex-1 min-w-0 pr-6">
-                    {isEditable && member.id ? (
-                      <>
-                        <p className="font-medium text-foreground">
-                          <InlineEditableField
-                            value={member.member_name}
-                            onSave={(v) => updateField(member.id!, "member_name", v)}
-                            placeholder={t('name')}
-                          />
-                        </p>
-                        <p className="text-sm text-gold/80">
-                          <InlineEditableField
-                            value={member.title || ""}
-                            onSave={(v) => updateField(member.id!, "title", v)}
-                            placeholder={t('titleFunction')}
-                            className="text-sm"
-                          />
-                        </p>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 flex-shrink-0" />
-                            <InlineEditableField
-                              value={member.origin_location || ""}
-                              onSave={(v) => updateField(member.id!, "origin_location", v)}
-                              placeholder={t('origin')}
-                              className="text-xs"
-                            />
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3 flex-shrink-0" />
-                            <InlineEditableField
-                              value={member.birth_year || ""}
-                              onSave={(v) => updateField(member.id!, "birth_year", v)}
-                              placeholder={t('year')}
-                              className="text-xs"
-                            />
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-medium text-foreground truncate">{member.member_name}</p>
-                        {member.title && (
-                          <p className="text-sm text-gold/80">{member.title}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          {member.origin_location && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {member.origin_location}
-                            </span>
-                          )}
-                          {member.birth_year && (
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {member.birth_year}
-                            </span>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
                 </div>
               ))}
             </div>
@@ -516,6 +562,7 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
 
           <div className="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-0 pt-2 sm:pt-3 border-t border-gold/20">
             <div className="flex gap-1 sm:gap-2 justify-center sm:justify-start">
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button 
                 variant="outline" 
                 size="sm"
@@ -526,6 +573,7 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
                 {isGenerating ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
                 {t('aiAurora')}
               </Button>
+              */}
               <Button 
                 variant="outline" 
                 size="sm"

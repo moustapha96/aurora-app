@@ -373,6 +373,7 @@ export const LineageEditor = ({ entries, onUpdate }: LineageEditorProps) => {
 
           <div className="flex items-center justify-between pt-4 border-t border-gold/10 mt-4">
             <div className="flex gap-2">
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button
                 type="button"
                 variant="outline"
@@ -388,6 +389,7 @@ export const LineageEditor = ({ entries, onUpdate }: LineageEditorProps) => {
                 )}
                 {t('aiAurora')}
               </Button>
+              */}
               <Button
                 type="button"
                 variant="outline"

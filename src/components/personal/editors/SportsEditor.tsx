@@ -179,47 +179,48 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
+      <DialogContent className="w-[95vw] sm:w-full max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-background border border-gold/30 p-4 sm:p-6" data-scroll>
         <DialogHeader>
-          <DialogTitle className="text-base sm:text-lg">{sport?.id ? t("editSport") : t("addSport")}</DialogTitle>
+          <DialogTitle className="text-base sm:text-lg font-semibold text-foreground">{sport?.id ? t("editSport") : t("addSport")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm">{t("title")} *</Label>
+              <Label className="text-sm font-medium text-foreground">{t("title")} *</Label>
               <Input 
                 {...register("title", { required: true })} 
                 value={watch("sport_type") === "meditation" ? t('personalSportLabel_meditation_default') : ""}
                 placeholder=""
-                className="text-sm"
+                className="text-sm sm:text-base text-foreground bg-muted/30 border-gold/20 placeholder:text-muted-foreground"
               />
             </div>
             <div>
-              <Label className="text-sm">{t("subtitle")}</Label>
+              <Label className="text-sm font-medium text-foreground">{t("subtitle")}</Label>
               <Input 
                 {...register("subtitle")} 
                 placeholder=""
-                className="text-sm"
+                className="text-sm sm:text-base text-foreground bg-muted/30 border-gold/20 placeholder:text-muted-foreground"
               />
             </div>
           </div>
           <div>
-            <Label className="text-sm">{t("badgeLevel")}</Label>
+            <Label className="text-sm font-medium text-foreground">{t("badgeLevel")}</Label>
             <Input 
               {...register("badge_text")} 
               placeholder=""
-              className="text-sm"
+              className="text-sm sm:text-base text-foreground bg-muted/30 border-gold/20 placeholder:text-muted-foreground"
             />
           </div>
           <div>
-            <Label className="text-sm">{t("description")}</Label>
+            <Label className="text-sm font-medium text-foreground">{t("description")}</Label>
             <Textarea 
               {...register("description")} 
               placeholder=""
               rows={4} 
-              className="text-sm min-h-[100px]"
+              className="text-sm sm:text-base text-foreground bg-muted/30 border-gold/20 min-h-[100px] placeholder:text-muted-foreground"
             />
             <div className="flex flex-col sm:flex-row gap-2 mt-2">
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button
                 type="button"
                 variant="outline"
@@ -231,6 +232,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
                 {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                 {t("aiAurora")}
               </Button>
+              */}
               {/* <Button
                 type="button"
                 variant="outline"
@@ -256,13 +258,13 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
             </div>
           </div>
           <div>
-            <Label className="text-sm">{t("photo")}</Label>
+            <Label className="text-sm font-medium text-foreground">{t("photo")}</Label>
             <input
               type="file"
               accept="image/*"
               onChange={handleImageUpload}
               disabled={uploading}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="flex h-10 w-full rounded-md border border-gold/20 bg-muted/30 px-3 py-2 text-sm text-foreground"
             />
             {watch("image_url") && (
               <div className="relative mt-2">

@@ -257,6 +257,7 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
               />
             </div>
             <div className="flex flex-col sm:flex-row justify-between gap-2 pt-4">
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button
                 variant="outline"
                 onClick={handleAISuggest}
@@ -271,6 +272,7 @@ export const NetworkPhilanthropy = ({ data, isEditable, onUpdate }: NetworkPhila
                 )}
                 {t('networkModuleAISuggestButton')}
               </Button>
+              */}
               <div className="flex flex-col sm:flex-row gap-2 justify-end w-full sm:w-auto">
                 <Button
                   variant="outline"

@@ -1,7 +1,7 @@
 // React and UI Components
 import React, { useState, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
-import { User, Briefcase, Trash2, Plus, Sparkles, Loader2, FileText, ImagePlus, X } from "lucide-react";
+import { User, Briefcase, Trash2, Plus, Sparkles, Loader2, FileText, ImagePlus, X, Maximize2, Image as ImageIcon, Quote, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -84,6 +84,82 @@ function MemberImage({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+// Avatar rond pour la liste style Influential : image ou placeholder User, avec fallback erreur.
+function CloseMemberAvatar({
+  src,
+  alt,
+  isEditable,
+  onPhotoClick,
+  onRemovePhoto,
+  isUploading,
+}: {
+  src: string | null;
+  alt: string;
+  isEditable?: boolean;
+  onPhotoClick?: () => void;
+  onRemovePhoto?: (e: React.MouseEvent) => void;
+  isUploading?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  const showImage = src && !failed;
+  const wrapperClass = "w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-gold/20 bg-gold/10 flex items-center justify-center";
+  const clickable = isEditable && (onPhotoClick || onRemovePhoto);
+
+  if (showImage) {
+    return (
+      <div className={`relative ${wrapperClass} ${clickable ? "cursor-pointer group" : ""}`} onClick={isEditable ? onPhotoClick : undefined} role={isEditable ? "button" : undefined}>
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-full object-cover object-center"
+          loading="lazy"
+          decoding="async"
+          crossOrigin={isExternalUrl(src) ? "anonymous" : undefined}
+          referrerPolicy={isExternalUrl(src) ? "no-referrer" : undefined}
+          onError={() => setFailed(true)}
+        />
+        {isEditable && (
+          <>
+            {isUploading ? (
+              <span className="absolute inset-0 flex items-center justify-center bg-background/60">
+                <Loader2 className="w-6 h-6 animate-spin text-gold" />
+              </span>
+            ) : (
+              <>
+                <span className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                {onRemovePhoto && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onRemovePhoto(e); }}
+                    className="absolute top-0.5 right-0.5 p-1 rounded-full bg-destructive/90 hover:bg-destructive text-destructive-foreground transition-colors"
+                    title="Retirer la photo"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`${wrapperClass} ${clickable ? "cursor-pointer hover:bg-gold/20 transition-colors" : ""}`}
+      onClick={isEditable ? onPhotoClick : undefined}
+      role={isEditable ? "button" : undefined}
+      title={isEditable ? "Ajouter une photo" : undefined}
+    >
+      {isUploading ? (
+        <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 text-gold animate-spin" />
+      ) : (
+        <User className="w-5 h-5 sm:w-6 sm:h-6 text-gold/60" />
+      )}
+    </div>
+  );
+}
+
 export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: FamilyCloseMembersProps) => {
   console.log("members", members);
   const { t } = useLanguage();
@@ -95,8 +171,74 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [textPopup, setTextPopup] = useState<{ title: string; content: string } | null>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const memberPhotoInputRef = useRef<HTMLInputElement>(null);
+  const memberIdForPhotoRef = useRef<string | null>(null);
+  const [memberPhotoUploadingId, setMemberPhotoUploadingId] = useState<string | null>(null);
+
+  const TRUNCATE_LENGTH = 100;
+
+  const handleExistingMemberPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const memberId = memberIdForPhotoRef.current;
+    e.target.value = "";
+    memberIdForPhotoRef.current = null;
+    if (!file || !memberId) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("pleaseSelectImage") || "Veuillez sélectionner une image (JPG, PNG, etc.)");
+      return;
+    }
+    setMemberPhotoUploadingId(memberId);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await updateField(memberId, "image_url", dataUrl);
+      toast.success(t("photoAdded") || "Photo ajoutée");
+      onUpdate?.();
+    } catch (err) {
+      toast.error(t("imageReadError") || "Impossible de lire l'image");
+    } finally {
+      setMemberPhotoUploadingId(null);
+    }
+  };
+
+  const triggerMemberPhotoInput = (memberId: string) => {
+    memberIdForPhotoRef.current = memberId;
+    memberPhotoInputRef.current?.click();
+  };
+
+  const openTextPopup = (title: string, content: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTextPopup({ title, content });
+  };
+
+  const renderClickableField = (content: string, title: string, className = "") => {
+    if (!content.trim()) return <span className={className}>—</span>;
+    const isLong = content.length > TRUNCATE_LENGTH;
+    const displayText = isLong ? `${content.slice(0, TRUNCATE_LENGTH)}…` : content;
+    return (
+      <button
+        type="button"
+        onClick={(e) => openTextPopup(title, content, e)}
+        className={`text-left cursor-pointer hover:text-gold focus:outline-none focus:ring-0 focus:underline inline-flex items-center gap-1.5 group min-h-0 py-0 px-0 bg-transparent border-0 font-inherit ${className}`}
+        title={t('viewFullText') || 'Voir le texte complet'}
+      >
+        <span className="min-w-0 truncate">{displayText}</span>
+        <Maximize2 className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 text-gold flex-shrink-0" aria-hidden />
+      </button>
+    );
+  };
+
+  const InfoRow = ({ label, value, popupTitle }: { label: string; value: string | undefined; popupTitle: string }) => {
+    if (value == null || value.trim() === "") return null;
+    return (
+      <div className="flex flex-col gap-0.5 py-1.5 border-b border-gold/10 last:border-0">
+        <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-gold/80">{label}</span>
+        {renderClickableField(value, popupTitle, "text-sm text-foreground")}
+      </div>
+    );
+  };
 
   // Handle document import using centralized utility - ensures correct RLS path: {userId}/documents/{timestamp}.{ext}
   const handleDocImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,16 +282,27 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
     }
   };
 
-  const updateField = async (memberId: string, field: keyof CloseFamilyMember, value: string) => {
+  const updateField = async (memberId: string, field: keyof CloseFamilyMember, value: string | null) => {
     try {
       const { error } = await supabase
         .from("family_close")
-        .update({ [field]: value || null })
+        .update({ [field]: value ?? null })
         .eq("id", memberId);
       if (error) throw error;
       onUpdate?.();
     } catch (error: any) {
       toast.error(error.message);
+    }
+  };
+
+  const handleRemoveMemberPhoto = async (memberId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(t('removePhotoConfirm') || "Retirer la photo de ce membre ?")) return;
+    try {
+      await updateField(memberId, "image_url", null);
+      toast.success(t('photoRemoved') || "Photo retirée");
+    } catch {
+      // error already shown in updateField
     }
   };
 
@@ -266,96 +419,143 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
           {/* {t('noCloseFamilyMemberEntered')} */}
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3 sm:space-y-4">
           {members.map((member, idx) => {
             const imageSrc = getMemberImageSrc(member.image_url);
             return (
-            <div 
-              key={member.id || idx}
-              className="relative overflow-hidden rounded-lg border border-gold/20 bg-gradient-to-br from-gold/5 to-transparent"
-            >
-              {isEditable && member.id && (
-                <button
-                  onClick={(e) => handleDelete(member.id!, e)}
-                  className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <div className="aspect-[4/5] relative">
-                {imageSrc ? (
-                  <div className="absolute inset-0">
-                    <MemberImage src={imageSrc} alt={member.member_name} />
-                  </div>
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gold/5">
-                    <User className="w-16 h-16 text-gold/20" />
-                  </div>
+              <div
+                key={member.id || idx}
+                className="relative flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 sm:p-4 bg-gold/5 rounded-lg border border-gold/10 hover:border-gold/20 transition-colors"
+              >
+                {isEditable && member.id && (
+                  <button
+                    onClick={(e) => handleDelete(member.id!, e)}
+                    className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 p-2 sm:p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 )}
-                
-                <div className="absolute bottom-0 left-0 right-0 p-4">
+
+                <CloseMemberAvatar
+                  src={imageSrc}
+                  alt={member.member_name}
+                  isEditable={isEditable && !!member.id}
+                  onPhotoClick={member.id ? () => triggerMemberPhotoInput(member.id!) : undefined}
+                  onRemovePhoto={member.id && imageSrc ? (e) => handleRemoveMemberPhoto(member.id!, e) : undefined}
+                  isUploading={memberPhotoUploadingId === member.id}
+                />
+
+                <div className="flex-1 min-w-0 pr-0 sm:pr-8">
                   {isEditable && member.id ? (
                     <>
-                      <Badge variant="outline" className="mb-2 border-gold/40 text-gold bg-background/80 backdrop-blur-sm">
-                        <InlineEditableField
-                          value={member.relation_type}
-                          onSave={(v) => updateField(member.id!, "relation_type", v)}
-                          placeholder={t('relation')}
-                          className="text-xs"
-                        />
-                      </Badge>
-                      <h4 className="font-semibold text-foreground text-lg">
-                        <InlineEditableField
-                          value={member.member_name}
-                          onSave={(v) => updateField(member.id!, "member_name", v)}
-                          placeholder={t('name')}
-                        />
-                      </h4>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                        <Briefcase className="w-3 h-3 flex-shrink-0" />
-                        <InlineEditableField
-                          value={member.occupation || ""}
-                          onSave={(v) => updateField(member.id!, "occupation", v)}
-                          placeholder={t('occupation')}
-                          className="text-sm"
-                        />
-                      </p>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        <InlineEditableField
-                          value={member.description || ""}
-                          onSave={(v) => updateField(member.id!, "description", v)}
-                          placeholder={t('description')}
-                          className="text-xs"
-                          multiline
-                        />
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-wrap">
+                        <h4 className="font-semibold text-foreground">
+                          <InlineEditableField
+                            value={member.member_name}
+                            onSave={(v) => updateField(member.id!, "member_name", v)}
+                            placeholder={t("name")}
+                          />
+                        </h4>
+                        <Badge variant="outline" className="border-gold/30 text-gold text-xs w-fit">
+                          <InlineEditableField
+                            value={member.relation_type}
+                            onSave={(v) => updateField(member.id!, "relation_type", v)}
+                            placeholder={t("relation")}
+                            className="text-xs"
+                          />
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs w-fit">
+                          <InlineEditableField
+                            value={member.occupation || ""}
+                            onSave={(v) => updateField(member.id!, "occupation", v)}
+                            placeholder={t("occupation")}
+                            className="text-xs"
+                          />
+                        </Badge>
+                      </div>
+                      {(member.birth_year != null && member.birth_year !== "") && (
+                        <p className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                          <Calendar className="w-3 h-3 flex-shrink-0" />
+                          <InlineEditableField
+                            value={member.birth_year}
+                            onSave={(v) => updateField(member.id!, "birth_year", v)}
+                            placeholder={t("birthYear")}
+                            className="text-xs"
+                          />
+                        </p>
+                      )}
+                      <div className="mt-2 flex gap-2">
+                        <Quote className="w-4 h-4 text-gold/40 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-muted-foreground italic min-w-0">
+                          <InlineEditableField
+                            value={member.description || ""}
+                            onSave={(v) => updateField(member.id!, "description", v)}
+                            placeholder={t("description")}
+                            className="text-sm whitespace-pre-wrap block w-full"
+                            multiline
+                          />
+                        </div>
                       </div>
                     </>
                   ) : (
                     <>
-                      <Badge variant="outline" className="mb-2 border-gold/40 text-gold bg-background/80 backdrop-blur-sm">
-                        {member.relation_type}
-                      </Badge>
-                      <h4 className="font-semibold text-foreground text-lg">{member.member_name}</h4>
-                      {member.occupation && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <Briefcase className="w-3 h-3" />
-                          {member.occupation}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-wrap">
+                        <h4 className="font-semibold text-foreground">{member.member_name}</h4>
+                        {member.relation_type && (
+                          <Badge variant="outline" className="border-gold/30 text-gold text-xs w-fit">
+                            {member.relation_type}
+                          </Badge>
+                        )}
+                        {member.occupation && (
+                          <Badge variant="secondary" className="text-xs w-fit">
+                            {member.occupation}
+                          </Badge>
+                        )}
+                      </div>
+                      {member.birth_year && (
+                        <p className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                          <Calendar className="w-3 h-3 flex-shrink-0" />
+                          {member.birth_year}
                         </p>
                       )}
-                      {member.description && (
-                        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                          {member.description}
-                        </p>
-                      )}
+                      {(member.description && member.description.trim()) ? (
+                        <div className="mt-2 flex gap-2">
+                          <Quote className="w-4 h-4 text-gold/40 flex-shrink-0 mt-0.5" />
+                          {member.description.length > TRUNCATE_LENGTH ? (
+                            <button
+                              type="button"
+                              onClick={(e) => openTextPopup(`${t("description")} — ${member.member_name}`, member.description!, e)}
+                              className="text-left text-sm text-muted-foreground italic hover:text-foreground transition-colors inline-flex items-start gap-1.5 group"
+                              title={t("viewFullText") || "Voir le texte complet"}
+                            >
+                              <span className="line-clamp-2">
+                                {member.description.slice(0, TRUNCATE_LENGTH)}…
+                              </span>
+                              <Maximize2 className="w-3.5 h-3.5 text-gold/70 group-hover:text-gold flex-shrink-0 mt-0.5" aria-hidden />
+                            </button>
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic whitespace-pre-wrap">
+                              {member.description}
+                            </p>
+                          )}
+                        </div>
+                      ) : null}
                     </>
                   )}
                 </div>
               </div>
-            </div>
-          );
+            );
           })}
         </div>
       )}
+
+      <input
+        ref={memberPhotoInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        className="hidden"
+        onChange={handleExistingMemberPhotoChange}
+      />
 
       <Dialog open={newDialogOpen} onOpenChange={(open) => { setNewDialogOpen(open); if (!open) clearImage(); }}>
         <DialogContent className="w-[95vw] max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-background border border-gold/20 p-0" data-scroll>
@@ -468,6 +668,7 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
             <div className="flex flex-col gap-2 sm:gap-3">
               {/* Boutons d'action secondaires */}
               <div className="flex gap-2 w-full">
+                {/* IA Aurora - commenté pour désactivation temporaire
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -495,6 +696,7 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
                   <span className="hidden sm:inline">{t('aiAurora')}</span>
                   <span className="sm:hidden">{t('ai')}</span>
                 </Button>
+                */}
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -528,6 +730,24 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
               </div>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Popup pour afficher le texte complet de n'importe quel champ */}
+      <Dialog open={!!textPopup} onOpenChange={(open) => !open && setTextPopup(null)}>
+        <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[85vh] overflow-y-auto bg-background border border-gold/20 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-gold pr-8 text-base sm:text-lg">
+              {textPopup?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {textPopup && (
+            <div className="rounded-xl bg-muted/20 border border-gold/10 p-5 sm:p-6">
+              <p className="text-sm sm:text-base text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                {textPopup.content.trim() || "—"}
+              </p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

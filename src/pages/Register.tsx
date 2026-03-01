@@ -134,7 +134,7 @@ const Register = () => {
 
     setCheckingReferralCode(true);
     try {
-      // Use secure RPC function to validate referral code without exposing profile data
+      // Valide à la fois profiles.referral_code et single_use_invitation_codes (codes créés sur la page Parrainage)
       const { data, error } = await supabase
         .rpc('validate_referral_code', { code: trimmedCode });
 
@@ -148,7 +148,7 @@ const Register = () => {
 
       if (data && data.length > 0 && data[0].is_valid) {
         setReferralCodeValid(true);
-        setValidatedCode(trimmedCode); // Stocker le code validé
+        setValidatedCode(trimmedCode);
         toast.success(t('referralCodeValid'));
       } else {
         setReferralCodeValid(false);
@@ -543,13 +543,34 @@ const Register = () => {
       if (formData.referralCode) {
         try {
           // Trouver le parrain à partir du code de parrainage
+          const trimmedCode = formData.referralCode.trim();
+          let sponsorId: string | null = null;
+          let singleUseCodeId: string | null = null;
+
           const { data: sponsorProfile } = await supabase
             .from('profiles')
             .select('id')
-            .eq('referral_code', formData.referralCode)
+            .eq('referral_code', trimmedCode)
             .maybeSingle();
 
           if (sponsorProfile) {
+            sponsorId = sponsorProfile.id;
+          } else {
+            const { data: singleUseRow } = await (supabase as any)
+              .from('single_use_invitation_codes')
+              .select('id, user_id')
+              .eq('invitation_code', trimmedCode)
+              .eq('is_active', true)
+              .eq('is_used', false)
+              .maybeSingle();
+
+            if (singleUseRow) {
+              sponsorId = singleUseRow.user_id;
+              singleUseCodeId = singleUseRow.id;
+            }
+          }
+
+          if (sponsorId) {
             // Si inscription via lien de parrainage → validation manuelle requise
             // Si inscription via code manuel → auto-approbation
             const requiresSponsorApproval = Boolean(usedReferralLink);
@@ -558,9 +579,9 @@ const Register = () => {
             const { error: referralError } = await supabase
               .from('referrals')
               .insert({
-                sponsor_id: sponsorProfile.id,
+                sponsor_id: sponsorId,
                 referred_id: authData.user.id,
-                referral_code: formData.referralCode,
+                referral_code: trimmedCode,
                 status: 'pending',
                 sponsor_approved: autoApproved,
                 sponsor_approved_at: autoApproved ? new Date().toISOString() : null
@@ -570,6 +591,16 @@ const Register = () => {
               console.error('Error creating referral entry:', referralError);
             } else {
               console.log('Referral entry created successfully');
+            }
+
+            if (singleUseCodeId) {
+              const { error: markError } = await supabase.rpc('mark_invitation_code_used', {
+                code_id_param: singleUseCodeId,
+                used_by_param: authData.user.id
+              });
+              if (markError) {
+                console.error('Error marking invitation code as used:', markError);
+              }
             }
           }
         } catch (error) {
@@ -632,6 +663,17 @@ const Register = () => {
       }));
       // S'assurer que l'état d'attente n'est pas défini
       sessionStorage.removeItem('waitingForSponsorApproval');
+      
+      // Si la vérification Veriff est désactivée, rediriger directement vers la page login
+      const { data: veriffSetting } = await supabase
+        .from('admin_settings')
+        .select('setting_value')
+        .eq('setting_key', 'veriff_required_after_registration')
+        .maybeSingle();
+      if (veriffSetting?.setting_value === 'false') {
+        navigate('/login', { replace: true });
+        return;
+      }
       
       // Passer à l'étape de vérification après inscription réussie (seulement si sponsor a approuvé)
       setRegistrationStep('verification');
@@ -718,6 +760,16 @@ const Register = () => {
               className="text-gold/60 hover:text-gold hover:bg-gold/10"
             >
               ✕ {t('quit')}
+            </Button>
+          )}
+          {registrationStep === 'verification' && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => navigate("/login")}
+              className="text-gold/60 hover:text-gold hover:bg-gold/10"
+            >
+              ← {t('backToLogin')}
             </Button>
           )}
         </div>

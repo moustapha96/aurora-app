@@ -743,6 +743,7 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
                       toast.success(t("documentImportedAnalysisInProgress"))
                     }
                   /> */}
+                  {/* IA Aurora - commenté pour désactivation temporaire
                   <Button
                     type="button"
                     variant="ghost"
@@ -758,6 +759,7 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
                     )}
                     {t("ai")}
                   </Button>
+                  */}
                 </div>
               </div>
               <Textarea

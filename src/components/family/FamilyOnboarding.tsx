@@ -18,13 +18,14 @@ export const FamilyOnboarding = ({ onSelectMode }: FamilyOnboardingProps) => {
       icon: FileText,
       color: "text-blue-400"
     },
+    /* IA Aurora - commenté pour désactivation temporaire
     {
       id: "ai",
       title: t("aiSuggestions"),
       description: t("familyAISuggestionsDesc"),
       icon: Sparkles,
       color: "text-gold"
-    },
+    }, */,
     {
       id: "concierge",
       title: t("privateConcierge"),

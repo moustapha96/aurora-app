@@ -324,23 +324,25 @@ const FamilySocial = () => {
                 </div>
               )}
             />
+            <div className="col-span-1 lg:col-span-2">
 
-            {/* Module 2: Famille proche */}
-            <FamilyModule
-              title={t('closeFamily')}
-              icon={<Users className="w-5 h-5" />}
-              moduleType="family_text"
-              content={familyContent.family_text || ""}
-              isEditable={isOwnProfile}
-              onUpdate={loadAllContent}
-              renderContent={() => (
-                <FamilyCloseMembers
-                  members={closeMembers}
-                  isEditable={isOwnProfile}
-                  onUpdate={loadAllContent}
-                />
-              )}
-            />
+              {/* Module 2: Famille proche */}
+              <FamilyModule
+                title={t('closeFamily')}
+                icon={<Users className="w-5 h-5" />}
+                moduleType="family_text"
+                content={familyContent.family_text || ""}
+                isEditable={isOwnProfile}
+                onUpdate={loadAllContent}
+                renderContent={() => (
+                  <FamilyCloseMembers
+                    members={closeMembers}
+                    isEditable={isOwnProfile}
+                    onUpdate={loadAllContent}
+                  />
+                )}
+              />
+            </div>
 
             {/* Module 3: Personnes marquantes */}
             <FamilyModule
@@ -412,7 +414,7 @@ const FamilySocial = () => {
               />
             </div>
 
-            {/* Module 7: Parrainage - Full Width */}
+            {/* Module 7: Parrainage - une colonne (pas pleine largeur) */}
             {isOwnProfile && profileId && (
               <div className="col-span-1 lg:col-span-2">
                 <FamilyModule
@@ -432,18 +434,16 @@ const FamilySocial = () => {
                 />
               </div>
             )}
-
-
           </div>
-
-          {/* Documents Section - Owner only */}
-          {isOwnProfile && (
-            <div className="mt-8 space-y-6">
-              <FamilyAudio isOwnProfile={isOwnProfile} />
-              <FamilyDocuments isOwnProfile={isOwnProfile} />
-            </div>
-          )}
         </div>
+
+        {/* Documents Section - Owner only */}
+        {isOwnProfile && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-6 sm:pb-8 space-y-6">
+            <FamilyAudio isOwnProfile={isOwnProfile} />
+            <FamilyDocuments isOwnProfile={isOwnProfile} />
+          </div>
+        )}
       </div>
     </>
   );

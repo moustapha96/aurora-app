@@ -1088,7 +1088,7 @@ const EditProfile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user && user.id === event.detail.userId) {
         try {
-          const { cleanAvatarUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+          const { cleanAvatarUrl, getSignedAvatarDisplayUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
           const cleanUrl = cleanAvatarUrl(event.detail.avatarUrl);
 
           if (ignoreAvatarUpdatedForUrlRef.current === cleanUrl) {
@@ -1097,8 +1097,8 @@ const EditProfile = () => {
           }
 
           setUploadedAvatarUrl(cleanUrl);
-          const avatarUrlWithCache = getAvatarDisplayUrl(cleanUrl) || cleanUrl;
-        
+          const signed = await getSignedAvatarDisplayUrl(cleanUrl);
+          const avatarUrlWithCache = signed || getAvatarDisplayUrl(cleanUrl) || cleanUrl;
           setAvatarUrl(avatarUrlWithCache);
           setImageError(false);
         } catch (error) {
@@ -1183,12 +1183,11 @@ const EditProfile = () => {
         let avatarUrlWithCache = "";
         if (data.avatar_url) {
           try {
-            const { cleanAvatarUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
-            console.log('data.avatar_url', data.avatar_url);
+            const { cleanAvatarUrl, getSignedAvatarDisplayUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
             const cleanUrl = cleanAvatarUrl(data.avatar_url);
             setUploadedAvatarUrl(cleanUrl);
-            const displayUrl = getAvatarDisplayUrl(cleanUrl);
-            avatarUrlWithCache = displayUrl || cleanUrl;
+            const signed = await getSignedAvatarDisplayUrl(cleanUrl);
+            avatarUrlWithCache = signed || getAvatarDisplayUrl(cleanUrl) || cleanUrl;
           } catch (error) {
             const cleanUrl = data.avatar_url.split('?')[0];
             setUploadedAvatarUrl(cleanUrl);
@@ -1215,9 +1214,10 @@ const EditProfile = () => {
     return formData[fieldName] !== initialData[fieldName];
   };
 
-  // Gestion du changement d'avatar
+  // Gestion du changement d'avatar (même logique que MemberCard / FamilyCloseMembers)
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
 
     if (avatarUrl && avatarUrl.startsWith('blob:')) {
@@ -1291,8 +1291,10 @@ const EditProfile = () => {
       setUploadedAvatarUrl(cleanAvatarUrl);
       if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
 
-      const displayAvatarUrl = getAvatarDisplayUrl(cleanAvatarUrl);
-      setAvatarUrl(displayAvatarUrl || `${cleanAvatarUrl}?t=${Date.now()}`);
+      const { getSignedAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+      const signed = await getSignedAvatarDisplayUrl(cleanAvatarUrl);
+      const displayAvatarUrl = signed || getAvatarDisplayUrl(cleanAvatarUrl) || `${cleanAvatarUrl}?t=${Date.now()}`;
+      setAvatarUrl(displayAvatarUrl);
       setImageError(false);
       setRetryCount(0);
 
@@ -1300,12 +1302,13 @@ const EditProfile = () => {
       dispatchAvatarUpdate(cleanAvatarUrl, user.id);
 
       toast.success(t('profilePhotoUpdated'));
-      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error('Erreur dans uploadAndUpdateAvatar:', error);
       toast.error(t('photoUpdateError'));
-      setUploading(false);
       if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -1398,9 +1401,9 @@ const EditProfile = () => {
       if (privateError) throw privateError;
 
       if (finalAvatarUrl) {
-        const { getAvatarDisplayUrl, dispatchAvatarUpdate } = await import('@/lib/avatarUtils');
-        const displayAvatarUrl = getAvatarDisplayUrl(finalAvatarUrl);
-        setAvatarUrl(displayAvatarUrl || `${finalAvatarUrl}?t=${Date.now()}`);
+        const { getSignedAvatarDisplayUrl, getAvatarDisplayUrl, dispatchAvatarUpdate } = await import('@/lib/avatarUtils');
+        const signed = await getSignedAvatarDisplayUrl(finalAvatarUrl);
+        setAvatarUrl(signed || getAvatarDisplayUrl(finalAvatarUrl) || `${finalAvatarUrl}?t=${Date.now()}`);
         setUploadedAvatarUrl(finalAvatarUrl);
         setImageError(false);
         ignoreAvatarUpdatedForUrlRef.current = finalAvatarUrl;
@@ -1474,20 +1477,21 @@ const EditProfile = () => {
                   >
                     
 
-                    {avatarUrl ? (
+                    {avatarUrl && !imageError ? (
                       <img
                         src={avatarUrl}
                         alt={t('avatarPreview')}
                         className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
                         loading="eager"
-                        crossOrigin="anonymous"
+                        crossOrigin={avatarUrl.startsWith('http') ? 'anonymous' : undefined}
+                        referrerPolicy={avatarUrl.startsWith('http') ? 'no-referrer' : undefined}
                         onError={async () => {
-                          if (retryCount < 1 && uploadedAvatarUrl && !uploadedAvatarUrl.startsWith('blob:')) {
+                          if (retryCount < 1 && uploadedAvatarUrl && !uploadedAvatarUrl.startsWith('blob:') && !uploadedAvatarUrl.startsWith('data:')) {
                             try {
                               const { getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
                               const retryUrl = getAvatarDisplayUrl(uploadedAvatarUrl);
                               if (retryUrl) {
-                                setRetryCount(prev => prev + 1);
+                                setRetryCount((prev) => prev + 1);
                                 setTimeout(() => setAvatarUrl(retryUrl), 300);
                                 return;
                               }
@@ -1495,6 +1499,7 @@ const EditProfile = () => {
                               console.error('Erreur retry avatar:', error);
                             }
                           }
+                          setImageError(true);
                         }}
                         onLoad={() => {
                           setImageError(false);

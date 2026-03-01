@@ -540,6 +540,23 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
                 {t('add')}
               </Button>
             )}
+            {isEditable && isCustomized && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(t('deleteThisSport') || t('delete') + ' ?')) {
+                    handleDeactivateSport(sport.type);
+                  }
+                }}
+                className="gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                title={t('delete')}
+              >
+                <Trash2 className="w-4 h-4" />
+                {t('delete')}
+              </Button>
+            )}
             <button onClick={() => handleToggleSport(sport.type)}>
               {isExpanded ? (
                 <ChevronUp className="h-5 w-5 text-muted-foreground" />

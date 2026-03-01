@@ -179,6 +179,7 @@ export const LuxeEditor = ({ open, onOpenChange, entry, onSave, defaultCategory 
           <div>
             <Label>{t("description")}</Label>
             <Textarea {...register("description")} placeholder={t("describeYourAffinityWithLuxury")} rows={4} />
+            {/* IA Aurora - commenté pour désactivation temporaire
             <Button
               type="button"
               variant="outline"
@@ -190,6 +191,7 @@ export const LuxeEditor = ({ open, onOpenChange, entry, onSave, defaultCategory 
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {t("aiSuggestion")}
             </Button>
+            */}
           </div>
           <div>
             <Label>{t("photo")}</Label>

@@ -352,6 +352,7 @@ export const CloseFamilyEditor = ({ members, onUpdate }: CloseFamilyEditorProps)
                     className="hidden"
                     onChange={() => toast({ title: "Document importé - Analyse en cours..." })}
                   />
+                  {/* IA Aurora - commenté pour désactivation temporaire
                   <Button
                     type="button"
                     variant="ghost"
@@ -367,6 +368,7 @@ export const CloseFamilyEditor = ({ members, onUpdate }: CloseFamilyEditorProps)
                     )}
                     <span className="hidden sm:inline">IA</span>
                   </Button>
+                  */}
                 </div>
               </div>
               <Textarea 

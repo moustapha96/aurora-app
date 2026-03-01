@@ -120,6 +120,7 @@ export const PersonalModule = ({
               className="resize-none"
             />
             <div className="flex items-center justify-between">
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button
                 type="button"
                 variant="outline"
@@ -134,6 +135,7 @@ export const PersonalModule = ({
                 )}
                 Suggestion IA
               </Button>
+              */}
               <div className="flex gap-2">
                 <Button
                   type="button"

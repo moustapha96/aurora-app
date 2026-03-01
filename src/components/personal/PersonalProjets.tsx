@@ -115,19 +115,21 @@ export const PersonalProjets = ({ entries, isEditable, onDataChange }: PersonalP
     })();
 
     return (
-      <div key={category}>
+      <div key={category} className="border-b border-gold/10 last:border-b-0 pb-2 last:pb-0">
         <button 
           onClick={() => handleCategoryClick(category)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full group py-1"
+          className="flex items-center gap-3 text-left w-full group py-2.5 rounded-lg hover:bg-gold/5 transition-colors"
         >
           {isExpanded ? (
-            <ChevronDown className="w-3.5 h-3.5" />
+            <ChevronDown className="w-5 h-5 text-gold shrink-0" />
           ) : (
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-5 h-5 text-gold shrink-0" />
           )}
-          <span className="text-sm">{label}</span>
+          <span className="text-base sm:text-lg font-semibold text-foreground flex-1">{label}</span>
           {categoryEntries.length > 0 && (
-            <span className="text-xs text-muted-foreground">({categoryEntries.length})</span>
+            <span className="text-base sm:text-lg font-bold text-gold tabular-nums min-w-[1.5rem] text-right">
+              {categoryEntries.length}
+            </span>
           )}
         </button>
         {isExpanded && (
@@ -172,6 +174,7 @@ export const PersonalProjets = ({ entries, isEditable, onDataChange }: PersonalP
     );
   };
 
+  
   return (
     <PersonalModule
       title={t('personalProjectsTitle')}

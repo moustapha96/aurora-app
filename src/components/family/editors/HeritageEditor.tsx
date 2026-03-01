@@ -132,6 +132,7 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <Label>Valeurs transmises</Label>
+                {/* IA Aurora - commenté pour désactivation temporaire
                 <Button
                   type="button"
                   variant="ghost"
@@ -147,6 +148,7 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
                   )}
                   IA
                 </Button>
+                */}
               </div>
               <Textarea 
                 value={formData.values_text} 
@@ -159,6 +161,7 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <Label>Vision de transmission</Label>
+                {/* IA Aurora - commenté pour désactivation temporaire
                 <Button
                   type="button"
                   variant="ghost"
@@ -174,6 +177,7 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
                   )}
                   IA
                 </Button>
+                */}
               </div>
               <Textarea 
                 value={formData.legacy_vision} 
@@ -186,6 +190,7 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <Label>Description de l'héritage</Label>
+                {/* IA Aurora - commenté pour désactivation temporaire
                 <Button
                   type="button"
                   variant="ghost"
@@ -201,6 +206,7 @@ export const HeritageEditor = ({ heritage, onUpdate }: HeritageEditorProps) => {
                   )}
                   IA
                 </Button>
+                */}
               </div>
               <Textarea 
                 value={formData.heritage_description} 

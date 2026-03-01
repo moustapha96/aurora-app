@@ -242,6 +242,7 @@ export const ProjetsEditor = ({ open, onOpenChange, entry, onSave }: ProjetsEdit
               rows={3}
             />
             <div className="flex gap-2 mt-2">
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button
                 type="button"
                 variant="outline"
@@ -253,6 +254,7 @@ export const ProjetsEditor = ({ open, onOpenChange, entry, onSave }: ProjetsEdit
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {t("aiAurora")}
               </Button>
+              */}
               {/* <Button
                 type="button"
                 variant="outline"

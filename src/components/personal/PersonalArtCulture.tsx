@@ -150,19 +150,21 @@ export const PersonalArtCulture = ({ entries, isEditable, onDataChange }: Person
     const isExpanded = selectedCategory === category;
 
     return (
-      <div key={category}>
+      <div key={category} className="border-b border-gold/10 last:border-b-0 pb-2 last:pb-0">
         <button 
           onClick={() => handleCategoryClick(category)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors w-full group py-1"
+          className="flex items-center gap-3 text-left w-full group py-2.5 rounded-lg hover:bg-gold/5 transition-colors"
         >
           {isExpanded ? (
-            <ChevronDown className="w-3.5 h-3.5" />
+            <ChevronDown className="w-5 h-5 text-gold shrink-0" />
           ) : (
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-5 h-5 text-gold shrink-0" />
           )}
-          <span className="text-sm">{getCategoryLabel(category)}</span>
+          <span className="text-base sm:text-lg font-semibold text-foreground flex-1">{getCategoryLabel(category)}</span>
           {items.length > 0 && (
-            <span className="text-xs text-muted-foreground">({items.length})</span>
+            <span className="text-base sm:text-lg font-bold text-gold tabular-nums min-w-[1.5rem] text-right">
+              {items.length}
+            </span>
           )}
         </button>
         {isExpanded && (

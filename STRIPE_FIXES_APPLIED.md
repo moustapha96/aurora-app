@@ -15,7 +15,7 @@
 
 ### 2. **RLS Policies** ✅
 
-**Migration créée :** `supabase/migrations/20260128000000_fix_marketplace_payments_rls.sql`
+**Migration créée :** `supabase/migrations/20250128000000_fix_marketplace_payments_rls.sql`
 
 **Améliorations :**
 - ✅ Policy pour permettre aux acheteurs d'insérer leurs propres paiements
@@ -60,7 +60,7 @@
 
 ### 📋 Appliquer la Migration
 
-1. **Exécutez la migration** `20260128000000_fix_marketplace_payments_rls.sql`
+1. **Exécutez la migration** `20250128000000_fix_marketplace_payments_rls.sql`
    - Via Supabase Dashboard > SQL Editor
    - Ou via CLI : `supabase db push`
 

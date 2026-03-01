@@ -194,6 +194,7 @@ export const ArtCultureEditor = ({ open, onOpenChange, entry, onSave, defaultCat
             <Label>{t("description")}</Label>
             <Textarea {...register("description")} placeholder={t("describeYourArtisticPassion")} rows={4} />
             <div className="flex gap-2 mt-2">
+              {/* IA Aurora - commenté pour désactivation temporaire
               <Button
                 type="button"
                 variant="outline"
@@ -205,6 +206,7 @@ export const ArtCultureEditor = ({ open, onOpenChange, entry, onSave, defaultCat
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {t("aiAurora")}
               </Button>
+              */}
               {/* <Button
                 type="button"
                 variant="outline"
