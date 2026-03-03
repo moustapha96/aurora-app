@@ -84,9 +84,18 @@ const EditProfile = () => {
     const handleAvatarUpdate = async (event: CustomEvent<{ avatarUrl: string; userId: string }>) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user && user.id === event.detail.userId) {
+        const url = event.detail.avatarUrl;
+        // If it's a base64 string (from MemberCard), update directly
+        if (url.startsWith('data:')) {
+          setProfileImageBase64(url);
+          setAvatarUrl(url);
+          setUploadedAvatarUrl("");
+          setImageError(false);
+          return;
+        }
         try {
           const { cleanAvatarUrl, getSignedAvatarDisplayUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
-          const cleanUrl = cleanAvatarUrl(event.detail.avatarUrl);
+          const cleanUrl = cleanAvatarUrl(url);
 
           if (ignoreAvatarUpdatedForUrlRef.current === cleanUrl) {
             ignoreAvatarUpdatedForUrlRef.current = null;
@@ -99,7 +108,7 @@ const EditProfile = () => {
           setAvatarUrl(avatarUrlWithCache);
           setImageError(false);
         } catch (error) {
-          const cleanUrl = event.detail.avatarUrl.split('?')[0];
+          const cleanUrl = url.split('?')[0];
           setUploadedAvatarUrl(cleanUrl);
           setAvatarUrl(`${cleanUrl}?t=${Date.now()}`);
         }

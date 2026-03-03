@@ -6,7 +6,7 @@ ADD COLUMN IF NOT EXISTS account_number TEXT UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_profiles_account_number ON public.profiles(account_number);
 
 -- Function to generate account number: AU + sequential_number (3 digits) + month (2 digits) + year (2 digits)
--- Format: AU0010126 = AU + 001 (first user) + 01 (January) + 26 (2025)
+-- Format: AU0010126 = AU + 001 (first user) + 01 (January) + 26 (2026)
 CREATE OR REPLACE FUNCTION public.generate_account_number()
 RETURNS TEXT
 LANGUAGE plpgsql

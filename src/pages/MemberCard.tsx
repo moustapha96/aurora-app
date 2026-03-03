@@ -316,6 +316,10 @@ const MemberCard = () => {
             setProfile((prev: any) => (prev ? { ...prev, avatar_url: compressedBase64 } : prev));
             setImageError(false);
             toast.success(t('photoUpdated'));
+            // Dispatch event so other pages (EditProfile, Profile) stay in sync
+            window.dispatchEvent(new CustomEvent('avatar-updated', {
+              detail: { avatarUrl: compressedBase64, userId: user.id }
+            }));
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
           };

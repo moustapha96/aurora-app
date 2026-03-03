@@ -388,33 +388,33 @@ Deno.serve(async (req) => {
         }
 
         // Add sports hobbies
-        if (content.sports_hobbies) {
-          for (let i = 0; i < content.sports_hobbies.length; i++) {
+        if ((content as any).sports_hobbies) {
+          for (let i = 0; i < (content as any).sports_hobbies.length; i++) {
             await supabaseAdmin.from('sports_hobbies').insert({
               user_id: userId,
               display_order: i,
-              ...content.sports_hobbies[i]
+              ...(content as any).sports_hobbies[i]
             })
           }
         }
 
         // Add curated sports
-        if (content.curated_sports) {
-          for (let i = 0; i < content.curated_sports.length; i++) {
+        if ((content as any).curated_sports) {
+          for (let i = 0; i < (content as any).curated_sports.length; i++) {
             await supabaseAdmin.from('curated_sports').insert({
               user_id: userId,
-              ...content.curated_sports[i]
+              ...(content as any).curated_sports[i]
             })
           }
         }
 
         // Add artwork collection
-        if (content.artwork_collection) {
-          for (let i = 0; i < content.artwork_collection.length; i++) {
+        if ((content as any).artwork_collection) {
+          for (let i = 0; i < (content as any).artwork_collection.length; i++) {
             await supabaseAdmin.from('artwork_collection').insert({
               user_id: userId,
               display_order: i,
-              ...content.artwork_collection[i]
+              ...(content as any).artwork_collection[i]
             })
           }
         }

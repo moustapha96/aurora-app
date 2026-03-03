@@ -164,12 +164,12 @@ serve(async (req) => {
       accountId: account.id,
       productsCount: products.data.length,
       pricesCount: prices.data.length,
-      products: products.data.map(p => ({
+      products: products.data.map((p: any) => ({
         id: p.id,
         name: p.name,
         active: p.active
       })),
-      prices: prices.data.map(p => ({
+      prices: prices.data.map((p: any) => ({
         id: p.id,
         product: p.product,
         unit_amount: p.unit_amount,
