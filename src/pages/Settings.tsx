@@ -346,7 +346,7 @@ const Settings = () => {
           <IdentityVerification onVerificationChange={loadSettings} />
 
           {/* Biometric Authentication - Link to dedicated page */}
-          <Card>
+          {/* <Card>
             <CardContent>
               <Button 
                 variant="outline" 
@@ -357,7 +357,7 @@ const Settings = () => {
                 {t('manageBiometric')}
               </Button>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Security */}
           <Card>
