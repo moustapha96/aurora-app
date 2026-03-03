@@ -121,7 +121,7 @@ serve(async (req) => {
     // Fetch profiles by email
     const { data: profiles } = await supabaseClient
       .from('profiles')
-      .select('id, first_name, last_name, email, avatar_url')
+      .select('id, first_name, last_name, email, avatar_url, profile_image_base64')
       .in('email', emails);
 
     const profileMap = new Map<string, { id: string; first_name: string; last_name: string; avatar_url: string | null }>();
@@ -132,7 +132,7 @@ serve(async (req) => {
             id: profile.id,
             first_name: profile.first_name || '',
             last_name: profile.last_name || '',
-            avatar_url: profile.avatar_url,
+            avatar_url: (profile as any).profile_image_base64 || profile.avatar_url,
           });
         }
       }

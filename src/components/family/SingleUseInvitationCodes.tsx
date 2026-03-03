@@ -93,12 +93,12 @@ export const SingleUseInvitationCodes = ({ isEditable = false, userId, onUpdate,
         if (usedByIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, avatar_url')
+            .select('id, first_name, last_name, avatar_url, profile_image_base64')
             .in('id', usedByIds);
           
           if (profiles) {
-            profilesMap = profiles.reduce((acc: Record<string, UsedByProfile>, p: UsedByProfile) => {
-              acc[p.id] = p;
+            profilesMap = profiles.reduce((acc: Record<string, UsedByProfile>, p: any) => {
+              acc[p.id] = { ...p, avatar_url: p.profile_image_base64 || p.avatar_url };
               return acc;
             }, {});
           }

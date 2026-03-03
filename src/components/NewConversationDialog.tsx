@@ -77,7 +77,7 @@ export const NewConversationDialog = ({ onConversationCreated }: NewConversation
       // Load friend profiles
       let query = supabase
         .from("profiles")
-        .select("id, first_name, last_name, avatar_url")
+        .select("id, first_name, last_name, avatar_url, profile_image_base64")
         .in("id", friendIds);
 
       if (searchQuery.trim()) {
@@ -231,7 +231,7 @@ export const NewConversationDialog = ({ onConversationCreated }: NewConversation
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer transition-colors"
                   >
                     <Avatar>
-                      <AvatarImage src={member.avatar_url} />
+                      <AvatarImage src={(member as any).profile_image_base64 || member.avatar_url} />
                       <AvatarFallback>
                         <User className="h-5 w-5" />
                       </AvatarFallback>

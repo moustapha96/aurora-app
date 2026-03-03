@@ -435,7 +435,7 @@ const AdminMembers = () => {
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10">
-                              <AvatarImage src={member.avatar_url || undefined} />
+                              <AvatarImage src={(member as any).profile_image_base64 || member.avatar_url || undefined} />
                               <AvatarFallback className="bg-primary/10 text-primary">
                                 {member.first_name?.[0]}{member.last_name?.[0]}
                               </AvatarFallback>

@@ -60,7 +60,7 @@ const MemberLanding = () => {
         // Fetch member profile (public data only)
         const { data: memberData, error: memberError } = await supabase
           .from('profiles')
-          .select('first_name, last_name, avatar_url, country, activity_domain, job_function, personal_quote')
+          .select('first_name, last_name, avatar_url, profile_image_base64, country, activity_domain, job_function, personal_quote')
           .eq('id', memberId)
           .maybeSingle();
 
@@ -80,7 +80,8 @@ const MemberLanding = () => {
 
         // For landing pages, wealth display is optional and user-controlled
         // We set it to undefined - the user can't show wealth on public pages for security
-        setMember({ ...memberData, wealth_billions: undefined });
+        const avatarToUse = (memberData as any).profile_image_base64 || memberData.avatar_url;
+        setMember({ ...memberData, avatar_url: avatarToUse, wealth_billions: undefined });
 
         // Fetch landing preferences
         const { data: prefsData, error: prefsError } = await supabase

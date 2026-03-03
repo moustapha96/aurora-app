@@ -677,15 +677,18 @@ export const FamilyLinkInvite = ({ isEditable = false, onUpdate }: FamilyLinkInv
 
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("id, first_name, last_name, avatar_url")
+          .select("id, first_name, last_name, avatar_url, profile_image_base64")
           .in("id", linkedUserIds);
 
         if (profilesError) throw profilesError;
 
-        const accountsWithProfiles = accounts.map((account: any) => ({
-          ...account,
-          linked_profile: profiles?.find((p: any) => p.id === account.linked_user_id),
-        }));
+        const accountsWithProfiles = accounts.map((account: any) => {
+          const profile = profiles?.find((p: any) => p.id === account.linked_user_id);
+          return {
+            ...account,
+            linked_profile: profile ? { ...profile, avatar_url: profile.profile_image_base64 || profile.avatar_url } : undefined,
+          };
+        });
 
         setLinkedAccounts(accountsWithProfiles);
       } else {

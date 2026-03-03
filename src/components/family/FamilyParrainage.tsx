@@ -235,7 +235,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
         (referralsData || []).map(async (ref: any) => {
           const { data: refProfile, error: profileError } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, avatar_url, created_at')
+            .select('id, first_name, last_name, avatar_url, profile_image_base64, created_at')
             .eq('id', ref.referred_id)
             .maybeSingle();
 
@@ -253,7 +253,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
             rejection_reason: ref.rejection_reason,
             created_at: ref.created_at,
             // On garde même si le profil n'existe pas encore : le parrain doit tout de même voir la demande
-            referred_profile: refProfile || null
+            referred_profile: refProfile ? { ...refProfile, avatar_url: (refProfile as any).profile_image_base64 || refProfile.avatar_url } : null
           };
         })
       );
@@ -288,10 +288,10 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
             if (code.is_used && code.used_by) {
               const { data: profile } = await supabase
                 .from('profiles')
-                .select('first_name, last_name, avatar_url')
+                .select('first_name, last_name, avatar_url, profile_image_base64')
                 .eq('id', code.used_by)
                 .maybeSingle();
-              return { ...code, used_by_profile: profile };
+              return { ...code, used_by_profile: profile ? { ...profile, avatar_url: (profile as any).profile_image_base64 || profile.avatar_url } : null };
             }
             return { ...code, used_by_profile: null };
           })
@@ -318,7 +318,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
       const searchTerm = searchEmail.trim();
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, username')
+        .select('id, first_name, last_name, avatar_url, profile_image_base64, username')
         .or(`username.ilike.%${searchTerm}%,first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`)
         .limit(10);
 
@@ -326,11 +326,12 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
 
       if (profiles && profiles.length > 0) {
         if (profiles.length === 1) {
-          setFoundUser(profiles[0]);
+          setFoundUser({ ...profiles[0], avatar_url: (profiles[0] as any).profile_image_base64 || profiles[0].avatar_url });
         } else {
           // Si plusieurs résultats, prendre le premier qui correspond exactement au username
           const exactMatch = profiles.find(p => p.username?.toLowerCase() === searchTerm.toLowerCase());
-          setFoundUser(exactMatch || profiles[0]);
+          const selected = exactMatch || profiles[0];
+          setFoundUser({ ...selected, avatar_url: (selected as any).profile_image_base64 || selected.avatar_url });
           if (profiles.length > 1) {
             toast.info(t('multipleResultsFoundFirstSelected').replace('{count}', profiles.length.toString()));
           }

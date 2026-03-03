@@ -44,7 +44,7 @@ const AdminRoles = () => {
     try {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, job_function')
+        .select('id, first_name, last_name, avatar_url, profile_image_base64, job_function')
         .order('first_name');
 
       if (profilesError) throw profilesError;
@@ -242,7 +242,7 @@ const AdminRoles = () => {
                     >
                       <div className="flex items-center gap-4">
                         <Avatar className="h-12 w-12">
-                          <AvatarImage src={user.avatar_url || undefined} />
+                          <AvatarImage src={(user as any).profile_image_base64 || user.avatar_url || undefined} />
                           <AvatarFallback className="bg-primary/10 text-primary">
                             {user.first_name?.[0]}{user.last_name?.[0]}
                           </AvatarFallback>
