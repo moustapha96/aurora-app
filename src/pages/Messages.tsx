@@ -168,7 +168,7 @@ const Messages = () => {
             // Get the other user's profile
             const { data: profile } = await supabase
               .from("profiles")
-              .select("first_name, last_name, avatar_url")
+              .select("first_name, last_name, avatar_url, profile_image_base64")
               .eq("id", otherUserId)
               .single();
 
@@ -183,7 +183,10 @@ const Messages = () => {
 
             return {
               ...conv,
-              other_user: profile,
+              other_user: profile ? {
+                ...profile,
+                avatar_url: (profile as any).profile_image_base64 || profile.avatar_url,
+              } : profile,
               last_message: lastMsg?.content,
             };
           }
@@ -215,10 +218,10 @@ const Messages = () => {
       const senderIds = [...new Set(messagesData?.map(m => m.sender_id) || [])];
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id, first_name, last_name, avatar_url")
+        .select("id, first_name, last_name, avatar_url, profile_image_base64")
         .in("id", senderIds);
 
-      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+      const profilesMap = new Map(profilesData?.map(p => [p.id, { ...p, avatar_url: (p as any).profile_image_base64 || p.avatar_url }]) || []);
 
       const messagesWithProfiles = messagesData?.map(msg => ({
         ...msg,
@@ -250,14 +253,17 @@ const Messages = () => {
         async (payload) => {
           const { data: profileData } = await supabase
             .from("profiles")
-            .select("first_name, last_name, avatar_url")
+            .select("first_name, last_name, avatar_url, profile_image_base64")
             .eq("id", payload.new.sender_id)
             .single();
 
           const newMessage = {
             ...payload.new,
-            profiles: profileData,
-          } as Message;
+            profiles: profileData ? {
+              ...profileData,
+              avatar_url: (profileData as any).profile_image_base64 || profileData.avatar_url,
+            } : profileData,
+          } as unknown as Message;
 
           setMessages((prev) => [...prev, newMessage]);
         }

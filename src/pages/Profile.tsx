@@ -61,8 +61,10 @@ const Profile = () => {
         toast.error(t('errorLoadingProfile'));
       } else if (profileData) {
         console.log('[Profile] Profile loaded successfully');
-        // Add cache-buster to avatar URL for fresh display
-        if (profileData.avatar_url) {
+        // Priorité au base64 stocké en DB
+        if ((profileData as any).profile_image_base64) {
+          profileData.avatar_url = (profileData as any).profile_image_base64;
+        } else if (profileData.avatar_url) {
           const { getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
           profileData.avatar_url = getAvatarDisplayUrl(profileData.avatar_url) || profileData.avatar_url;
         }

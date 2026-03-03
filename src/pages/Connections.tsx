@@ -102,7 +102,7 @@ const Connections = () => {
       // Get profiles for all friends
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, first_name, last_name, avatar_url, job_function, country")
+        .select("id, first_name, last_name, avatar_url, profile_image_base64, job_function, country")
         .in("id", Array.from(friendIds));
 
       if (profilesError) throw profilesError;
@@ -114,7 +114,7 @@ const Connections = () => {
           friendId: profile.id,
           firstName: profile.first_name,
           lastName: profile.last_name,
-          avatarUrl: profile.avatar_url,
+          avatarUrl: (profile as any).profile_image_base64 || profile.avatar_url,
           jobFunction: profile.job_function,
           country: profile.country,
           createdAt: friendship.created_at,

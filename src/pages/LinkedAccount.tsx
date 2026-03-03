@@ -141,9 +141,9 @@ const LinkedAccount = () => {
         <div className="text-center space-y-4">
           <div className="flex justify-center">
             <div className="w-32 h-32 rounded-full bg-gold/20 flex items-center justify-center overflow-hidden border-2 border-gold/30">
-              {profile.avatar_url ? (
+              {(profile.profile_image_base64 || profile.avatar_url) ? (
                 <img 
-                  src={profile.avatar_url} 
+                  src={profile.profile_image_base64 || profile.avatar_url} 
                   alt={`${profile.first_name} ${profile.last_name}`}
                   className="w-full h-full object-cover"
                 />

@@ -258,8 +258,10 @@ const MemberCard = () => {
       setProfile(newProfile);
     } else {
       console.log('[MemberCard] Profile loaded:', data);
-      // URL signée pour l'affichage (évite le JSON métadonnées renvoyé par l'URL publique)
-      if (data.avatar_url) {
+      // Priorité au base64 stocké en DB
+      if ((data as any).profile_image_base64) {
+        data.avatar_url = (data as any).profile_image_base64;
+      } else if (data.avatar_url) {
         const { getSignedAvatarDisplayUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
         const signed = await getSignedAvatarDisplayUrl(data.avatar_url);
         data.avatar_url = signed || getAvatarDisplayUrl(data.avatar_url) || data.avatar_url;
@@ -275,7 +277,6 @@ const MemberCard = () => {
       const file = event.target.files?.[0];
       if (!file) return;
 
-      // Convert to base64 and verify
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64 = reader.result as string;
@@ -283,43 +284,44 @@ const MemberCard = () => {
         // Verify the image first
         const result = await verifyImage(base64);
 
-        // Only upload if verification passes or is a warning
         if (result && !result.isValid && !result.hasFace) {
           setUploading(false);
-          return; // Don't upload invalid images
+          return;
         }
 
-        // Proceed with upload using shared utility
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error(t('notAuthenticated'));
 
-          const { uploadAvatar, dispatchAvatarUpdate, getSignedAvatarDisplayUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
-          
-          const cleanUrl = await uploadAvatar(user.id, base64);
-          
-          if (!cleanUrl) {
-            throw new Error(t('uploadError'));
-          }
+          // Compression via canvas avant sauvegarde en base64
+          const img = new Image();
+          img.onload = async () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = 400;
+            canvas.height = 400;
+            const ctx = canvas.getContext("2d");
+            ctx?.drawImage(img, 0, 0, 400, 400);
+            const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
 
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ avatar_url: cleanUrl })
-            .eq('id', user.id);
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({
+                profile_image_base64: compressedBase64,
+                avatar_url: null,
+              })
+              .eq('id', user.id);
 
-          if (updateError) throw updateError;
+            if (updateError) throw updateError;
 
-          const displayUrl = await getSignedAvatarDisplayUrl(cleanUrl) || getAvatarDisplayUrl(cleanUrl) || cleanUrl;
-          setProfile((prev) => (prev ? { ...prev, avatar_url: displayUrl } : prev));
-          setImageError(false);
-
-          // Dispatch custom event for real-time sync
-          dispatchAvatarUpdate(cleanUrl, user.id);
-
-          toast.success(t('photoUpdated'));
+            setProfile((prev: any) => (prev ? { ...prev, avatar_url: compressedBase64 } : prev));
+            setImageError(false);
+            toast.success(t('photoUpdated'));
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+          };
+          img.src = base64;
         } catch (error: any) {
           toast.error(error.message || t('uploadError'));
-        } finally {
           setUploading(false);
           if (fileInputRef.current) fileInputRef.current.value = '';
         }

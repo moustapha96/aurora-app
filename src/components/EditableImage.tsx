@@ -15,6 +15,7 @@ interface EditableImageProps {
   storageFolder?: string;
   editable?: boolean;
   requireProfileVerification?: boolean; // New prop to enable AI verification
+  saveAsBase64?: boolean; // Si true, on enregistre la photo directement en base64
 }
 
 type VerificationStatus = 'idle' | 'verifying' | 'valid' | 'invalid' | 'warning';
@@ -34,7 +35,8 @@ export const EditableImage = ({
   alt = "Image",
   storageFolder = "personal-content",
   editable = true,
-  requireProfileVerification = false
+  requireProfileVerification = false,
+  saveAsBase64 = false
 }: EditableImageProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -65,21 +67,48 @@ export const EditableImage = ({
   const uploadFile = async (file: File) => {
     setUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      // Mode spécial: on enregistre l'image en base64 (par exemple pour la photo de profil)
+      if (saveAsBase64) {
+        let base64DataUrl: string;
 
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
-      
-      // Use centralized upload utility for consistent MIME type handling
-      const publicUrl = await uploadImage(storageFolder, filePath, file);
-      
-      if (!publicUrl) {
-        throw new Error("Upload failed");
+        if (pendingPreview) {
+          // On a déjà la version base64 utilisée pour la prévisualisation / vérification
+          base64DataUrl = pendingPreview;
+        } else {
+          // Sinon on lit le fichier ici
+          base64DataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const result = event.target?.result;
+              if (typeof result === "string") {
+                resolve(result);
+              } else {
+                reject(new Error("Impossible de lire le fichier en base64"));
+              }
+            };
+            reader.onerror = () => reject(new Error("Erreur de lecture du fichier"));
+            reader.readAsDataURL(file);
+          });
+        }
+
+        onSave(base64DataUrl);
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Non authentifié");
+
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        // Use centralized upload utility for consistent MIME type handling
+        const publicUrl = await uploadImage(storageFolder, filePath, file);
+        
+        if (!publicUrl) {
+          throw new Error("Upload failed");
+        }
+
+        // URL already has cache-buster from uploadImage
+        onSave(publicUrl);
       }
-
-      // URL already has cache-buster from uploadImage
-      onSave(publicUrl);
       setIsEditing(false);
       setPendingFile(null);
       setPendingPreview(null);

@@ -83,9 +83,9 @@ const MemberCard = ({ member, onClick, status, isSelected, t }: { member: Member
   // Create avatar URL with cache-buster
   const avatarSrc = React.useMemo(() => {
     if (!member.avatar_url) return null;
-    // Skip base64 images (shouldn't happen anymore)
+    // Base64 images are displayed directly
     if (member.avatar_url.startsWith('data:')) {
-      return null;
+      return member.avatar_url;
     }
     // Clean URL and add cache-buster to force refresh
     const cleanUrl = member.avatar_url.split('?')[0];
@@ -325,7 +325,7 @@ const Members = () => {
       // We'll paginate after client-side filtering
       let query = supabase
         .from('profiles')
-        .select('id, first_name, last_name, honorific_title, job_function, activity_domain, country, is_founder, is_patron, avatar_url, identity_verified', { count: 'exact' })
+        .select('id, first_name, last_name, honorific_title, job_function, activity_domain, country, is_founder, is_patron, avatar_url, profile_image_base64, identity_verified', { count: 'exact' })
         .neq('id', userId);
       
       // Apply server-side filters only
@@ -403,7 +403,7 @@ const Members = () => {
           industry: profile.activity_domain || 'N/A',
           location: profile.country || 'N/A',
           avatar: profile.first_name?.charAt(0) || 'M',
-          avatar_url: profile.avatar_url,
+          avatar_url: (profile as any).profile_image_base64 || profile.avatar_url,
           badge: badge,
           is_founder: profile.is_founder || false,
           is_patron: profile.is_patron || false,

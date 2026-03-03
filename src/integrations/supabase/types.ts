@@ -2333,6 +2333,7 @@ export type Database = {
           last_name: string
           linked_by_user_id: string | null
           personal_quote: string | null
+          profile_image_base64: string | null
           referral_code: string | null
           two_factor_enabled: boolean | null
           updated_at: string | null
@@ -2359,6 +2360,7 @@ export type Database = {
           last_name: string
           linked_by_user_id?: string | null
           personal_quote?: string | null
+          profile_image_base64?: string | null
           referral_code?: string | null
           two_factor_enabled?: boolean | null
           updated_at?: string | null
@@ -2385,6 +2387,7 @@ export type Database = {
           last_name?: string
           linked_by_user_id?: string | null
           personal_quote?: string | null
+          profile_image_base64?: string | null
           referral_code?: string | null
           two_factor_enabled?: boolean | null
           updated_at?: string | null
