@@ -307,6 +307,8 @@ const FamilySocial = () => {
 
 
             {/* Module 1: Lignée & Origines */}
+            <div className="col-span-1 lg:col-span-2">
+
             <FamilyModule
               title={t('lineageOrigins')}
               icon={<GitBranch className="w-5 h-5" />}
@@ -324,6 +326,7 @@ const FamilySocial = () => {
                 </div>
               )}
             />
+            </div>
             <div className="col-span-1 lg:col-span-2">
 
               {/* Module 2: Famille proche */}
@@ -345,6 +348,8 @@ const FamilySocial = () => {
             </div>
 
             {/* Module 3: Personnes marquantes */}
+            <div className="col-span-1 lg:col-span-2">
+
             <FamilyModule
               title={t('influentialPeople')}
               icon={<Star className="w-5 h-5" />}
@@ -360,8 +365,11 @@ const FamilySocial = () => {
                 />
               )}
             />
+            </div>
 
             {/* Module 4: Réseau clé / Board personnel */}
+            <div className="col-span-1 lg:col-span-2">
+
             <FamilyModule
               title={t('keyNetworkBoard')}
               icon={<Network className="w-5 h-5" />}
@@ -377,6 +385,9 @@ const FamilySocial = () => {
                 />
               )}
             />
+            </div>
+
+            <div className="col-span-1 lg:col-span-2">
 
             {/* Module 5: Engagements familiaux */}
             <FamilyModule
@@ -394,6 +405,7 @@ const FamilySocial = () => {
                 />
               )}
             />
+            </div>
 
             {/* Module 6: Héritage & Transmission - Full Width */}
             <div className="col-span-1 lg:col-span-2">

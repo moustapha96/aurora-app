@@ -629,15 +629,15 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
                       </Badge>
                     </div>
 
-                    {/* Citation */}
-                    <div className="mt-2 flex gap-2">
+                    {/* Citation (édition) */}
+                    <div className="mt-2 flex gap-2 items-start">
                       <Quote className="w-4 h-4 text-gold/40 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-muted-foreground italic">
+                      <div className="flex-1 min-w-0">
                         <InlineEditableField
                           value={person.description || ""}
                           onSave={(v) => updateField(person.id!, "description", v)}
                           placeholder={t("descriptionCitation")}
-                          className="text-sm"
+                          className="w-full text-sm"
                           multiline
                         />
                       </div>
@@ -660,9 +660,9 @@ export const FamilyInfluential = ({ people, isEditable = false, onUpdate }: Fami
                     </div>
 
                     {person.description && (
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-2 flex gap-2 items-start">
                         <Quote className="w-4 h-4 text-gold/40 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-muted-foreground italic">
+                        <p className="text-sm text-muted-foreground italic flex-1 min-w-0">
                           {person.description}
                         </p>
                       </div>

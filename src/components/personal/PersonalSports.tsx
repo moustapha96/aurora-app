@@ -148,47 +148,22 @@ export const PersonalSports = ({ sports, isEditable, onDataChange }: PersonalSpo
 
   const loadCustomizedSports = async (userId: string) => {
     try {
-      // Charger tous les sports de la base de données
-      const [poloProfile, poloHorses, poloAchievements, golfProfile, golfCourses, golfAchievements, sportsResult] = await Promise.all([
-        supabase.from('polo_profiles').select('level, handicap, club_name').eq('user_id', userId).maybeSingle(),
-        supabase.from('polo_horses').select('id').eq('user_id', userId).limit(1),
-        supabase.from('polo_achievements').select('id').eq('user_id', userId).limit(1),
-        supabase.from('golf_profiles').select('level, handicap, club_name').eq('user_id', userId).maybeSingle(),
-        supabase.from('golf_courses').select('id').eq('user_id', userId).limit(1),
-        supabase.from('golf_achievements').select('id').eq('user_id', userId).limit(1),
-        supabase.from('sports_hobbies').select('*').eq('user_id', userId).order('display_order'),
-      ]);
-
       const customized = new Set<CategoryType>();
       const dataMap = new Map<string, SportEntry>();
-      
-      // Polo est customisé seulement si des données réelles existent
-      const hasPoloData = poloProfile.data && (
-        poloProfile.data.level || 
-        poloProfile.data.handicap || 
-        poloProfile.data.club_name ||
-        (poloHorses.data && poloHorses.data.length > 0) ||
-        (poloAchievements.data && poloAchievements.data.length > 0)
-      );
-      if (hasPoloData) {
-        customized.add('polo');
-      }
-      
-      // Golf est customisé seulement si des données réelles existent
-      const hasGolfData = golfProfile.data && (
-        golfProfile.data.level || 
-        golfProfile.data.handicap || 
-        golfProfile.data.club_name ||
-        (golfCourses.data && golfCourses.data.length > 0) ||
-        (golfAchievements.data && golfAchievements.data.length > 0)
-      );
-      if (hasGolfData) {
-        customized.add('golf');
+
+      // Charger les sports personnalisés uniquement depuis sports_hobbies
+      const { data: sportsDataFromDb, error } = await supabase
+        .from('sports_hobbies')
+        .select('*')
+        .eq('user_id', userId)
+        .order('display_order');
+
+      if (error) {
+        throw error;
       }
 
-      // Charger les sports depuis sports_hobbies
-      if (sportsResult.data) {
-        sportsResult.data.forEach((s: any) => {
+      if (sportsDataFromDb) {
+        sportsDataFromDb.forEach((s: any) => {
           if (s.sport_type) {
             customized.add(s.sport_type as CategoryType);
             dataMap.set(s.sport_type, {

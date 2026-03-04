@@ -24,6 +24,9 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
   const [uploading, setUploading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [generating, setGenerating] = React.useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = React.useState<string | null>(null);
+  const [pendingImageFile, setPendingImageFile] = React.useState<File | null>(null);
+  const [imageRemoved, setImageRemoved] = React.useState(false);
   const { register, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: {
       id: "",
@@ -48,6 +51,9 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
           image_url: sport.image_url || "",
           sport_type: sport.sport_type || ""
         });
+        setImagePreviewUrl(sport.image_url || null);
+        setPendingImageFile(null);
+        setImageRemoved(false);
       } else {
         // Pour la méditation, définir le titre par défaut à "Méditation / Recueillement"
         const defaultTitle = defaultCategory === "meditation" 
@@ -62,56 +68,28 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
           image_url: "",
           sport_type: defaultCategory || ""
         });
+        setImagePreviewUrl(null);
+        setPendingImageFile(null);
+        setImageRemoved(false);
       }
     }
   }, [sport, reset, open, defaultCategory, t]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Ne plus uploader immédiatement : on prépare seulement l'image et on l'enverra au clic sur "Valider"
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error(t("notAuthenticated"));
-
-      const fileExt = file.name.split(".").pop()?.toLowerCase() || 'jpg';
-      const filePath = `${session.user.id}/sport-${Date.now()}.${fileExt}`;
-      
-      // Get correct MIME type
-      const mimeTypes: Record<string, string> = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp'
-      };
-      const contentType = mimeTypes[fileExt] || 'image/jpeg';
-      
-      // Create proper File object with correct MIME type
-      const properFile = new File([file], file.name, { 
-        type: contentType, 
-        lastModified: Date.now() 
-      });
-
-      const { error: uploadError } = await supabase.storage
-        .from("personal-content")
-        .upload(filePath, properFile, { contentType });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("personal-content")
-        .getPublicUrl(filePath);
-
-      setValue("image_url", publicUrl);
-      toast({ title: t("imageUploaded") });
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast({ title: t("uploadError"), variant: "destructive" });
-    } finally {
-      setUploading(false);
+    // Nettoyer l'ancien preview local si nécessaire
+    if (imagePreviewUrl && imagePreviewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreviewUrl);
     }
+
+    // Prévisualisation immédiate avec une URL locale, sans upload
+    const localPreviewUrl = URL.createObjectURL(file);
+    setImagePreviewUrl(localPreviewUrl);
+    setPendingImageFile(file);
+    setImageRemoved(false);
   };
 
   const handleAISuggest = async () => {
@@ -144,12 +122,55 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
         return;
       }
 
+      // Gestion de l'image : on n'uploade qu'au moment de la validation
+      let finalImageUrl: string | null = data.image_url || null;
+
+      try {
+        if (imageRemoved) {
+          finalImageUrl = null;
+        } else if (pendingImageFile) {
+          setUploading(true);
+
+          const fileExt = pendingImageFile.name.split(".").pop()?.toLowerCase() || 'jpg';
+          const filePath = `${session.user.id}/sport-${Date.now()}.${fileExt}`;
+          
+          const mimeTypes: Record<string, string> = {
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/gif',
+            'webp': 'image/webp'
+          };
+          const contentType = mimeTypes[fileExt] || 'image/jpeg';
+          
+          const properFile = new File([pendingImageFile], pendingImageFile.name, { 
+            type: contentType, 
+            lastModified: Date.now() 
+          });
+
+          const { error: uploadError } = await supabase.storage
+            .from("personal-content")
+            .upload(filePath, properFile, { contentType });
+
+          if (uploadError) throw uploadError;
+
+          const { data: publicUrlData } = supabase.storage
+            .from("personal-content")
+            .getPublicUrl(filePath);
+
+          finalImageUrl = publicUrlData.publicUrl || null;
+          setPendingImageFile(null);
+        }
+      } finally {
+        setUploading(false);
+      }
+
       const payload = {
         title: data.title,
         subtitle: data.subtitle,
         description: data.description,
         badge_text: data.badge_text,
-        image_url: data.image_url,
+        image_url: finalImageUrl,
         sport_type: data.sport_type
       };
 
@@ -188,8 +209,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
             <div>
               <Label className="text-sm font-medium text-foreground">{t("title")} *</Label>
               <Input 
-                {...register("title", { required: true })} 
-                value={watch("sport_type") === "meditation" ? t('personalSportLabel_meditation_default') : ""}
+                {...register("title", { required: true })}
                 placeholder=""
                 className="text-sm sm:text-base text-foreground bg-muted/30 border-gold/20 placeholder:text-muted-foreground"
               />
@@ -266,10 +286,10 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
               disabled={uploading}
               className="flex h-10 w-full rounded-md border border-gold/20 bg-muted/30 px-3 py-2 text-sm text-foreground"
             />
-            {watch("image_url") && (
+            {(imagePreviewUrl || watch("image_url")) && (
               <div className="relative mt-2">
                 <img 
-                  src={watch("image_url")} 
+                  src={imagePreviewUrl || watch("image_url")} 
                   alt="Preview" 
                   className="w-full h-32 sm:h-40 object-cover rounded-lg" 
                 />
@@ -278,7 +298,15 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
                   variant="destructive"
                   size="icon"
                   className="absolute top-2 right-2 h-6 w-6 sm:h-7 sm:w-7"
-                  onClick={() => setValue("image_url", "")}
+                  onClick={() => {
+                    setValue("image_url", "", { shouldDirty: true });
+                    if (imagePreviewUrl && imagePreviewUrl.startsWith("blob:")) {
+                      URL.revokeObjectURL(imagePreviewUrl);
+                    }
+                    setImagePreviewUrl(null);
+                    setPendingImageFile(null);
+                    setImageRemoved(true);
+                  }}
                 >
                   <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </Button>

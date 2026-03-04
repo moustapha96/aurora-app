@@ -34,6 +34,17 @@ const MAX_IMAGES = 10;
 const MAX_SIZE_MB = 2;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
+// Normalise une URL d'image projet (HTTP(S), data URL base64, ou chemin relatif)
+function getProjectImageSrc(url: string | undefined | null): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const s = String(url).trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
+}
+
 export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = ({
   projects,
   editable = true,
@@ -243,7 +254,11 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
     }
   };
 
-  const allImages = selectedProject ? [selectedProject.image_url, ...(selectedProject.images || [])].filter(Boolean) as string[] : [];
+  const allImages = selectedProject
+    ? ([selectedProject.image_url, ...(selectedProject.images || [])]
+        .map((u) => getProjectImageSrc(u))
+        .filter(Boolean) as string[])
+    : [];
 
   return (
     <>
@@ -276,7 +291,8 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {projects.map((project) => {
-                const thumbnail = project.image_url || project.images?.[0];
+                const rawThumb = project.image_url || project.images?.[0];
+                const thumbnail = getProjectImageSrc(rawThumb);
                 return (
                   <button
                     key={project.id}
@@ -284,7 +300,11 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
                     className="relative group aspect-square rounded-lg overflow-hidden border border-gold/20 bg-black/50 hover:border-gold/50 transition-all"
                   >
                     {thumbnail ? (
-                      <img src={thumbnail} alt={project.title} className="w-full h-full object-cover" />
+                      <img
+                        src={thumbnail}
+                        alt={project.title}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gold/5">
                         <FolderKanban className="w-8 h-8 text-gold/30" />

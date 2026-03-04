@@ -74,6 +74,19 @@ const Business = () => {
         .single();
 
       if (error) throw error;
+      // Harmoniser l'affichage de la photo de profil avec les autres pages
+      if ((profileData as any).profile_image_base64) {
+        // Priorité à l'image de profil stockée en base64
+        (profileData as any).avatar_url = (profileData as any).profile_image_base64;
+      } else if (profileData.avatar_url) {
+        try {
+          const { getSignedAvatarDisplayUrl, getAvatarDisplayUrl } = await import('@/lib/avatarUtils');
+          const signed = await getSignedAvatarDisplayUrl(profileData.avatar_url);
+          profileData.avatar_url = signed || getAvatarDisplayUrl(profileData.avatar_url) || profileData.avatar_url;
+        } catch {
+          // En cas d'erreur dans avatarUtils, on garde l'URL brute
+        }
+      }
       setProfile(profileData);
 
       // Load private data for wealth display (only for own profile)
@@ -147,7 +160,17 @@ const Business = () => {
         .select('*')
         .eq('user_id', profileId)
         .order('display_order');
-      setProjectsEntries(projects || []);
+      const normalizedProjects = (projects || []).map((p: any) => {
+        if (typeof p.images === "string") {
+          try {
+            p.images = JSON.parse(p.images);
+          } catch {
+            p.images = [];
+          }
+        }
+        return p;
+      });
+      setProjectsEntries(normalizedProjects);
 
     } catch (error) {
       console.error('Error loading profile:', error);

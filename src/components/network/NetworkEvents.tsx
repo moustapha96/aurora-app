@@ -245,7 +245,7 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
   return (
     <NetworkModule title={t('eventsInvitations')} icon={CalendarDays} moduleType="events" isEditable={isEditable}>
       {/* Private invitation notice */}
-      <div className="flex items-center gap-2 mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+      <div className="flex items-center gap-2 mb-4 p-3 ">
         <Lock className="w-4 h-4 text-primary flex-shrink-0" />
         <p className="text-sm text-muted-foreground italic">
           {t('privateEventsNote')}
