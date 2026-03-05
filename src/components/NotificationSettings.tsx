@@ -184,6 +184,7 @@ const NotificationSettings = () => {
             </div>
           </div>
           <Switch
+            className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
             checked={notificationsEnabled}
             onCheckedChange={(checked) => {
               if (checked) {
@@ -225,6 +226,7 @@ const NotificationSettings = () => {
                 </p>
               </div>
               <Switch
+                className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 checked={messageNotifs}
                 onCheckedChange={(value) => handleTogglePreference('messages', value)}
               />
@@ -238,6 +240,7 @@ const NotificationSettings = () => {
                 </p>
               </div>
               <Switch
+                className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 checked={connectionNotifs}
                 onCheckedChange={(value) => handleTogglePreference('connections', value)}
               />
@@ -251,6 +254,7 @@ const NotificationSettings = () => {
                 </p>
               </div>
               <Switch
+                className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 checked={eventNotifs}
                 onCheckedChange={(value) => handleTogglePreference('events', value)}
               />

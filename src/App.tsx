@@ -39,7 +39,6 @@ import Payment from "./pages/Payment";
 import CreateTestMembers from "./pages/CreateTestMembers";
 import Terms from "./pages/Terms";
 import MemberLanding from "./pages/MemberLanding";
-import LandingPreview from "./pages/LandingPreview";
 import VerificationCallback from "./pages/VerificationCallback";
 import NotFound from "./pages/NotFound";
 
@@ -113,7 +112,6 @@ const App = () => (
           <Route path="/create-test-members" element={<CreateTestMembers />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/landing/:memberId" element={<MemberLanding />} />
-          <Route path="/landing-preview" element={<LandingPreview />} />
           
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={<AdminDashboard />} />

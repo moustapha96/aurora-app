@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plane, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plane, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PersonalModule } from "./PersonalModule";
 import { VoyagesEditor } from "./editors/VoyagesEditor";
@@ -55,42 +55,28 @@ interface PersonalVoyagesProps {
   entries: VoyageEntry[];
   isEditable: boolean;
   onDataChange: () => void;
+  tripsDescription?: string;
+  onTripsDescriptionSave?: (value: string) => void;
 }
 
-type CategoryType = 'europe' | 'asie' | 'amerique' | 'afrique' | 'oceanie' | 'autre';
+type CategoryType = "europe" | "asie" | "amerique" | "afrique" | "oceanie" | "autre";
 
-const CATEGORY_LABELS: Record<CategoryType, string> = {
-  europe: 'europe',
-  asie: 'asie',
-  amerique: 'amerique',
-  afrique: 'afrique',
-  oceanie: 'oceanie',
-  autre: 'autre'
-};
-
-export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalVoyagesProps) => {
+export const PersonalVoyages = ({
+  entries,
+  isEditable,
+  onDataChange,
+  tripsDescription,
+  onTripsDescriptionSave,
+}: PersonalVoyagesProps) => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<VoyageEntry | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
-  const [addCategory, setAddCategory] = useState<CategoryType | null>(null);
   const { toast } = useToast();
   const { t } = useLanguage();
-
-  const handleCategoryClick = (category: CategoryType) => {
-    setSelectedCategory(prev => prev === category ? null : category);
-  };
-
-  const handleAddToCategory = (category: CategoryType) => {
-    setAddCategory(category);
-    setEditingEntry(null);
-    setEditorOpen(true);
-  };
 
   const handleEditorClose = (open: boolean) => {
     setEditorOpen(open);
     if (!open) {
       setEditingEntry(null);
-      setAddCategory(null);
     }
   };
 
@@ -124,10 +110,6 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
     }
   };
 
-  const getItemsByCategory = (category: CategoryType) => {
-    return entries.filter(item => (item.category || 'autre') === category);
-  };
-
   const getCategoryLabel = (category: CategoryType) => {
     switch (category) {
       case 'europe':
@@ -146,105 +128,136 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
     }
   };
 
-  const renderCategory = (category: CategoryType) => {
-    const items = getItemsByCategory(category);
-    const isExpanded = selectedCategory === category;
-
-    return (
-      <div key={category} className="border-b border-gold/10 last:border-b-0 pb-2 last:pb-0">
-        <button 
-          onClick={() => handleCategoryClick(category)}
-          className="flex items-center gap-3 text-left w-full group py-2.5 rounded-lg hover:bg-gold/5 transition-colors"
-        >
-          {isExpanded ? (
-            <ChevronDown className="w-5 h-5 text-gold shrink-0" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-gold shrink-0" />
-          )}
-          <span className="text-base sm:text-lg font-semibold text-foreground flex-1">{getCategoryLabel(category)}</span>
-          {items.length > 0 && (
-            <span className="text-base sm:text-lg font-bold text-gold tabular-nums min-w-[1.5rem] text-right">
-              {items.length}
-            </span>
-          )}
-        </button>
-        {isExpanded && (
-          <div className="ml-5 mt-1 space-y-2">
-            {items.map((item) => (
-              <div key={item.id} className="p-2 bg-muted/30 rounded-lg group">
-                <div className="flex gap-3 justify-between items-start">
-                  {item.image_url && getVoyageImageSrc(item.image_url) && (
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-lg overflow-hidden bg-muted/50">
-                      <VoyageImage src={item.image_url} alt={item.destination} />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <InlineEditableField
-                      value={item.destination}
-                      onSave={(value) => handleInlineUpdate(item.id, "destination", value)}
-                      placeholder="Destination"
-                      disabled={!isEditable}
-                      className="font-medium text-sm text-foreground"
-                    />
-                    {isEditable ? (
-                      <InlineEditableField
-                        value={item.period || ""}
-                        onSave={(value) => handleInlineUpdate(item.id, "period", value)}
-                        placeholder={t('personalTripsPeriodPlaceholder')}
-                        className="text-xs text-gold"
-                      />
-                    ) : item.period && <span className="text-xs text-gold">{item.period}</span>}
-                    {isEditable ? (
-                      <InlineEditableField
-                        value={item.description || ""}
-                        onSave={(value) => handleInlineUpdate(item.id, "description", value)}
-                        placeholder={t('personalDescriptionPlaceholder')}
-                        multiline
-                        className="text-xs text-muted-foreground"
-                      />
-                    ) : item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
-                  </div>
-                  {isEditable && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {isEditable && (
-              <button 
-                onClick={() => handleAddToCategory(category)}
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Plus className="w-3 h-3" />
-                <span>{t('add')}</span>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <PersonalModule
       title={t('personalTripsTitle')}
       icon={Plane}
       moduleType="voyages"
     >
+      {/* Description globale des voyages, sous le titre du module */}
+      {isEditable ? (
+        <InlineEditableField
+          value={tripsDescription || ""}
+          onSave={(value) => onTripsDescriptionSave && onTripsDescriptionSave(value)}
+          placeholder={t("personalDescriptionPlaceholder")}
+          multiline
+          className="text-sm text-muted-foreground w-full mb-3"
+        />
+      ) : tripsDescription ? (
+        <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words mb-3">
+          {tripsDescription}
+        </p>
+      ) : null}
+
       <div className="space-y-2">
-        {(Object.keys(CATEGORY_LABELS) as CategoryType[])
-          .sort((a, b) => {
-            const aCount = getItemsByCategory(a).length;
-            const bCount = getItemsByCategory(b).length;
-            if (aCount > 0 && bCount === 0) return -1;
-            if (aCount === 0 && bCount > 0) return 1;
-            return 0;
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">
+            {t("personalNoTrips") || "Aucun voyage enregistré"}
+          </p>
+        ) : (
+          entries.map((item) => {
+            const cat = (item.category as CategoryType) || "autre";
+            return (
+              <div key={item.id} className="p-2 sm:p-3 bg-muted/30 rounded-lg group">
+                <div className="flex flex-col sm:flex-row gap-3 items-start">
+                  {isEditable ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingEntry(item);
+                        setEditorOpen(true);
+                      }}
+                      className="w-full sm:w-20 sm:h-20 max-h-32 sm:max-h-none rounded-lg overflow-hidden bg-muted/50 sm:shrink-0 focus:outline-none"
+                    >
+                      {item.image_url && getVoyageImageSrc(item.image_url) ? (
+                        <VoyageImage src={item.image_url} alt={item.destination} />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground border border-dashed border-gold/30">
+                          {t("photo")}
+                        </div>
+                      )}
+                    </button>
+                  ) : (
+                    item.image_url &&
+                    getVoyageImageSrc(item.image_url) && (
+                      <div className="w-full sm:w-20 sm:h-20 max-h-32 sm:max-h-none rounded-lg overflow-hidden bg-muted/50 sm:shrink-0">
+                        <VoyageImage src={item.image_url} alt={item.destination} />
+                      </div>
+                    )
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap justify-between">
+                      <InlineEditableField
+                        value={item.destination}
+                        onSave={(value) => handleInlineUpdate(item.id, "destination", value)}
+                        placeholder="Destination"
+                        disabled={!isEditable}
+                        className="font-medium text-sm text-foreground flex-1 min-w-0"
+                      />
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/10 text-gold border border-gold/30 whitespace-nowrap">
+                        {getCategoryLabel(cat)}
+                      </span>
+                    </div>
+                    {isEditable ? (
+                      <InlineEditableField
+                        value={item.period || ""}
+                        onSave={(value) => handleInlineUpdate(item.id, "period", value)}
+                        placeholder={t("personalTripsPeriodPlaceholder")}
+                        className="text-xs text-gold"
+                      />
+                    ) : (
+                      item.period && <span className="text-xs text-gold">{item.period}</span>
+                    )}
+                    {isEditable ? (
+                      <InlineEditableField
+                        value={item.description || ""}
+                        onSave={(value) => handleInlineUpdate(item.id, "description", value)}
+                        placeholder={t("personalDescriptionPlaceholder")}
+                        multiline
+                        className="text-xs text-muted-foreground w-full"
+                      />
+                    ) : (
+                      item.description && (
+                        <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words mt-1">
+                          {item.description}
+                        </p>
+                      )
+                    )}
+                  </div>
+                  {isEditable && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity self-start sm:self-auto">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
           })
-          .map(renderCategory)}
+        )}
+        {isEditable && (
+          <div className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setEditingEntry(null);
+                setEditorOpen(true);
+              }}
+              className="text-xs gap-2 border-gold/40 text-gold hover:bg-gold/10"
+            >
+              <Plus className="w-3 h-3" />
+              {t("add")}
+            </Button>
+          </div>
+        )}
       </div>
 
       <VoyagesEditor
@@ -252,7 +265,7 @@ export const PersonalVoyages = ({ entries, isEditable, onDataChange }: PersonalV
         onOpenChange={handleEditorClose}
         entry={editingEntry}
         onSave={onDataChange}
-        defaultCategory={addCategory}
+        defaultCategory={null}
       />
     </PersonalModule>
   );

@@ -684,7 +684,7 @@ const MemberCard = () => {
                         >
                           {t('concierge')}
                         </Button>
-                        <Button
+                        {/* <Button
                           variant="outline"
                           size="sm"
                           className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
@@ -694,7 +694,7 @@ const MemberCard = () => {
                           }}
                         >
                           {t('metaverse')}
-                        </Button>
+                        </Button> */}
                         <Button
                           variant="outline"
                           size="sm"

@@ -103,13 +103,7 @@ const MemberDashboard = () => {
       gradient: "from-black-deep/80 via-cyan-950/40 to-black-medium/60",
       route: "/messages"
     },
-    {
-      icon: Layout,
-      title: t('landingPages'),
-      description: t('dashboardLandingDesc'),
-      gradient: "from-black-deep/80 via-amber-950/40 to-gold/10",
-      route: "/landing-preview"
-    }
+    // Bloc Landing pages désactivé
   ];
 
   const handleLogout = () => {

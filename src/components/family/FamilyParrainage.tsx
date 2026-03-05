@@ -191,7 +191,7 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
         }
       }
 
-      // Charger le code de parrainage (généré automatiquement par le trigger si absent)
+      // Charger le code de parrainage (peut être vide si jamais généré)
       const { data: profile } = await supabase
         .from('profiles')
         .select('referral_code')
@@ -200,14 +200,6 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
 
       if (profile?.referral_code) {
         setReferralCode(profile.referral_code);
-      } else {
-        // Si le code n'existe toujours pas, le générer côté client
-        const generatedCode = generateReferralCode();
-        await supabase
-          .from('profiles')
-          .update({ referral_code: generatedCode })
-          .eq('id', profileId);
-        setReferralCode(generatedCode);
       }
       // Charger les membres parrainés depuis la table referrals
       const { data: referralsData, error: referralsError } = await (supabase as any)
@@ -427,6 +419,39 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return code;
+  };
+
+  const createInitialReferralCodeManually = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error(t('youMustBeConnected'));
+        return;
+      }
+
+      const profileId = userId || user.id;
+
+      // Vérifier qu'il n'y a pas déjà un code
+      if (referralCode) {
+        toast.success(t('referralCodeAlreadyExists') || 'Un code de parrainage existe déjà.');
+        return;
+      }
+
+      const generatedCode = generateReferralCode();
+      const { error } = await supabase
+        .from('profiles')
+        .update({ referral_code: generatedCode })
+        .eq('id', profileId);
+
+      if (error) throw error;
+
+      setReferralCode(generatedCode);
+      toast.success(t('referralCodeCreated') || 'Code de parrainage créé.');
+      onUpdate?.();
+    } catch (error: any) {
+      console.error("Error creating initial referral code:", error);
+      toast.error(error.message || t('error') || 'Erreur');
+    }
   };
 
   const createSecondaryReferralCode = async () => {
@@ -1006,17 +1031,37 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
     <div className="w-full min-w-0 space-y-6">
       {/* Colonne : Codes d'invitation */}
       <div className="w-full min-w-0 space-y-5">
-        <div className="flex items-center gap-2">
-          <Gift className="h-5 w-5 text-gold shrink-0" />
-          <h2 className="text-lg font-semibold text-foreground">{t('singleUseInvitationCodes') || 'Codes d\'invitation'}</h2>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Gift className="h-5 w-5 text-gold shrink-0" />
+            <h2 className="text-lg font-semibold text-foreground">
+              {t('singleUseInvitationCodes') || "Codes d'invitation"}
+            </h2>
+          </div>
+
+          
+          
+          {isEditable && !referralCode && (
+            <Button
+            variant="outline"
+            size="sm"
+            onClick={createInitialReferralCodeManually}
+            className="shrink-0 border-gold/40 text-gold hover:bg-gold/10"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            {t('generateReferralCode') || 'Générer un code'}
+          </Button>
+          )}
         </div>
+       
+        
 
         {/* Code de parrainage initial */}
-        {referralCode && (
+        {referralCode ? (
           <div className={`rounded-lg border overflow-hidden p-4 sm:p-5 ${referredMembers.length > 0 ? 'bg-gold/5 border-gold/10' : 'bg-gold/5 border-gold/20'}`}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground mb-1">{t('initialInvitationCode') || 'Code d\'invitation initial'}</p>
+                <p className="text-sm font-medium text-foreground mb-1">{t('initialInvitationCode') || "Code d'invitation initial"}</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className={`text-base font-mono font-bold ${referredMembers.length > 0 ? 'text-muted-foreground line-through' : 'text-gold'}`}>
                     {referralCode}
@@ -1078,6 +1123,28 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
               </div>
             </div>
           </div>
+        ) : (
+          isEditable && (
+            <div className="rounded-lg border border-dashed border-gold/30 p-4 sm:p-5 bg-gold/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground mb-1">
+                  {t('noReferralCodeYet') || "Aucun code de parrainage n'a encore été créé."}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t('createReferralCodeHint') || "Générez un premier code pour inviter vos proches dans Aurora."}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={createInitialReferralCodeManually}
+                className="shrink-0 border-gold/40 text-gold hover:bg-gold/10"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                {t('generateReferralCode') || 'Générer un code'}
+              </Button>
+            </div>
+          )
         )}
 
 

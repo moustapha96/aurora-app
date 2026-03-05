@@ -60,7 +60,13 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
 
   const handleChange = (value: string) => {
     setEditValue(value);
-    onEdit?.(value);
+  };
+
+  const handleBlur = () => {
+    if (!editable) return;
+    if (editValue !== content) {
+      onEdit?.(editValue);
+    }
   };
 
   const handleAISuggest = async () => {
@@ -357,6 +363,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
             <Textarea
               value={editValue}
               onChange={(e) => handleChange(e.target.value)}
+              onBlur={handleBlur}
               placeholder={t("describeYourContent")}
               className="min-h-[120px] bg-black/80 text-white border-gold/20 placeholder:text-white/50 text-sm resize-none focus:ring-1 focus:ring-gold/30"
             />

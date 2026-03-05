@@ -181,11 +181,6 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
   };
 
   const handleSave = async () => {
-    if (!formData.title.trim()) {
-      toast.error(t('networkEventsTitleRequired'));
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -195,9 +190,6 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
         const { error } = await supabase
           .from('network_events')
           .update({
-            title: formData.title,
-            event_type: formData.event_type,
-            location: formData.location,
             date: formData.date,
             description: formData.description,
             updated_at: new Date().toISOString()
@@ -210,9 +202,8 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
           .from('network_events')
           .insert({
             user_id: user.id,
-            title: formData.title,
-            event_type: formData.event_type,
-            location: formData.location,
+            // Titre technique uniquement pour satisfaire le schéma, non édité par l'utilisateur
+            title: formData.date || t('networkExclusiveEvent') || 'Event',
             date: formData.date,
             description: formData.description
           });
@@ -293,7 +284,7 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
             </p>
             {eventsForSelectedDate.map(event => (
               <div key={event.id} className="text-xs text-muted-foreground pl-2 border-l-2 border-primary/50 mb-1">
-                {event.title}
+                {event.description || event.date}
               </div>
             ))}
           </div>
@@ -309,12 +300,9 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
           <div key={item.id} className="p-3 bg-muted/30 rounded-lg group">
             <div className="flex justify-between items-start">
               <div className="flex-1">
-                <h4 className="font-medium text-foreground">{item.title}</h4>
-                <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                  {item.event_type && <span>{item.event_type}</span>}
-                  {item.location && <span>• {item.location}</span>}
-                  {item.date && <span>• {item.date}</span>}
-                </div>
+                {item.date && (
+                  <h4 className="font-medium text-foreground">{item.date}</h4>
+                )}
                 {item.description && (
                   <TruncatedText text={item.description} className="mt-1" maxLines={2} />
                 )}
@@ -351,37 +339,11 @@ export const NetworkEvents = ({ data, isEditable, onUpdate }: NetworkEventsProps
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>{t('networkEventTitleLabel')}</Label>
+              <Label>{t('networkEventDateLabel')}</Label>
               <Input
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder={t('networkEventTitlePlaceholder')}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>{t('networkEventTypeLabel')}</Label>
-                <Input
-                  value={formData.event_type}
-                  onChange={(e) => setFormData(prev => ({ ...prev, event_type: e.target.value }))}
-                  placeholder={t('networkEventTypePlaceholder')}
-                />
-              </div>
-              <div>
-                <Label>{t('networkEventDateLabel')}</Label>
-                <Input
-                  value={formData.date}
-                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  placeholder={t('networkEventDatePlaceholder')}
-                />
-              </div>
-            </div>
-            <div>
-              <Label>{t('networkEventLocationLabel')}</Label>
-              <Input
-                value={formData.location}
-                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                placeholder={t('networkEventLocationPlaceholder')}
+                value={formData.date}
+                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                placeholder={t('networkEventDatePlaceholder')}
               />
             </div>
             <div>

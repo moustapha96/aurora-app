@@ -34,7 +34,7 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
  
   const { t } = useLanguage();
   const bannerSrc = getImageSrc(heritage?.banner_image_url);
-  const hasContent = heritage && (heritage.motto || heritage.values_text || heritage.legacy_vision || heritage.heritage_description || bannerSrc);
+  const hasContent = heritage && (heritage.motto || heritage.legacy_vision || heritage.heritage_description || bannerSrc);
 
   const handleFieldUpdate = async (field: keyof HeritageData, value: string) => {
     try {
@@ -89,38 +89,18 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
           </p>
         </div> */}
 
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          {/* Values */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-gold flex items-center gap-2">
-              <Sparkles className="w-4 h-4" />{t('transmittedValues')}
-            </h4>
-            <div className="pl-6">
-              <InlineEditableField
-                value={heritage?.values_text || ""}
-                onSave={(value) => handleFieldUpdate("values_text", value)}
-                // placeholder={t('describeTransmittedValues')}
-                multiline
-                className="text-muted-foreground"
-              />
-            </div>
-          </div>
-
-          {/* Vision */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-gold flex items-center gap-2">
-              <Quote className="w-4 h-4" />{t('transmissionVision')}
-            </h4>
-            <div className="pl-6">
-              <InlineEditableField
-                value={heritage?.legacy_vision || ""}
-                onSave={(value) => handleFieldUpdate("legacy_vision", value)}
-                // placeholder={t('yourVisionForFutureGenerations')}
-                multiline
-                className="text-muted-foreground italic"
-              />
-            </div>
+        {/* Vision seule (valeurs transmises supprimées) */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-gold flex items-center gap-2">
+            <Quote className="w-4 h-4" />{t('transmissionVision')}
+          </h4>
+          <div className="pl-6">
+            <InlineEditableField
+              value={heritage?.legacy_vision || ""}
+              onSave={(value) => handleFieldUpdate("legacy_vision", value)}
+              multiline
+              className="text-muted-foreground italic"
+            />
           </div>
         </div>
 
@@ -161,21 +141,17 @@ export const FamilyHeritage = ({ heritage, isEditable = false, onUpdate }: Famil
             </div>
           )}
           
-          {/* Two Column Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            {heritage?.values_text && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-gold flex items-center gap-2"><Sparkles className="w-4 h-4" />{t('transmittedValues')}</h4>
-                <p className="text-muted-foreground whitespace-pre-line pl-6">{heritage.values_text}</p>
-              </div>
-            )}
-            {heritage?.legacy_vision && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-gold flex items-center gap-2"><Quote className="w-4 h-4" />{t('transmissionVision')}</h4>
-                <p className="text-muted-foreground whitespace-pre-line pl-6 italic">{heritage.legacy_vision}</p>
-              </div>
-            )}
-          </div>
+          {/* Vision seule (valeurs transmises supprimées) */}
+          {heritage?.legacy_vision && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-gold flex items-center gap-2">
+                <Quote className="w-4 h-4" />{t('transmissionVision')}
+              </h4>
+              <p className="text-muted-foreground whitespace-pre-line pl-6 italic">
+                {heritage.legacy_vision}
+              </p>
+            </div>
+          )}
           
           {heritage?.heritage_description && (
             <div className="p-4 sm:p-6 bg-gold/5 rounded-lg border border-gold/10">

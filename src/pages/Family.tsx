@@ -306,32 +306,12 @@ const FamilySocial = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
 
-            {/* Module 1: Lignée & Origines */}
-            <div className="col-span-1 lg:col-span-2">
 
-            <FamilyModule
-              title={t('lineageOrigins')}
-              icon={<GitBranch className="w-5 h-5" />}
-              moduleType="lineage_text"
-              content={familyContent.bio || ""}
-              isEditable={isOwnProfile}
-              onUpdate={loadAllContent}
-              renderContent={() => (
-                <div className="space-y-6">
-                  {/* Section pour inviter des proches */}
-                  <FamilyLinkInvite
-                    isEditable={isOwnProfile}
-                    onUpdate={loadAllContent}
-                  />
-                </div>
-              )}
-            />
-            </div>
             <div className="col-span-1 lg:col-span-2">
 
               {/* Module 2: Famille proche */}
               <FamilyModule
-                title={t('closeFamily')}
+                title={t('lineageOrigins')}
                 icon={<Users className="w-5 h-5" />}
                 moduleType="family_text"
                 content={familyContent.family_text || ""}
@@ -347,64 +327,65 @@ const FamilySocial = () => {
               />
             </div>
 
+
             {/* Module 3: Personnes marquantes */}
             <div className="col-span-1 lg:col-span-2">
 
-            <FamilyModule
-              title={t('influentialPeople')}
-              icon={<Star className="w-5 h-5" />}
-              moduleType="network_text"
-              content={familyContent.network_text || ""}
-              isEditable={isOwnProfile}
-              onUpdate={loadAllContent}
-              renderContent={() => (
-                <FamilyInfluential
-                  people={influentialPeople}
-                  isEditable={isOwnProfile}
-                  onUpdate={loadAllContent}
-                />
-              )}
-            />
+              <FamilyModule
+                title={t('influentialPeople')}
+                icon={<Star className="w-5 h-5" />}
+                moduleType="network_text"
+                content={familyContent.network_text || ""}
+                isEditable={isOwnProfile}
+                onUpdate={loadAllContent}
+                renderContent={() => (
+                  <FamilyInfluential
+                    people={influentialPeople}
+                    isEditable={isOwnProfile}
+                    onUpdate={loadAllContent}
+                  />
+                )}
+              />
             </div>
 
             {/* Module 4: Réseau clé / Board personnel */}
             <div className="col-span-1 lg:col-span-2">
 
-            <FamilyModule
-              title={t('keyNetworkBoard')}
-              icon={<Network className="w-5 h-5" />}
-              moduleType="board_text"
-              content={familyContent.philanthropy_text || ""}
-              isEditable={isOwnProfile}
-              onUpdate={loadAllContent}
-              renderContent={() => (
-                <FamilyBoard
-                  members={boardMembers}
-                  isEditable={isOwnProfile}
-                  onUpdate={loadAllContent}
-                />
-              )}
-            />
+              <FamilyModule
+                title={t('keyNetworkBoard')}
+                icon={<Network className="w-5 h-5" />}
+                moduleType="board_text"
+                content={familyContent.philanthropy_text || ""}
+                isEditable={isOwnProfile}
+                onUpdate={loadAllContent}
+                renderContent={() => (
+                  <FamilyBoard
+                    members={boardMembers}
+                    isEditable={isOwnProfile}
+                    onUpdate={loadAllContent}
+                  />
+                )}
+              />
             </div>
 
             <div className="col-span-1 lg:col-span-2">
 
-            {/* Module 5: Engagements familiaux */}
-            <FamilyModule
-              title={t('familyCommitments')}
-              icon={<Heart className="w-5 h-5" />}
-              moduleType="philanthropy_text"
-              content={familyContent.philanthropy_text || ""}
-              isEditable={isOwnProfile}
-              onUpdate={loadAllContent}
-              renderContent={() => (
-                <FamilyCommitments
-                  commitments={commitments}
-                  isEditable={isOwnProfile}
-                  onUpdate={loadAllContent}
-                />
-              )}
-            />
+              {/* Module 5: Engagements familiaux */}
+              <FamilyModule
+                title={t('familyCommitments')}
+                icon={<Heart className="w-5 h-5" />}
+                moduleType="philanthropy_text"
+                content={familyContent.philanthropy_text || ""}
+                isEditable={isOwnProfile}
+                onUpdate={loadAllContent}
+                renderContent={() => (
+                  <FamilyCommitments
+                    commitments={commitments}
+                    isEditable={isOwnProfile}
+                    onUpdate={loadAllContent}
+                  />
+                )}
+              />
             </div>
 
             {/* Module 6: Héritage & Transmission - Full Width */}
@@ -426,6 +407,45 @@ const FamilySocial = () => {
               />
             </div>
 
+
+            {/* Module 1: Lignée & Origines */}
+            <div className="col-span-1 lg:col-span-2">
+
+              <FamilyModule
+                title={t('lineageOrigins')}
+                icon={<GitBranch className="w-5 h-5" />}
+                moduleType="lineage_text"
+                content={familyContent.bio || ""}
+                isEditable={isOwnProfile}
+                onUpdate={loadAllContent}
+                renderContent={() => (
+                  <div className="space-y-6">
+                    {/* Section pour inviter des proches */}
+                    <FamilyLinkInvite
+                      isEditable={isOwnProfile}
+                      onUpdate={loadAllContent}
+                    />
+                  </div>
+                )}
+              />
+            </div>
+
+
+            <div className="col-span-1 lg:col-span-2">
+              {/* Audio & Documents - mêmes dimensions et alignement */}
+              {isOwnProfile && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="h-full">
+                    <FamilyAudio isOwnProfile={isOwnProfile} />
+                  </div>
+                  <div className="h-full">
+                    <FamilyDocuments isOwnProfile={isOwnProfile} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+
             {/* Module 7: Parrainage - une colonne (pas pleine largeur) */}
             {isOwnProfile && profileId && (
               <div className="col-span-1 lg:col-span-2">
@@ -446,16 +466,12 @@ const FamilySocial = () => {
                 />
               </div>
             )}
+
+
           </div>
         </div>
 
-        {/* Documents Section - Owner only */}
-        {isOwnProfile && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-6 sm:pb-8 space-y-6">
-            <FamilyAudio isOwnProfile={isOwnProfile} />
-            <FamilyDocuments isOwnProfile={isOwnProfile} />
-          </div>
-        )}
+
       </div>
     </>
   );

@@ -323,10 +323,7 @@ export const Header = () => {
                       <Fingerprint className="w-4 h-4 mr-2" />
                       {t('securitySettings')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate("/landing-preview")}>
-                      <Layout className="w-4 h-4 mr-2" />
-                      {t('landingPages')}
-                    </DropdownMenuItem>
+                    {/* Landing pages preview désactivé */}
                     {isAdmin && (
                       <>
                         <DropdownMenuSeparator />
@@ -413,10 +410,7 @@ export const Header = () => {
                       <Fingerprint className="w-4 h-4 mr-2" />
                       {t('securitySettings')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate("/landing-preview")}>
-                      <Layout className="w-4 h-4 mr-2" />
-                      {t('landingPages')}
-                    </DropdownMenuItem>
+                    {/* Landing pages preview désactivé */}
                     <DropdownMenuItem onClick={() => navigate("/terms")}>
                       <FileText className="w-4 h-4 mr-2" />
                       CGU

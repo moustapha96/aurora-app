@@ -238,6 +238,7 @@ const LandingPreview = () => {
                   </span>
                 </Label>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="show-contact"
                   checked={preferences.show_contact_button}
                   onCheckedChange={(checked) => updatePreference('show_contact_button', checked)}
@@ -254,6 +255,7 @@ const LandingPreview = () => {
                   </span>
                 </Label>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="show-wealth"
                   checked={preferences.show_wealth_badge}
                   onCheckedChange={(checked) => updatePreference('show_wealth_badge', checked)}
@@ -270,6 +272,7 @@ const LandingPreview = () => {
                   </span>
                 </Label>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="show-location"
                   checked={preferences.show_location}
                   onCheckedChange={(checked) => updatePreference('show_location', checked)}
@@ -286,6 +289,7 @@ const LandingPreview = () => {
                   </span>
                 </Label>
                 <Switch
+                 className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="show-quote"
                   checked={preferences.show_quote}
                   onCheckedChange={(checked) => updatePreference('show_quote', checked)}

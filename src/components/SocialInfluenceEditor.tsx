@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -19,7 +18,6 @@ interface SocialInfluenceEditorProps {
 export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }: SocialInfluenceEditorProps) {
   const { t } = useLanguage();
   const [platform, setPlatform] = useState("");
-  const [metric, setMetric] = useState("");
   const [value, setValue] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -29,13 +27,11 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
   useEffect(() => {
     if (influence) {
       setPlatform(influence.platform || "");
-      setMetric(influence.metric || "");
       setValue(influence.value || "");
       setDescription(influence.description || "");
       setImageUrl(influence.image_url || "");
     } else {
       setPlatform("");
-      setMetric("");
       setValue("");
       setDescription("");
       setImageUrl("");
@@ -59,8 +55,6 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
         'jpg': 'image/jpeg',
         'jpeg': 'image/jpeg',
         'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp'
       };
       const contentType = mimeTypes[fileExt] || 'image/jpeg';
       
@@ -103,7 +97,6 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
       const influenceData = {
         user_id: user.id,
         platform,
-        metric,
         value,
         description,
         image_url: imageUrl,
@@ -135,69 +128,82 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
   };
 
   const content = (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="platform">{t('platformEvent')}</Label>
-        <Input
-          id="platform"
-          value={platform}
-          onChange={(e) => setPlatform(e.target.value)}
-          placeholder={t('platformEventPlaceholder')}
-          required
-        />
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+      {/* Plateforme & valeur */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="platform" className="text-xs sm:text-sm font-medium">
+            {t('platformEvent')}
+          </Label>
+          <Input
+            id="platform"
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value)}
+            placeholder={t('platformEventPlaceholder')}
+            required
+            className="bg-background/40 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="value" className="text-xs sm:text-sm font-medium">
+            {t('value')}
+          </Label>
+          <Input
+            id="value"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={t('valuePlaceholder')}
+            required
+            className="bg-background/40 border-gold/20 focus:border-gold/50 text-sm h-9 sm:h-10"
+          />
+        </div>
       </div>
 
-      <div>
-        <Label htmlFor="metric">{t('metric')}</Label>
-        <Input
-          id="metric"
-          value={metric}
-          onChange={(e) => setMetric(e.target.value)}
-          placeholder={t('metricPlaceholder')}
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="value">{t('value')}</Label>
-        <Input
-          id="value"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={t('valuePlaceholder')}
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="description">{t('description')}</Label>
+      {/* Description */}
+      <div className="space-y-1.5">
+        <Label htmlFor="description" className="text-xs sm:text-sm font-medium">
+          {t('description')}
+        </Label>
         <Textarea
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t('describeYourImpact')}
           rows={4}
+          className="bg-background/40 border-gold/20 focus:border-gold/50 text-sm min-h-[90px] sm:min-h-[110px] resize-none"
         />
       </div>
 
-      <div>
-        <Label htmlFor="image">{t('image')}</Label>
-        <div className="flex gap-2">
+      {/* Image */}
+      <div className="space-y-1.5">
+        <Label htmlFor="image" className="text-xs sm:text-sm font-medium">
+          {t('image')}
+        </Label>
+        <div className="flex gap-2 items-center">
           <Input
             id="image"
             type="file"
             accept="image/*"
             onChange={handleImageUpload}
             disabled={uploading}
+            className="flex-1 bg-background/40 border-gold/20 text-xs sm:text-sm h-9 sm:h-10"
           />
-          {uploading && <span className="text-sm text-muted-foreground">{t('uploading')}</span>}
+          {uploading && (
+            <span className="text-xs sm:text-sm text-muted-foreground">
+              {t('uploading')}
+            </span>
+          )}
         </div>
         {imageUrl && (
-          <img src={imageUrl} alt={t('preview')} className="mt-2 h-32 w-full object-cover rounded" />
+          <img
+            src={imageUrl}
+            alt={t('preview')}
+            className="mt-2 h-32 w-full object-cover rounded"
+          />
         )}
       </div>
 
-      <Button type="submit" className="w-full">
+      <Button type="submit" className="w-full text-sm sm:text-base">
         {influence ? t('edit') : t('add')}
       </Button>
     </form>

@@ -179,68 +179,59 @@ export const VoyagesEditor = ({ open, onOpenChange, entry, onSave, defaultCatego
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-lg mx-auto max-h-[90vh] overflow-y-auto bg-[#1a1a1a] border border-gold/30 p-4 sm:p-6" data-scroll>
         <DialogHeader>
-          <DialogTitle>{entry?.id ? t("edit") : t("add")} {t("travel")}</DialogTitle>
+          <DialogTitle className="text-base sm:text-lg font-serif text-gold">
+            {entry?.id ? t("edit") : t("add")} {t("travel")}
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>{t("destination")} *</Label>
-              <Input {...register("destination", { required: true })} placeholder={t("exMaldivesAspen")} />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
+          {/* Destination & Période */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs sm:text-sm font-medium text-gold/80">
+                {t("destination")} *
+              </Label>
+              <Input
+                {...register("destination", { required: true })}
+                placeholder={t("exMaldivesAspen")}
+                className="bg-background/40 border-gold/30 focus:border-gold/60 text-sm h-9 sm:h-10"
+              />
             </div>
-            <div>
-              <Label>{t("period")}</Label>
-              <Input {...register("period")} placeholder={t("exSummerWinterAnnual")} />
-            </div>
-          </div>
-          <div>
-            <Label>{t("description")}</Label>
-            <Textarea {...register("description")} placeholder={t("describeThisDestination")} rows={4} />
-            <div className="flex gap-2 mt-2">
-              {/* IA Aurora - commenté pour désactivation temporaire
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAISuggest}
-                disabled={generating}
-                className="gap-2"
-              >
-                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {t("aiAurora")}
-              </Button>
-              */}
-              {/* <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => document.getElementById('import-doc-voyages')?.click()}
-                className="gap-2"
-              >
-                <FileUp className="w-4 h-4" />
-                {t("import")}
-              </Button>
-              <input
-                id="import-doc-voyages"
-                type="file"
-                accept=".pdf,.doc,.docx,.txt"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    toast({ title: t("documentImported"), description: t("analysisInProgress") });
-                  }
-                }}
-              /> */}
+            <div className="space-y-1.5">
+              <Label className="text-xs sm:text-sm font-medium text-gold/80">
+                {t("period")}
+              </Label>
+              <Input
+                {...register("period")}
+                placeholder={t("exSummerWinterAnnual")}
+                className="bg-background/40 border-gold/30 focus:border-gold/60 text-sm h-9 sm:h-10"
+              />
             </div>
           </div>
-          <div>
-            <Label>{t("photo")}</Label>
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <Label className="text-xs sm:text-sm font-medium text-gold/80">
+              {t("description")}
+            </Label>
+            <Textarea
+              {...register("description")}
+              placeholder={t("describeThisDestination")}
+              rows={4}
+              className="bg-background/40 border-gold/30 focus:border-gold/60 text-sm min-h-[90px] sm:min-h-[110px] resize-none"
+            />
+          </div>
+
+          {/* Photo */}
+          <div className="space-y-1.5">
+            <Label className="text-xs sm:text-sm font-medium text-gold/80">
+              {t("photo")}
+            </Label>
             <input
               type="file"
               accept="image/*"
               onChange={handleImageSelect}
               disabled={uploading}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="flex h-9 sm:h-10 w-full rounded-md border border-gold/30 bg-background/40 px-3 py-1.5 text-xs sm:text-sm text-foreground"
             />
             {watch("image_url") && (
               <div className="relative mt-2">
@@ -249,7 +240,7 @@ export const VoyagesEditor = ({ open, onOpenChange, entry, onSave, defaultCatego
                   type="button"
                   variant="destructive"
                   size="icon"
-                  className="absolute top-2 right-2"
+                  className="absolute top-2 right-2 h-7 w-7"
                   onClick={() => setValue("image_url", "")}
                 >
                   <X className="w-4 h-4" />
@@ -257,11 +248,22 @@ export const VoyagesEditor = ({ open, onOpenChange, entry, onSave, defaultCatego
               </div>
             )}
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t border-gold/20">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto text-sm"
+            >
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={uploading || submitting} className="bg-gold text-black hover:bg-gold/90">
+            <Button
+              type="submit"
+              disabled={uploading || submitting}
+              className="w-full sm:w-auto bg-gold text-black hover:bg-gold/90 text-sm"
+            >
               {submitting ? t("saving") : t("validate")}
             </Button>
           </div>

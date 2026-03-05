@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Utilities
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { InlineEditableField } from "@/components/ui/inline-editable-field";
 
 // Storage utilities - centralized upload functions with correct RLS path patterns
 import { uploadFamilyAudio } from "@/lib/storageUploadUtils";
@@ -51,6 +52,8 @@ export const FamilyAudio = ({ isOwnProfile }: FamilyAudioProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
+  const [audioDescription, setAudioDescription] = useState<string>("");
+  const [contentId, setContentId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -77,10 +80,52 @@ export const FamilyAudio = ({ isOwnProfile }: FamilyAudioProps) => {
 
       if (error) throw error;
       setAudioFiles(data || []);
+
+      // Charger la description globale des audios depuis family_content
+      const { data: content, error: contentError } = await supabase
+        .from('family_content')
+        .select('id,audio_description')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!contentError && content) {
+        setContentId(content.id as string);
+        // @ts-expect-error colonne ajoutée côté base
+        setAudioDescription(content.audio_description || "");
+      }
     } catch (error) {
       console.error('Error loading audio files:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAudioDescriptionSave = async (value: string) => {
+    setAudioDescription(value);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error(t("notAuthenticated"));
+
+      if (contentId) {
+        const { error } = await supabase
+          .from('family_content')
+          .update({ audio_description: value })
+          .eq('id', contentId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from('family_content')
+          .insert({ user_id: user.id, audio_description: value })
+          .select('id')
+          .single();
+        if (error) throw error;
+        setContentId((data as any).id as string);
+      }
+
+      toast.success(t("saved"));
+    } catch (error) {
+      console.error("Error saving audio description:", error);
+      toast.error(t("saveError"));
     }
   };
 
@@ -241,6 +286,21 @@ export const FamilyAudio = ({ isOwnProfile }: FamilyAudioProps) => {
         <p className="text-sm text-muted-foreground">
           {t("audioFilesDesc") || "Enregistrements familiaux, messages vocaux (max 5 Mo)"}
         </p>
+        {isOwnProfile ? (
+          <div className="mt-3">
+            <InlineEditableField
+              value={audioDescription}
+              onSave={handleAudioDescriptionSave}
+              placeholder={t("audioGlobalDescriptionPlaceholder")}
+              multiline
+              className="text-sm text-muted-foreground"
+            />
+          </div>
+        ) : audioDescription ? (
+          <p className="mt-3 text-sm text-muted-foreground whitespace-pre-wrap break-words">
+            {audioDescription}
+          </p>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         {isOwnProfile && (

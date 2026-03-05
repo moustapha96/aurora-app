@@ -273,6 +273,7 @@ const Settings = () => {
                   id="email-notif"
                   checked={settings.emailNotifications}
                   onCheckedChange={(checked) => updateSetting("emailNotifications", checked)}
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 />
               </div>
               <Separator />
@@ -282,6 +283,7 @@ const Settings = () => {
                   id="message-notif"
                   checked={settings.messageNotifications}
                   onCheckedChange={(checked) => updateSetting("messageNotifications", checked)}
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 />
               </div>
               <Separator />
@@ -291,6 +293,7 @@ const Settings = () => {
                   id="connection-notif"
                   checked={settings.connectionNotifications}
                   onCheckedChange={(checked) => updateSetting("connectionNotifications", checked)}
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 />
               </div>
             </CardContent>
@@ -329,35 +332,14 @@ const Settings = () => {
                   id="show-wealth"
                   checked={settings.showWealthBadge}
                   onCheckedChange={(checked) => updateSetting("showWealthBadge", checked)}
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 />
               </div>
-              {/* <Separator /> */}
-              {/* <div className="flex items-center justify-between">
-                <Label htmlFor="show-location">{t('showLocation')}</Label>
-                <Switch
-                  id="show-location"
-                  checked={settings.showLocation}
-                  onCheckedChange={(checked) => updateSetting("showLocation", checked)}
-                />
-              </div> */}
+             
             </CardContent>
           </Card>
           {/* Identity Verification */}
           <IdentityVerification onVerificationChange={loadSettings} />
-
-          {/* Biometric Authentication - Link to dedicated page */}
-          {/* <Card>
-            <CardContent>
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => navigate("/security-settings")}
-              >
-                <Shield className="h-4 w-4 mr-2" />
-                {t('manageBiometric')}
-              </Button>
-            </CardContent>
-          </Card> */}
 
           {/* Security */}
           <Card>
@@ -393,13 +375,7 @@ const Settings = () => {
               >
                 {t('editProfile')}
               </Button>
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => navigate("/landing-preview")}
-              >
-                {t('manageLanding')}
-              </Button>
+              {/* Accès à /landing-preview désactivé */}
               <Separator />
               <AlertDialog>
                 <AlertDialogTrigger asChild>

@@ -84,14 +84,17 @@ export const ProjetsEditor = ({ open, onOpenChange, entry, onSave }: ProjetsEdit
   const CATEGORIES = getCategories(t);
 
   useEffect(() => {
-    if (entry) {
-      setTitle(entry.title || "");
-      setCategory(entry.category || "en_cours");
-      setDescription(entry.description || "");
-      setImageUrl(entry.image_url ?? null);
-    } else {
-      setImageUrl(null);
-    }
+      if (entry) {
+        setTitle(entry.title || "");
+        setCategory(entry.category || "en_cours");
+        setDescription(entry.description || "");
+        setImageUrl(entry.image_url ?? null);
+      } else {
+        setTitle("");
+        setCategory("en_cours");
+        setDescription("");
+        setImageUrl(null);
+      }
   }, [entry]);
 
   const handleAISuggest = async () => {
@@ -159,13 +162,13 @@ export const ProjetsEditor = ({ open, onOpenChange, entry, onSave }: ProjetsEdit
 
       if (entry?.id) {
         const { error } = await supabase
-          .from('personal_collections')
+          .from('personal_projets')
           .update(data)
           .eq('id', entry.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('personal_collections')
+          .from('personal_projets')
           .insert(data);
         if (error) throw error;
       }

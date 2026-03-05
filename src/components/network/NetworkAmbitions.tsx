@@ -322,7 +322,8 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
                       </div>
                     </div>
                     {index < items.length - 1 && (
-                      <Separator className="w-full h-[2px]" />
+
+                      <Separator className="w-full  h-[3px] bg-primary/40" />
                     )}
                   </div>
                 ))}

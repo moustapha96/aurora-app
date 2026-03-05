@@ -327,6 +327,7 @@ const GolfCourses: React.FC<GolfCoursesProps> = ({ userId, courses, isEditable, 
 
                 <div className="flex items-center space-x-2">
                   <Switch
+                    className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                     id="course-favorite"
                     checked={formData.is_favorite || false}
                     onCheckedChange={(checked) => setFormData({ ...formData, is_favorite: checked })}

@@ -188,21 +188,19 @@ const MemberLanding = () => {
         <div className="flex items-center justify-between h-14 px-4 sm:px-6">
           <button
             type="button"
-            onClick={() => navigate('/landing-preview')}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-foreground hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-opacity min-w-[2.5rem]"
             aria-label={backLabel}
           >
             <ArrowLeft className="h-5 w-5 shrink-0" />
             <span className="text-sm font-medium hidden sm:inline">{backLabel}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => navigate('/landing-preview')}
-            className="flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-opacity hover:opacity-80 absolute left-1/2 -translate-x-1/2"
-            aria-label={backLabel}
+          <div
+            className="flex items-center justify-center absolute left-1/2 -translate-x-1/2"
+            aria-label="Aurora"
           >
             <AuroraLogo size="sm" />
-          </button>
+          </div>
           <div className="min-w-[2.5rem] flex justify-end">
             {headerBadge}
           </div>

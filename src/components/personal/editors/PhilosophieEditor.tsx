@@ -91,6 +91,9 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
       setDescription(entry.description || "");
       setImageUrl(entry.image_url ?? null);
     } else {
+      setTitle("");
+      setCategory("mentors");
+      setDescription("");
       setImageUrl(null);
     }
   }, [entry]);
@@ -160,13 +163,13 @@ export const PhilosophieEditor = ({ open, onOpenChange, entry, onSave }: Philoso
 
       if (entry?.id) {
         const { error } = await supabase
-          .from('personal_art_culture')
+          .from('personal_philosophie')
           .update(data)
           .eq('id', entry.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('personal_art_culture')
+          .from('personal_philosophie')
           .insert(data);
         if (error) throw error;
       }

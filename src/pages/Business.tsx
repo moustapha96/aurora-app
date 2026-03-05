@@ -570,9 +570,8 @@ const Business = () => {
               subtitle={t('businessPressSubtitle')}
               content={pressEntries.map(p => `• ${p.title} - ${p.source}`).join('\n') || undefined}
               isEmpty={pressEntries.length === 0}
-              editable={isOwnProfile}
+            editable={false}
               moduleType="press"
-              onEdit={() => { }}
             />
 
             {/* Projects with Gallery */}

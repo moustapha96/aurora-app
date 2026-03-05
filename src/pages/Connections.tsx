@@ -382,6 +382,7 @@ const Connections = () => {
                 {t('businessAccess')}
               </Label>
               <Switch
+                className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 id="business"
                 checked={permissions.businessAccess}
                 onCheckedChange={(checked) => setPermissions({ ...permissions, businessAccess: checked })}
@@ -394,6 +395,7 @@ const Connections = () => {
                 {t('familyAccess')}
               </Label>
               <Switch
+                className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 id="family"
                 checked={permissions.familyAccess}
                 onCheckedChange={(checked) => setPermissions({ ...permissions, familyAccess: checked })}
@@ -406,6 +408,7 @@ const Connections = () => {
                 {t('personalAccess')}
               </Label>
               <Switch
+                className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 id="personal"
                 checked={permissions.personalAccess}
                 onCheckedChange={(checked) => setPermissions({ ...permissions, personalAccess: checked })}
@@ -418,6 +421,7 @@ const Connections = () => {
                 {t('influenceAccess')}
               </Label>
               <Switch
+                className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                 id="influence"
                 checked={permissions.influenceAccess}
                 onCheckedChange={(checked) => setPermissions({ ...permissions, influenceAccess: checked })}

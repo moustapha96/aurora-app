@@ -131,10 +131,10 @@ function CloseMemberAvatar({
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onRemovePhoto(e); }}
-                    className="absolute top-0.5 right-0.5 p-1 rounded-full bg-destructive/90 hover:bg-destructive text-destructive-foreground transition-colors"
+                    className="absolute -top-1 -right-1 z-10 p-1 rounded-full bg-destructive/90 hover:bg-destructive text-destructive-foreground transition-colors"
                     title="Retirer la photo"
                   >
-                    <X className="w-3 h-3" />
+                    <Trash2 className="w-3 h-3" />
                   </button>
                 )}
               </>
@@ -486,7 +486,7 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
                       )}
                       <div className="mt-2 flex gap-2">
                         <Quote className="w-4 h-4 text-gold/40 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-muted-foreground italic min-w-0">
+                        <div className="text-sm text-muted-foreground italic min-w-0 flex-1">
                           <InlineEditableField
                             value={member.description || ""}
                             onSave={(v) => updateField(member.id!, "description", v)}
@@ -666,50 +666,7 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
           {/* Footer sticky avec boutons */}
           <div className="sticky bottom-0 bg-background border-t border-gold/10 px-4 py-3 sm:px-6 sm:py-4">
             <div className="flex flex-col gap-2 sm:gap-3">
-              {/* Boutons d'action secondaires */}
-              <div className="flex gap-2 w-full">
-                {/* IA Aurora - commenté pour désactivation temporaire
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={async () => {
-                    setIsGenerating(true);
-                    try {
-                      const { data, error } = await supabase.functions.invoke('family-ai-suggest', {
-                        body: { moduleType: 'close_family', context: newFormData.member_name }
-                      });
-                      if (error) throw error;
-                      if (data?.suggestion) {
-                        setNewFormData(prev => ({ ...prev, description: data.suggestion }));
-                        toast.success(t('suggestionGenerated'));
-                      }
-                    } catch {
-                      toast.error(t('generationError'));
-                    } finally {
-                      setIsGenerating(false);
-                    }
-                  }}
-                  disabled={isGenerating || !newFormData.member_name}
-                  className="flex-1 border-gold/30 text-gold hover:bg-gold/10 text-xs sm:text-sm h-8 sm:h-9"
-                >
-                  {isGenerating ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />}
-                  <span className="hidden sm:inline">{t('aiAurora')}</span>
-                  <span className="sm:hidden">{t('ai')}</span>
-                </Button>
-                */}
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => docInputRef.current?.click()}
-                  disabled={isImportingDoc}
-                  className="flex-1 border-gold/30 text-gold hover:bg-gold/10 text-xs sm:text-sm h-8 sm:h-9"
-                >
-                  {isImportingDoc ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-1" /> : <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />}
-                  <span className="hidden sm:inline">{t('import')}</span>
-                  <span className="sm:hidden">{t('doc')}</span>
-                </Button>
-              </div>
-              
+             
               {/* Boutons principaux */}
               <div className="flex gap-2 w-full">
                 <Button 
@@ -725,7 +682,7 @@ export const FamilyCloseMembers = ({ members, isEditable = false, onUpdate }: Fa
                   className="flex-1 bg-gold hover:bg-gold/90 text-primary-foreground font-medium text-xs sm:text-sm h-8 sm:h-9"
                 >
                   {(saving || uploadingImage) ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-1" /> : null}
-                  {(saving || uploadingImage) ? (uploadingImage ? (t('uploading') || "...") : t('adding')) : t('add')}
+                  {(saving || uploadingImage) ? (uploadingImage ? (t('uploading') || "...") : t('adding')) : t('save')}
                 </Button>
               </div>
             </div>

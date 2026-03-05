@@ -675,6 +675,7 @@ const AdminSettings = () => {
                   </p>
                 </div>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="registration"
                   checked={settings.allowRegistration}
                   onCheckedChange={(checked) => updateSetting('allowRegistration', checked)}
@@ -691,6 +692,7 @@ const AdminSettings = () => {
                   </p>
                 </div>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="emailVerification"
                   checked={settings.emailVerificationRequired}
                   onCheckedChange={(checked) => updateSetting('emailVerificationRequired', checked)}
@@ -707,11 +709,11 @@ const AdminSettings = () => {
                   </p>
                 </div>
                 <Input
+                  className="w-24 bg-background/40 border-gold/30 focus:border-gold/60 text-sm h-9 sm:h-10"
                   id="maxReferrals"
                   type="number"
                   value={settings.maxReferralsPerUser}
                   onChange={(e) => updateSetting('maxReferralsPerUser', parseInt(e.target.value) || 0)}
-                  className="w-24"
                 />
               </div>
               
@@ -1050,6 +1052,7 @@ const AdminSettings = () => {
                   </p>
                 </div>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="testMode"
                   checked={testModeEnabled}
                   onCheckedChange={(checked) => saveTestMode(checked)}
@@ -1087,6 +1090,7 @@ const AdminSettings = () => {
                   </p>
                 </div>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="autoApprove"
                   checked={settings.autoApproveContent}
                   onCheckedChange={(checked) => updateSetting('autoApproveContent', checked)}
@@ -1113,6 +1117,7 @@ const AdminSettings = () => {
                   </p>
                 </div>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="notifications"
                   checked={settings.enableNotifications}
                   onCheckedChange={(checked) => updateSetting('enableNotifications', checked)}
@@ -1144,6 +1149,7 @@ const AdminSettings = () => {
                   </p>
                 </div>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="maintenance"
                   checked={settings.maintenanceMode}
                   onCheckedChange={(checked) => updateSetting('maintenanceMode', checked)}
@@ -1375,6 +1381,7 @@ const AdminSettings = () => {
                   </p>
                 </div>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   id="captcha-enabled"
                   checked={captchaConfig.enabled}
                   onCheckedChange={(checked) => setCaptchaConfig(prev => ({ ...prev, enabled: checked }))}
@@ -1435,6 +1442,7 @@ const AdminSettings = () => {
                       <div className="flex items-center justify-between">
                         <Label htmlFor="captcha-login" className="font-normal">{t('adminLoginPage')}</Label>
                         <Switch
+                          className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                           id="captcha-login"
                           checked={captchaConfig.enabledForLogin}
                           onCheckedChange={(checked) => setCaptchaConfig(prev => ({ ...prev, enabledForLogin: checked }))}
@@ -1443,7 +1451,8 @@ const AdminSettings = () => {
 
                       <div className="flex items-center justify-between">
                         <Label htmlFor="captcha-register" className="font-normal">{t('adminRegisterPage')}</Label>
-                        <Switch
+                        <Switch 
+                          className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                           id="captcha-register"
                           checked={captchaConfig.enabledForRegister}
                           onCheckedChange={(checked) => setCaptchaConfig(prev => ({ ...prev, enabledForRegister: checked }))}
@@ -1453,6 +1462,7 @@ const AdminSettings = () => {
                       <div className="flex items-center justify-between">
                         <Label htmlFor="captcha-contact" className="font-normal">{t('adminContactPage')}</Label>
                         <Switch
+                          className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                           id="captcha-contact"
                           checked={captchaConfig.enabledForContact}
                           onCheckedChange={(checked) => setCaptchaConfig(prev => ({ ...prev, enabledForContact: checked }))}
@@ -1529,6 +1539,7 @@ const AdminSettings = () => {
                   </p>
                 </div>
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   checked={veriffRequired}
                   onCheckedChange={(checked) => saveVeriffRequired(checked)}
                   disabled={savingVeriffRequired}

@@ -28,6 +28,8 @@ const Personal = () => {
   const [artCulture, setArtCulture] = useState<any[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
   const [projets, setProjets] = useState<any[]>([]);
+  const [personalContentId, setPersonalContentId] = useState<string | null>(null);
+  const [voyagesDescription, setVoyagesDescription] = useState<string>("");
 
   useEffect(() => {
     checkAuthAndLoadData();
@@ -96,8 +98,54 @@ const Personal = () => {
       setArtCulture(artRes.data || []);
       setCollections(collectionsRes.data || []);
       setProjets(projetsRes.data || []);
+
+      // Charger la description globale des voyages depuis personal_content
+      const { data: content, error: contentError } = await supabase
+        .from("personal_content")
+        .select("id, voyages_description")
+        .eq("user_id", targetId)
+        .maybeSingle();
+
+      if (!contentError && content) {
+        setPersonalContentId((content as any).id as string);
+        setVoyagesDescription((content as any).voyages_description || "");
+      } else {
+        setPersonalContentId(null);
+        setVoyagesDescription("");
+      }
     } catch (error) {
       console.error("Error loading modules data:", error);
+    }
+  };
+
+  const handleSaveVoyagesDescription = async (value: string) => {
+    setVoyagesDescription(value);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error(t("notAuthenticated"));
+
+      const targetId = id || user.id;
+
+      if (personalContentId) {
+        const { error } = await supabase
+          .from("personal_content")
+          .update({ voyages_description: value } as any)
+          .eq("id", personalContentId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("personal_content")
+          .insert({ user_id: targetId, voyages_description: value } as any)
+          .select("id")
+          .single();
+        if (error) throw error;
+        setPersonalContentId((data as any).id as string);
+      }
+
+      toast.success(t("saved"));
+    } catch (error) {
+      console.error("Error saving voyages description:", error);
+      toast.error(t("saveError"));
     }
   };
 
@@ -147,7 +195,13 @@ const Personal = () => {
         <div className="max-w-7xl mx-auto p-4 sm:p-6 mt-12 overflow-x-hidden">
           <div className="space-y-8 animate-fade-in">
             <PersonalSports sports={sports} isEditable={isOwnProfile} onDataChange={loadModulesData} />
-            <PersonalVoyages entries={voyages} isEditable={isOwnProfile} onDataChange={loadModulesData} />
+            <PersonalVoyages
+              entries={voyages}
+              isEditable={isOwnProfile}
+              onDataChange={loadModulesData}
+              tripsDescription={voyagesDescription}
+              onTripsDescriptionSave={handleSaveVoyagesDescription}
+            />
             <PersonalPhilosophie entries={philosophie} isEditable={isOwnProfile} onDataChange={loadModulesData} />
             <PersonalArtCulture entries={artCulture} isEditable={isOwnProfile} onDataChange={loadModulesData} />
             <PersonalCollections entries={collections} isEditable={isOwnProfile} onDataChange={loadModulesData} />

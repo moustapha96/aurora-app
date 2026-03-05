@@ -9,6 +9,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { X, Sparkles, Loader2, FileUp, Library } from "lucide-react";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 function getCollectionsImageSrc(url: string | undefined | null): string | null {
   if (url == null || typeof url !== "string") return null;
@@ -187,7 +194,22 @@ export const CollectionsEditor = ({ open, onOpenChange, entry, onSave, defaultCa
             </div>
             <div>
               <Label>{t("category")}</Label>
-              <Input {...register("category")} placeholder={t("exArtWatchmakingWines")} />
+              <Select
+                value={watch("category") || ""}
+                onValueChange={(val) => setValue("category", val, { shouldDirty: true })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t("category")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="art">{t("personalCollectionsArt")}</SelectItem>
+                  <SelectItem value="montres">{t("personalCollectionsWatches")}</SelectItem>
+                  <SelectItem value="voitures">{t("personalCollectionsCars")}</SelectItem>
+                  <SelectItem value="vins">{t("personalCollectionsWine")}</SelectItem>
+                  <SelectItem value="livres">{t("personalCollectionsBooks")}</SelectItem>
+                  <SelectItem value="autre">{t("personalCollectionsOther")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div>

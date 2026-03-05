@@ -60,11 +60,11 @@ function LifestyleImage({ src, alt, className }: { src: string; alt: string; cla
 interface LifestyleItem {
   id: string;
   title: string;
-  organization?: string;
+  organization?: string; // Adresse / lieu (utilisé aussi pour Résidence)
   role?: string;
-  cause?: string; // Used as category: gastronomie, oenologie, mode
+  cause?: string; // Catégorie: gastronomie, oenologie, mode, automobiles, residence
   description?: string;
-  image_url?: string;
+  image_url?: string; // Photo principale de l’item
 }
 
 interface NetworkLifestyleProps {
@@ -73,13 +73,14 @@ interface NetworkLifestyleProps {
   onUpdate: () => void;
 }
 
-type CategoryType = 'gastronomie' | 'oenologie' | 'mode' | 'automobiles';
+type CategoryType = 'gastronomie' | 'oenologie' | 'mode' | 'automobiles' | 'residence';
 
 const CATEGORY_LABELS: Record<CategoryType, string> = {
   gastronomie: 'Gastronomie',
   oenologie: 'Œnologie',
   mode: 'Mode, bijouterie, horlogerie',
-  automobiles: 'Automobiles'
+  automobiles: 'Automobiles',
+  residence: 'Résidences',
 };
 
 export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyleProps) => {
@@ -93,7 +94,8 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
     gastronomie: true,
     oenologie: false,
     mode: false,
-    automobiles: false
+    automobiles: false,
+    residence: false,
   });
   const [formData, setFormData] = useState({
     title: "",
@@ -255,6 +257,8 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
         return t('fashionJewelryWatchmaking');
       case 'automobiles':
         return t('automobiles');
+      case 'residence':
+        return t('lifestyleResidences');
       default:
         return CATEGORY_LABELS[category as CategoryType] || category;
     }
@@ -312,7 +316,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                       </div>
                     </div>
                     {index < items.length - 1 && (
-                      <Separator className="w-full h-[2px]" />
+                      <Separator className="w-full  h-[3px] bg-primary/40" />
                     )}
                   </div>
                 ))}
@@ -339,6 +343,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
         {renderCategorySection('oenologie', t('oenology'))}
         {renderCategorySection('mode', t('fashionJewelryWatchmaking'))}
         {renderCategorySection('automobiles', t('automobiles'))}
+        {renderCategorySection('residence', t('lifestyleResidences'))}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -410,6 +415,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                   <option value="oenologie">{t('oenology')}</option>
                   <option value="mode">{t('fashionJewelryWatchmaking')}</option>
                   <option value="automobiles">{t('automobiles')}</option>
+                  <option value="residence">Résidences</option>
                 </select>
               </div>
             </div>

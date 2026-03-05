@@ -335,6 +335,7 @@ export const SubscriptionTiersTab = ({ tiers, onRefresh }: SubscriptionTiersTabP
 
               <div className="flex items-center gap-2">
                 <Switch
+                  className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                   checked={editingTier.is_active}
                   onCheckedChange={(checked) => setEditingTier({ ...editingTier, is_active: checked })}
                 />

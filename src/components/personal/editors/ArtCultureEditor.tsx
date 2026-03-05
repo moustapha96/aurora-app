@@ -9,6 +9,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { X, Sparkles, Loader2, FileUp, Palette } from "lucide-react";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 function getArtCultureImageSrc(url: string | undefined | null): string | null {
   if (url == null || typeof url !== "string") return null;
@@ -187,7 +194,22 @@ export const ArtCultureEditor = ({ open, onOpenChange, entry, onSave, defaultCat
             </div>
             <div>
               <Label>{t("category")}</Label>
-              <Input {...register("category")} placeholder={t("exPaintingSculptureMusic")} />
+              <Select
+                value={watch("category") || ""}
+                onValueChange={(val) => setValue("category", val, { shouldDirty: true })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t("category")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="peinture">{t("personalArtPainting")}</SelectItem>
+                  <SelectItem value="sculpture">{t("personalArtSculpture")}</SelectItem>
+                  <SelectItem value="musique">{t("personalArtMusic")}</SelectItem>
+                  <SelectItem value="theatre">{t("personalArtTheatre")}</SelectItem>
+                  <SelectItem value="litterature">{t("personalArtLiterature")}</SelectItem>
+                  <SelectItem value="autre">{t("personalArtOther")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div>

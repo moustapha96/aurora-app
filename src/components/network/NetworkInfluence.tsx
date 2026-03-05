@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NetworkModule } from "./NetworkModule";
 import { TrendingUp, Plus, Trash2, Loader2, ChevronDown, ChevronRight, BarChart, Users, Building2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,6 @@ interface InfluenceItem {
   id: string;
   title: string;
   category?: string;
-  metric?: string;
   value?: string;
   description?: string;
 }
@@ -44,14 +43,44 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
   const [formData, setFormData] = useState({
     title: "",
     category: "",
-    metric: "",
     value: "",
     description: ""
   });
 
+  // Description globale pour le module Influence & Communautés
+  const [influenceDescription, setInfluenceDescription] = useState("");
+  const [networkContentId, setNetworkContentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadInfluenceDescription();
+  }, []);
+
   const resetForm = () => {
-    setFormData({ title: "", category: "", metric: "", value: "", description: "" });
+    setFormData({ title: "", category: "", value: "", description: "" });
     setEditingItem(null);
+  };
+
+  const loadInfluenceDescription = async () => {
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) return;
+
+      const { data: content, error } = await supabase
+        .from("network_content")
+        .select("id, influence_description")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!error && content) {
+        setNetworkContentId((content as any).id as string);
+        setInfluenceDescription((content as any).influence_description || "");
+      } else {
+        setNetworkContentId(null);
+        setInfluenceDescription("");
+      }
+    } catch (error) {
+      console.error("Error loading influence description:", error);
+    }
   };
 
   const toggleCategory = (category: CategoryType) => {
@@ -100,7 +129,6 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
           .update({
             title: formData.title,
             category: formData.category,
-            metric: formData.metric,
             value: formData.value,
             description: formData.description,
             updated_at: new Date().toISOString()
@@ -115,7 +143,7 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
             user_id: user.id,
             title: formData.title,
             category: formData.category,
-            metric: formData.metric,
+            // metric: formData.metric,
             value: formData.value,
             description: formData.description
           });
@@ -142,6 +170,35 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
       onUpdate();
     } catch (error) {
       toast.error(t('networkInfluenceDeleteError'));
+    }
+  };
+
+  const handleSaveInfluenceDescription = async (value: string) => {
+    setInfluenceDescription(value);
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) return;
+
+      if (networkContentId) {
+        const { error } = await supabase
+          .from("network_content")
+          .update({ influence_description: value } as any)
+          .eq("id", networkContentId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("network_content")
+          .insert({ user_id: user.id, influence_description: value } as any)
+          .select("id")
+          .single();
+        if (error) throw error;
+        setNetworkContentId((data as any).id as string);
+      }
+
+      toast.success(t("saved"));
+    } catch (error) {
+      console.error("Error saving influence description:", error);
+      toast.error(t("saveError"));
     }
   };
 
@@ -188,12 +245,30 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
             {expandedCategories[category] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             <Icon className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium">{label}</span>
-            {items.length > 0 && (
+            {/* Pour la métrique d'influence, on n'affiche plus le chiffre */}
+            {category !== 'metric' && items.length > 0 && (
               <span className="text-xs text-muted-foreground ml-auto">({items.length})</span>
             )}
           </CollapsibleTrigger>
           <CollapsibleContent className="pl-6 pt-2">
-            {items.length > 0 && (
+            {/* Description spécifique pour la catégorie "Métrique d'influence" */}
+            {category === 'metric' && (
+              isEditable ? (
+                <InlineEditableField
+                  value={influenceDescription}
+                  onSave={handleSaveInfluenceDescription}
+                  placeholder={t('influenceDescriptionPlaceholder') || "Décrivez votre influence globale..."}
+                  multiline
+                  className="text-xs text-muted-foreground w-full mb-3"
+                />
+              ) : influenceDescription ? (
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words mb-3">
+                  {influenceDescription}
+                </p>
+              ) : null
+            )}
+
+            {/* {items.length > 0 && (
               <div className="space-y-1">
                 {items.map((item, index) => (
                   <div key={item.id}>
@@ -207,9 +282,8 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
                             disabled={!isEditable}
                             className="font-medium text-sm text-foreground break-words"
                           />
-                          {item.metric && item.value && (
-                            <span className="text-xs text-muted-foreground block mt-1">{item.metric}: {item.value}</span>
-                          )}
+                          <br />
+                        
                           {isEditable ? (
                             <InlineEditableField
                               value={item.description || ""}
@@ -230,20 +304,20 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
                       </div>
                     </div>
                     {index < items.length - 1 && (
-                      <Separator className="w-full h-[2px]" />
+                      <Separator className="w-full  h-[3px] bg-primary/40" />
                     )}
                   </div>
                 ))}
               </div>
-            )}
-            {isEditable && (
+            )} */}
+            {/* {isEditable && (
               <button 
                 onClick={() => handleAddToCategory(category)}
                 className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" /> {t('add')}
               </button>
-            )}
+            )} */}
           </CollapsibleContent>
         </Collapsible>
       </div>
@@ -254,11 +328,7 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
     <NetworkModule title={t('influenceCommunities')} icon={TrendingUp} moduleType="influence" isEditable={isEditable}>
       <div className="space-y-4">
         {renderCategorySection('metric', t('influenceMetric'))}
-        
-        
         {renderCategorySection('clubs', t('memberClubs'))}
-        
-        
         {renderCategorySection('associations', t('associations'))}
       </div>
 
@@ -277,25 +347,15 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
                 className="text-sm"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm">{t('category')}</Label>
-                <Input
-                  value={formData.category}
-                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  placeholder={t('influenceCategoryPlaceholder') || "Ex: Réseaux sociaux"}
-                  className="text-sm"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">{t('metric')}</Label>
-                <Input
-                  value={formData.metric}
-                  onChange={(e) => setFormData(prev => ({ ...prev, metric: e.target.value }))}
-                  placeholder={t('influenceMetricPlaceholder') || "Ex: Followers"}
-                  className="text-sm"
-                />
-              </div>
+            br
+            <div>
+              <Label className="text-sm">{t('category')}</Label>
+              <Input
+                value={formData.category}
+                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                placeholder={t('influenceCategoryPlaceholder') || "Ex: Réseaux sociaux"}
+                className="text-sm"
+              />
             </div>
             <div>
               <Label className="text-sm">{t('value')}</Label>
@@ -316,43 +376,6 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
                 className="text-sm min-h-[80px]"
               />
             </div>
-            <div className="flex flex-col sm:flex-row justify-between gap-2 pt-4">
-              {/* IA Aurora - commenté pour désactivation temporaire
-              <Button
-                variant="outline"
-                onClick={handleAISuggest}
-                disabled={isGenerating}
-                size="sm"
-                className="gap-2 w-full sm:w-auto text-sm"
-              >
-                {isGenerating ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Sparkles className="w-4 h-4 mr-2" />
-                )}
-                {t('networkModuleAISuggestButton')}
-              </Button>
-              */}
-              <div className="flex flex-col sm:flex-row gap-2 justify-end w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                  size="sm"
-                  className="w-full sm:w-auto text-sm"
-                >
-                  {t('cancel')}
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={isLoading}
-                  size="sm"
-                  className="w-full sm:w-auto text-sm"
-                >
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
-                </Button>
-              </div>
-            </div>
-            {/* Ancien footer conservé pour référence, mais désormais géré par le bloc ci-dessus
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
               <Button
                 variant="outline"
@@ -371,7 +394,6 @@ export const NetworkInfluence = ({ data, isEditable, onUpdate }: NetworkInfluenc
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('validate')}
               </Button>
             </div>
-            */}
           </div>
         </DialogContent>
       </Dialog>

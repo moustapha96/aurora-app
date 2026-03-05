@@ -510,6 +510,7 @@ const SecuritySettingsContent: React.FC = () => {
                       </div>
                     </div>
                     <Switch
+                      className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                       checked={twoFactorEnabled}
                       onCheckedChange={handleToggle2FA}
                       disabled={twoFactorLoading}
@@ -714,6 +715,7 @@ const SecuritySettingsContent: React.FC = () => {
                         </div>
                       </div>
                       <Switch
+                        className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                         checked={nativeBiometricEnabled}
                         onCheckedChange={(checked) => {
                           if (checked) {

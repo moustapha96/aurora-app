@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Separator } from "@/components/ui/separator";
+import { InlineEditableField } from "@/components/ui/inline-editable-field";
 
 interface MediaItem {
   id: string;
@@ -110,6 +111,10 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
   const [postureText, setPostureText] = useState('');
   const [posturePrivacy, setPosturePrivacy] = useState('aurora_circle');
 
+  // Description globale pour le bloc "Médias & Publications"
+  const [mediaDescription, setMediaDescription] = useState('');
+  const [networkContentId, setNetworkContentId] = useState<string | null>(null);
+
   // Social links state
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [isSocialDialogOpen, setIsSocialDialogOpen] = useState(false);
@@ -135,6 +140,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
   useEffect(() => {
     loadPosture();
     loadSocialLinks();
+    loadMediaDescription();
   }, []);
 
   const loadPosture = async () => {
@@ -174,6 +180,29 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
       }
     } catch (error) {
       console.error('Error loading social links:', error);
+    }
+  };
+
+  const loadMediaDescription = async () => {
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) return;
+
+      const { data: content, error } = await supabase
+        .from("network_content")
+        .select("id, media_description")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!error && content) {
+        setNetworkContentId((content as any).id as string);
+        setMediaDescription((content as any).media_description || "");
+      } else {
+        setNetworkContentId(null);
+        setMediaDescription("");
+      }
+    } catch (error) {
+      console.error("Error loading media description:", error);
     }
   };
 
@@ -314,6 +343,35 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
       toast.error(t('saveError'));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSaveMediaDescription = async (value: string) => {
+    setMediaDescription(value);
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) return;
+
+      if (networkContentId) {
+        const { error } = await supabase
+          .from("network_content")
+          .update({ media_description: value } as any)
+          .eq("id", networkContentId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("network_content")
+          .insert({ user_id: user.id, media_description: value } as any)
+          .select("id")
+          .single();
+        if (error) throw error;
+        setNetworkContentId((data as any).id as string);
+      }
+
+      toast.success(t("saved"));
+    } catch (error) {
+      console.error("Error saving media description:", error);
+      toast.error(t("saveError"));
     }
   };
 
@@ -481,14 +539,28 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
               <span className="text-xs text-muted-foreground ml-auto">{mediasData.length}</span>
             </CollapsibleTrigger>
             <CollapsibleContent className="pl-6 pt-2">
+              {/* Description globale pour Médias & Publications */}
+              {isEditable ? (
+                <InlineEditableField
+                  value={mediaDescription}
+                  onSave={handleSaveMediaDescription}
+                  placeholder={t("shortDescriptionPlaceholder")}
+                  multiline
+                  className="text-xs text-muted-foreground w-full mb-3"
+                />
+              ) : mediaDescription ? (
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words mb-3">
+                  {mediaDescription}
+                </p>
+              ) : null}
 
-              {mediasData.length > 0 && (
+              {/* {mediasData.length > 0 && (
                 <div className="space-y-1">
                   {mediasData.map((item, index) => (
                     <div key={item.id}>
                       {renderMediaItem(item)}
                       {index < mediasData.length - 1 && (
-                        <Separator className="w-full  h-[2px]" />
+                        <Separator className="w-full  h-[3px] bg-primary/40" />
                       )}
                     </div>
                   ))}
@@ -502,7 +574,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                 >
                   <Plus className="w-3.5 h-3.5" /> {t('add')}
                 </button>
-              )}
+              )} */}
             </CollapsibleContent>
           </Collapsible>
         </div>
@@ -530,7 +602,7 @@ export const NetworkMedia = ({ data, isEditable, onUpdate }: NetworkMediaProps) 
                     <div key={item.id}>
                       {renderMediaItem(item)}
                       {index < interventionsData.length - 1 && (
-                        <Separator className="w-full  h-[2px]" />
+                        <Separator className="w-full  h-[3px] bg-primary/40" />
                       )}
                     </div>
                   ))}

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Lightbulb, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Lightbulb, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { PersonalModule } from "./PersonalModule";
 import { PhilosophieEditor } from "./editors/PhilosophieEditor";
 import { InlineEditableField } from "@/components/ui/inline-editable-field";
@@ -56,146 +56,55 @@ interface PersonalPhilosophieProps {
   onDataChange: () => void;
 }
 
-type CategoryType = 'mentors' | 'philosophie' | 'citations' | 'lectures';
-
-const CATEGORY_LABELS: Record<CategoryType, string> = {
-  mentors: "mentors",
-  philosophie: "philosophie",
-  citations: "citations",
-  lectures: "lectures"
-};
+type CategoryType = "mentors" | "philosophie" | "citations" | "lectures";
 
 export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: PersonalPhilosophieProps) => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PhilosophieEntry | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
   const { t } = useLanguage();
-
-  const handleCategoryClick = (category: CategoryType) => {
-    setSelectedCategory(selectedCategory === category ? null : category);
-  };
-
-  const handleAddToCategory = (category: CategoryType) => {
-    setEditingEntry({ id: '', title: '', category, description: '', image_url: null });
-    setEditorOpen(true);
-  };
+  const { toast } = useToast();
 
   const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('personal_art_culture')
+        .from('personal_philosophie')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-      toast.success(t('personalEntryDeleted'));
+      toast({ title: t('personalEntryDeleted') });
       onDataChange();
     } catch (error) {
-      toast.error(t('personalErrorDeletingEntry'));
+      toast({ title: t('personalErrorDeletingEntry'), variant: "destructive" });
     }
   };
 
-  const handleInlineUpdate = async (id: string, field: string, value: string) => {
+  const handleInlineUpdate = async (id: string, field: keyof PhilosophieEntry, value: string | null) => {
     try {
       const { error } = await supabase
-        .from("personal_art_culture")
+        .from("personal_philosophie")
         .update({ [field]: value, updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
       onDataChange();
     } catch (error) {
       console.error("Update error:", error);
-      toast.error(t('personalErrorSavingEntry'));
+      toast({ title: t('personalErrorSavingEntry'), variant: "destructive" });
     }
   };
 
-  const renderCategory = (category: CategoryType) => {
-    const categoryEntries = entries.filter(e => e.category === category);
-    const isExpanded = selectedCategory === category;
-
-    const label = (() => {
-      switch (category) {
-        case 'mentors':
-          return t('personalPhilosophyMentors');
-        case 'philosophie':
-          return t('personalPhilosophyLife');
-        case 'citations':
-          return t('personalPhilosophyQuotes');
-        case 'lectures':
-        default:
-          return t('personalPhilosophyReadings');
-      }
-    })();
-
-    return (
-      <div key={category} className="border-b border-gold/10 last:border-b-0 pb-2 last:pb-0">
-        <button 
-          onClick={() => handleCategoryClick(category)}
-          className="flex items-center gap-3 text-left w-full group py-2.5 rounded-lg hover:bg-gold/5 transition-colors"
-        >
-          {isExpanded ? (
-            <ChevronDown className="w-5 h-5 text-gold shrink-0" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-gold shrink-0" />
-          )}
-          <span className="text-base sm:text-lg font-semibold text-foreground flex-1">{label}</span>
-          {categoryEntries.length > 0 && (
-            <span className="text-base sm:text-lg font-bold text-gold tabular-nums min-w-[1.5rem] text-right">
-              {categoryEntries.length}
-            </span>
-          )}
-        </button>
-        {isExpanded && (
-          <div className="ml-5 mt-1 space-y-2">
-            {categoryEntries.map((entry) => (
-              <div key={entry.id} className="p-2 bg-muted/30 rounded-lg group">
-                <div className="flex justify-between items-start gap-2">
-                  {entry.image_url && getPhilosophieImageSrc(entry.image_url) && (
-                    <PhilosophieImage src={entry.image_url} alt={entry.title} />
-                  )}
-                  <div className="flex-1 min-w-0">
-                      <InlineEditableField
-                        value={entry.title}
-                        onSave={(value) => handleInlineUpdate(entry.id, "title", value)}
-                        placeholder={t('personalTitlePlaceholder')}
-                        disabled={!isEditable}
-                        className="font-medium text-sm text-foreground"
-                      />
-                      {isEditable ? (
-                        <InlineEditableField
-                          value={entry.description || ""}
-                          onSave={(value) => handleInlineUpdate(entry.id, "description", value)}
-                          placeholder={t('personalDescriptionPlaceholder')}
-                          multiline
-                          className="text-xs text-muted-foreground"
-                        />
-                      ) : entry.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">{entry.description}</p>
-                      )}
-                  </div>
-                  {isEditable && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(entry.id)}>
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {isEditable && (
-              <button 
-                onClick={() => handleAddToCategory(category)}
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Plus className="w-3 h-3" />
-                <span>{t('add')}</span>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    );
+  const getCategoryLabel = (category: CategoryType) => {
+    switch (category) {
+      case "mentors":
+        return t("personalPhilosophyMentors");
+      case "philosophie":
+        return t("personalPhilosophyLife");
+      case "citations":
+        return t("personalPhilosophyQuotes");
+      case "lectures":
+      default:
+        return t("personalPhilosophyReadings");
+    }
   };
 
   return (
@@ -204,16 +113,105 @@ export const PersonalPhilosophie = ({ entries, isEditable, onDataChange }: Perso
       icon={Lightbulb}
       moduleType="philosophie"
     >
-      <div className="space-y-1">
-        {(Object.keys(CATEGORY_LABELS) as CategoryType[])
-          .sort((a, b) => {
-            const aCount = entries.filter(e => e.category === a).length;
-            const bCount = entries.filter(e => e.category === b).length;
-            if (aCount > 0 && bCount === 0) return -1;
-            if (aCount === 0 && bCount > 0) return 1;
-            return 0;
+      <div className="space-y-2">
+        {entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">
+            {t("personalNoPhilosophyEntries") || "Aucune entrée enregistrée"}
+          </p>
+        ) : (
+          entries.map((entry) => {
+            const cat = (entry.category as CategoryType) || "philosophie";
+            return (
+              <div key={entry.id} className="p-2 sm:p-3 bg-muted/30 rounded-lg group">
+                <div className="flex flex-col sm:flex-row items-start gap-3">
+                  {isEditable ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingEntry(entry);
+                        setEditorOpen(true);
+                      }}
+                      className="shrink-0 focus:outline-none w-full sm:w-16 sm:h-16 max-h-24 sm:max-h-none rounded-lg overflow-hidden bg-muted/50"
+                    >
+                      {entry.image_url && getPhilosophieImageSrc(entry.image_url) ? (
+                        <PhilosophieImage src={entry.image_url} alt={entry.title} />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground border border-dashed border-gold/30">
+                          {t("photo")}
+                        </div>
+                      )}
+                    </button>
+                  ) : (
+                    entry.image_url &&
+                    getPhilosophieImageSrc(entry.image_url) && (
+                      <div className="w-full sm:w-16 sm:h-16 max-h-24 sm:max-h-none rounded-lg overflow-hidden bg-muted/50 sm:shrink-0">
+                        <PhilosophieImage src={entry.image_url} alt={entry.title} />
+                      </div>
+                    )
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap justify-between">
+                      <InlineEditableField
+                        value={entry.title}
+                        onSave={(value) => handleInlineUpdate(entry.id, "title", value)}
+                        placeholder={t("personalTitlePlaceholder")}
+                        disabled={!isEditable}
+                        className="font-medium text-sm text-foreground flex-1 min-w-0"
+                      />
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/10 text-gold border border-gold/30 whitespace-nowrap">
+                        {getCategoryLabel(cat)}
+                      </span>
+                    </div>
+                    {isEditable ? (
+                      <InlineEditableField
+                        value={entry.description || ""}
+                        onSave={(value) => handleInlineUpdate(entry.id, "description", value)}
+                        placeholder={t("personalDescriptionPlaceholder")}
+                        multiline
+                        className="text-xs text-muted-foreground w-full"
+                      />
+                    ) : (
+                      entry.description && (
+                        <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words mt-1">
+                          {entry.description}
+                        </p>
+                      )
+                    )}
+                  </div>
+                  {isEditable && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity self-start sm:self-auto shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive"
+                        onClick={() => handleDelete(entry.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
           })
-          .map(renderCategory)}
+        )}
+        {isEditable && (
+          <div className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setEditingEntry(null);
+                setEditorOpen(true);
+              }}
+              className="text-xs gap-2 border-gold/40 text-gold hover:bg-gold/10"
+            >
+              <Plus className="w-3 h-3" />
+              {t("add")}
+            </Button>
+          </div>
+        )}
       </div>
 
       <PhilosophieEditor

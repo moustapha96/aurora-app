@@ -544,6 +544,7 @@ const AdminCron = () => {
 
                   <div className="flex items-center space-x-2">
                     <Switch
+                      className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                       id="is_active"
                       checked={newJob.is_active}
                       onCheckedChange={(checked) => setNewJob({ ...newJob, is_active: checked })}
@@ -633,6 +634,7 @@ const AdminCron = () => {
                       </TableCell>
                       <TableCell>
                         <Switch
+                          className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
                           checked={job.is_active}
                           onCheckedChange={() => toggleJobStatus(job)}
                         />
