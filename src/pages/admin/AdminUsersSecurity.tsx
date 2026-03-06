@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Shield, Fingerprint, Smartphone, Monitor, CheckCircle, XCircle, Clock, Mail, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { format, type Locale } from 'date-fns';
 import { fr, enUS, es, de, it, ptBR, ar, zhCN, ja, ru } from 'date-fns/locale';
@@ -24,6 +25,7 @@ interface UserSecurity {
   first_name: string;
   last_name: string;
   avatar_url: string | null;
+  profile_image_base64?: string | null;
   biometric_enabled: boolean;
   webauthn_enabled: boolean;
   two_factor_enabled: boolean;
@@ -40,6 +42,8 @@ const AdminUsersSecurity = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [disabling2FA, setDisabling2FA] = useState<string | null>(null);
+  const [biometricPromptEnabled, setBiometricPromptEnabled] = useState(true);
+  const [savingBiometricPrompt, setSavingBiometricPrompt] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,6 +51,7 @@ const AdminUsersSecurity = () => {
 
   useEffect(() => {
     loadUsers();
+    loadBiometricPromptSetting();
   }, []);
 
   // Reset page when search changes
@@ -59,7 +64,7 @@ const AdminUsersSecurity = () => {
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, biometric_enabled, webauthn_enabled, two_factor_enabled, created_at, updated_at');
+        .select('id, first_name, last_name, avatar_url, profile_image_base64, biometric_enabled, webauthn_enabled, two_factor_enabled, created_at, updated_at');
 
       if (profilesError) throw profilesError;
 
@@ -95,6 +100,7 @@ const AdminUsersSecurity = () => {
         first_name: profile.first_name,
         last_name: profile.last_name,
         avatar_url: profile.avatar_url,
+        profile_image_base64: (profile as any).profile_image_base64 || null,
         biometric_enabled: profile.biometric_enabled || false,
         webauthn_enabled: profile.webauthn_enabled || false,
         two_factor_enabled: profile.two_factor_enabled || false,
@@ -109,6 +115,58 @@ const AdminUsersSecurity = () => {
       console.error('Error loading users:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadBiometricPromptSetting = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('setting_value')
+        .eq('setting_key', 'biometric_prompt_after_login')
+        .maybeSingle();
+
+      if (error) return;
+      if (data != null && data.setting_value != null) {
+        setBiometricPromptEnabled(data.setting_value !== 'false');
+      }
+    } catch (error) {
+      console.error('Error loading biometric prompt setting:', error);
+    }
+  };
+
+  const saveBiometricPromptSetting = async (value: boolean) => {
+    setSavingBiometricPrompt(true);
+    try {
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert(
+          {
+            setting_key: 'biometric_prompt_after_login',
+            setting_value: value.toString(),
+            description: 'Si activé, une suggestion d’activation biométrique est affichée après connexion lorsque disponible',
+          },
+          { onConflict: 'setting_key' }
+        );
+
+      if (error) throw error;
+
+      setBiometricPromptEnabled(value);
+      toast({
+        title: t('success'),
+        description: value
+          ? (t('adminBiometricPromptEnabled') || 'Suggestion biométrique après connexion activée')
+          : (t('adminBiometricPromptDisabled') || 'Suggestion biométrique après connexion désactivée'),
+      });
+    } catch (error) {
+      console.error('Error saving biometric prompt setting:', error);
+      toast({
+        title: t('errorTitle'),
+        description: t('adminErrorSaving'),
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingBiometricPrompt(false);
     }
   };
 
@@ -285,6 +343,27 @@ const AdminUsersSecurity = () => {
           </Card>
         </div>
 
+        {/* Biometric prompt setting */}
+        <Card>
+          <CardContent className="flex items-center justify-between gap-4 pt-6">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                {t('adminBiometricPromptTitle') || 'Suggérer l’activation de la biométrie après connexion'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('adminBiometricPromptDesc') ||
+                  'Si activé, un message propose aux utilisateurs d’activer la biométrie lorsque leur appareil la supporte.'}
+              </p>
+            </div>
+            <Switch
+              className="bg-muted/40 !important data-[state=unchecked]:bg-gold/30"
+              checked={biometricPromptEnabled}
+              onCheckedChange={(checked) => saveBiometricPromptSetting(checked)}
+              disabled={savingBiometricPrompt}
+            />
+          </CardContent>
+        </Card>
+
         {/* Users Table */}
         <Card>
           <CardHeader>
@@ -323,6 +402,7 @@ const AdminUsersSecurity = () => {
                     {paginatedUsers.map((user) => {
                       const securityLevel = getSecurityLevel(user);
                       const activityStatus = getActivityStatus(user.last_activity);
+                      const avatarSrc = user.profile_image_base64 || user.avatar_url;
                       
                       return (
                         <TableRow key={user.id}>
@@ -330,7 +410,7 @@ const AdminUsersSecurity = () => {
                             <div className="flex items-center gap-3">
                               <div className="relative">
                                 <Avatar className="h-10 w-10">
-                                  <AvatarImage src={user.avatar_url || ''} />
+                                  <AvatarImage src={avatarSrc || undefined} />
                                   <AvatarFallback className="bg-gold/20 text-gold">
                                     {user.first_name[0]}{user.last_name[0]}
                                   </AvatarFallback>

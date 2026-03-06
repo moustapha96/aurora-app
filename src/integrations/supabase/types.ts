@@ -2954,6 +2954,10 @@ export type Database = {
         Args: { other_user_id: string }
         Returns: string
       }
+      get_or_create_conversation_admin: {
+        Args: { other_user_id: string }
+        Returns: string
+      }
       generate_account_number: { Args: never; Returns: string }
       generate_account_number_with_prefix: {
         Args: { p_is_linked_account: boolean }

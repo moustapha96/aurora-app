@@ -5,15 +5,38 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminMarketplace, AdminMarketplaceItem } from "@/hooks/useAdminMarketplace";
-import { MARKETPLACE_CATEGORIES } from "@/hooks/useMarketplace";
+import { MARKETPLACE_CATEGORIES, MarketplaceItemFormData } from "@/hooks/useMarketplace";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
+import { MarketplaceItemForm } from "@/components/marketplace/MarketplaceItemForm";
 import { supabase } from "@/integrations/supabase/client";
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Impossible de lire l'image"));
+    reader.readAsDataURL(file);
+  });
+}
 import { 
   ShoppingBag, Eye, Trash2, Loader2, Package, ChevronLeft, ChevronRight,
-  User, Calendar, DollarSign, CreditCard, ArrowRightLeft
+  User, Calendar, DollarSign, CreditCard, ArrowRightLeft, Plus, Pencil, Mail, MessageSquare, Send
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -36,8 +59,19 @@ interface Payment {
   item_title?: string;
 }
 
+interface ContactRequest {
+  id: string;
+  user_id: string;
+  item_id: string;
+  message: string;
+  created_at: string;
+  user_name?: string;
+  item_title?: string;
+}
+
 const AdminMarketplace = () => {
-  const { t } = useLanguage();
+  const { t } = useLanguage(); 
+  const { toast } = useToast();
   const { allItems, loading, fetchAllItems, updateItemStatus, deleteItem } = useAdminMarketplace();
   
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -45,11 +79,119 @@ const AdminMarketplace = () => {
   const [viewingItem, setViewingItem] = useState<AdminMarketplaceItem | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<string>('items');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<AdminMarketplaceItem | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<AdminMarketplaceItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Payments state
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>('all');
+
+  // Contact requests (demandes / contacts sur les biens)
+  const [contacts, setContacts] = useState<ContactRequest[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ContactRequest | null>(null);
+  const [replyMessage, setReplyMessage] = useState("");
+  const [replySending, setReplySending] = useState(false);
+
+  const handleUploadImage = async (file: File): Promise<string | null> => {
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: t("error"),
+        description: t("businessImageFormatNotAllowed") || "Format non supporté",
+        variant: "destructive",
+      });
+      return null;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      toast({ title: t("imageUploaded") });
+      return dataUrl;
+    } catch (error: any) {
+      console.error("[AdminMarketplace] Error reading image:", error);
+      toast({
+        title: t("error"),
+        description: error.message || t("uploadError"),
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const handleSaveItem = async (formData: MarketplaceItemFormData): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: t("error"),
+          description: t("notAuthenticated"),
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      const cleanMain = formData.main_image_url ? formData.main_image_url.split("?")[0] : null;
+      const cleanAdditional = formData.additional_images.map((url) => url.split("?")[0]);
+
+      if (editingItem) {
+        const { error } = await supabase
+          .from("marketplace_items")
+          .update({
+            title: formData.title,
+            description: formData.description || null,
+            category: formData.category,
+            price: formData.price,
+            currency: formData.currency,
+            main_image_url: cleanMain,
+            additional_images: cleanAdditional,
+            offer_end_date: formData.offer_end_date,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", editingItem.id);
+
+        if (error) throw error;
+
+        toast({
+          title: t("success"),
+          description: t("marketplaceItemUpdated") || "Article mis à jour",
+        });
+      } else {
+        const { error } = await supabase
+          .from("marketplace_items")
+          .insert({
+            user_id: user.id,
+            title: formData.title,
+            description: formData.description || null,
+            category: formData.category,
+            price: formData.price,
+            currency: formData.currency,
+            main_image_url: cleanMain,
+            additional_images: cleanAdditional,
+            offer_end_date: formData.offer_end_date,
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: t("success"),
+          description: t("marketplaceItemAdded") || "Article ajouté",
+        });
+      }
+
+      await fetchAllItems(selectedCategory, selectedStatus);
+      return true;
+    } catch (error: any) {
+      console.error("[AdminMarketplace] Error saving item:", error);
+      toast({
+        title: t("error"),
+        description: error.message || t("marketplaceItemSaveError") || "Erreur lors de la sauvegarde",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
 
   const fetchPayments = async (status?: string) => {
     setPaymentsLoading(true);
@@ -112,11 +254,100 @@ const AdminMarketplace = () => {
     }
   };
 
+  const fetchContacts = async () => {
+    setContactsLoading(true);
+    try {
+      const { data: rows, error } = await (supabase as any)
+        .from('marketplace_contact_requests')
+        .select('id, user_id, item_id, message, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const typedRows = (rows || []) as { id: string; user_id: string; item_id: string; message: string; created_at: string }[];
+      if (typedRows.length > 0) {
+        const userIds = [...new Set(typedRows.map(r => r.user_id))];
+        const itemIds = [...new Set(typedRows.map(r => r.item_id))];
+        const { data: profiles } = await supabase.from('profiles').select('id, first_name, last_name').in('id', userIds);
+        const { data: items } = await supabase.from('marketplace_items').select('id, title').in('id', itemIds);
+        const profileMap = new Map(profiles?.map(p => [p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim()]) || []);
+        const itemMap = new Map(items?.map(i => [i.id, i.title]) || []);
+        setContacts(typedRows.map(r => ({
+          ...r,
+          user_name: profileMap.get(r.user_id) || t('unknownUser'),
+          item_title: itemMap.get(r.item_id) || t('unknownItem'),
+        })));
+      } else {
+        setContacts([]);
+      }
+    } catch (error) {
+      console.error('Error fetching contact requests:', error);
+      setContacts([]);
+    } finally {
+      setContactsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'payments') {
       fetchPayments(paymentStatusFilter);
     }
   }, [activeTab, paymentStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab === 'contacts') {
+      fetchContacts();
+    }
+  }, [activeTab]);
+
+  const sendReplyToContact = async () => {
+    if (!replyingTo || !replyMessage.trim()) return;
+    setReplySending(true);
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) throw new Error("Non authentifié");
+
+      const { error: notifError } = await supabase.from("user_notifications").insert({
+        user_id: replyingTo.user_id,
+        type: "marketplace_reply",
+        title: t("marketplaceReplyNotificationTitle") || "Réponse à votre demande",
+        message: replyMessage.trim(),
+        related_document_id: replyingTo.item_id,
+      });
+      if (notifError) throw notifError;
+
+      const { data: conversationId, error: convError } = await supabase.rpc("get_or_create_conversation_admin", {
+        other_user_id: replyingTo.user_id,
+      });
+      if (convError) throw convError;
+      if (conversationId) {
+        const messageContent = replyingTo.item_title
+          ? `${t("marketplaceReplyAbout") || "À propos de"} « ${replyingTo.item_title} »\n\n${replyMessage.trim()}`
+          : replyMessage.trim();
+        const { error: msgError } = await supabase.from("messages").insert({
+          conversation_id: conversationId,
+          sender_id: currentUser.id,
+          content: messageContent,
+        });
+        if (msgError) throw msgError;
+      }
+
+      toast({
+        title: t("success"),
+        description: t("marketplaceReplySent") || "Réponse envoyée. Le membre recevra une notification.",
+      });
+      setReplyingTo(null);
+      setReplyMessage("");
+    } catch (e: any) {
+      toast({
+        title: t("errorTitle"),
+        description: e?.message || (t("marketplaceReplyError") || "Erreur lors de l'envoi"),
+        variant: "destructive",
+      });
+    } finally {
+      setReplySending(false);
+    }
+  };
 
   const handleFilterChange = (category: string, status: string) => {
     fetchAllItems(category === 'all' ? undefined : category, status === 'all' ? undefined : status);
@@ -199,6 +430,18 @@ const AdminMarketplace = () => {
               {t('adminMarketplaceDesc')}
             </p>
           </div>
+          <Button
+            variant="default"
+            size="sm"
+            className="self-start sm:self-auto"
+            onClick={() => {
+              setEditingItem(null);
+              setIsFormOpen(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {t('addItem')}
+          </Button>
         </div>
 
         {/* Tabs */}
@@ -212,9 +455,13 @@ const AdminMarketplace = () => {
               <CreditCard className="w-4 h-4" />
               {t('marketplacePayments')} ({payments.length})
             </TabsTrigger>
+            <TabsTrigger value="contacts" className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              {t('marketplaceContactsTab')} ({contacts.length})
+            </TabsTrigger>
           </TabsList>
 
-          {/* Items Tab */}
+        {/* Items Tab */}
           <TabsContent value="items" className="space-y-4">
             {/* Filters */}
             <Card>
@@ -344,7 +591,17 @@ const AdminMarketplace = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => deleteItem(item.id)}
+                                  onClick={() => {
+                                    setEditingItem(item);
+                                    setIsFormOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setItemToDelete(item)}
                                 >
                                   <Trash2 className="w-4 h-4 text-destructive" />
                                 </Button>
@@ -457,7 +714,129 @@ const AdminMarketplace = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Contacts / Demandes Tab */}
+          <TabsContent value="contacts" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  {t('marketplaceContactsTab')}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">{t('marketplaceContactsTabDesc')}</p>
+              </CardHeader>
+              <CardContent className="p-0">
+                {contactsLoading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : contacts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Mail className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
+                    <p className="text-muted-foreground">{t('marketplaceNoContacts')}</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t('marketplaceContactDate')}</TableHead>
+                          <TableHead>{t('marketplaceContactUser')}</TableHead>
+                          <TableHead>{t('marketplaceContactItem')}</TableHead>
+                          <TableHead className="max-w-[300px]">{t('marketplaceContactMessage')}</TableHead>
+                          <TableHead className="text-right w-[100px]">{t('marketplaceActions')}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {contacts.map((c) => (
+                          <TableRow key={c.id}>
+                            <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                              {format(new Date(c.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                            </TableCell>
+                            <TableCell className="font-medium">{c.user_name}</TableCell>
+                            <TableCell className="font-medium max-w-[180px] truncate">{c.item_title}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-[300px] whitespace-pre-wrap break-words">
+                              {c.message}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs gap-1"
+                                onClick={() => {
+                                  setReplyingTo(c);
+                                  setReplyMessage("");
+                                }}
+                              >
+                                <Send className="w-3 h-3" />
+                                {t('marketplaceReply')}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        {/* Popup Répondre au membre (notification) */}
+        <Dialog open={!!replyingTo} onOpenChange={(open) => !open && setReplyingTo(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{t('marketplaceReplyTitle')}</DialogTitle>
+            </DialogHeader>
+            {replyingTo && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {t('marketplaceReplyTo')} <span className="font-medium text-foreground">{replyingTo.user_name}</span>
+                  {t('marketplaceReplyAbout')} <span className="font-medium text-foreground">{replyingTo.item_title}</span>.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="reply-message">{t('marketplaceReplyMessageLabel')}</Label>
+                  <Textarea
+                    id="reply-message"
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder={t('marketplaceReplyMessagePlaceholder')}
+                    rows={5}
+                    className="resize-none"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={() => setReplyingTo(null)}>
+                    {t('cancel')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={replySending || !replyMessage.trim()}
+                    onClick={sendReplyToContact}
+                  >
+                    {replySending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Send className="w-3 h-3 mr-1" />}
+                    {t('marketplaceReplySend')}
+                  </Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Add / Edit Item Form (Admin) */}
+        <MarketplaceItemForm
+          open={isFormOpen}
+          onOpenChange={(open) => {
+            setIsFormOpen(open);
+            if (!open) {
+              setEditingItem(null);
+            }
+          }}
+          item={editingItem as any}
+          onSubmit={handleSaveItem}
+          onUploadImage={handleUploadImage}
+        />
 
         {/* Item Detail Dialog */}
         <Dialog open={!!viewingItem} onOpenChange={(open) => !open && setViewingItem(null)}>
@@ -578,10 +957,7 @@ const AdminMarketplace = () => {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => {
-                        deleteItem(viewingItem.id);
-                        setViewingItem(null);
-                      }}
+                      onClick={() => setItemToDelete(viewingItem)}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       {t('delete')}
@@ -592,6 +968,57 @@ const AdminMarketplace = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Confirmation suppression article */}
+        <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('marketplaceDeleteConfirm')}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {itemToDelete ? (
+                  <>
+                    {t('marketplaceDeleteWarning')}
+                    {itemToDelete.title && (
+                      <span className="block mt-2 font-medium text-foreground">
+                        « {itemToDelete.title} »
+                      </span>
+                    )}
+                  </>
+                ) : null}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>{t('cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={isDeleting}
+                onClick={async () => {
+                  if (!itemToDelete) return;
+                  setIsDeleting(true);
+                  try {
+                    const ok = await deleteItem(itemToDelete.id);
+                    if (ok) {
+                      if (viewingItem?.id === itemToDelete.id) setViewingItem(null);
+                      setItemToDelete(null);
+                      await fetchAllItems(selectedCategory, selectedStatus);
+                    }
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t('deleting')}
+                  </>
+                ) : (
+                  t('delete')
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );

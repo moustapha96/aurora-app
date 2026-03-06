@@ -358,13 +358,21 @@ const Login = () => {
   };
 
   // Native biometric auth
-  const { isNative, isEnabled: biometricEnabled, biometryType, loading: biometricLoading } = useBiometricAuth();
+  const {
+    isNative,
+    isAvailable: biometricAvailable,
+    isEnabled: biometricEnabled,
+    biometryType,
+    loading: biometricLoading,
+  } = useBiometricAuth();
   const [biometricAuthLoading, setBiometricAuthLoading] = useState(false);
 
   // WebAuthn (web biometric) state
   const [webAuthnAvailable, setWebAuthnAvailable] = useState(false);
   const [webAuthnType, setWebAuthnType] = useState<BiometricType>('none');
   const [webAuthnLoading, setWebAuthnLoading] = useState(false);
+  const [biometricPromptEnabled, setBiometricPromptEnabled] = useState(true);
+  const [biometricPromptShown, setBiometricPromptShown] = useState(false);
 
   // Check WebAuthn capabilities on mount
   useEffect(() => {
@@ -374,6 +382,37 @@ const Login = () => {
       setWebAuthnType(capabilities.biometricType);
     };
     checkWebAuthn();
+  }, []);
+
+  // Load biometric prompt setting and local flag
+  useEffect(() => {
+    const initBiometricPrompt = async () => {
+      try {
+        const stored = typeof window !== 'undefined' ? window.localStorage.getItem('biometricPromptShown') : null;
+        if (stored === '1') {
+          setBiometricPromptShown(true);
+        }
+      } catch {
+        // ignore storage errors
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('admin_settings')
+          .select('setting_value')
+          .eq('setting_key', 'biometric_prompt_after_login')
+          .maybeSingle();
+
+        if (error) return;
+        if (data != null && data.setting_value != null) {
+          setBiometricPromptEnabled(data.setting_value !== 'false');
+        }
+      } catch (e) {
+        console.error('Error loading biometric prompt setting:', e);
+      }
+    };
+
+    initBiometricPrompt();
   }, []);
 
   // Auto-trigger biometric auth on native platform
@@ -492,8 +531,47 @@ const Login = () => {
     }
   };
 
+  const maybeShowBiometricPrompt = () => {
+    if (!biometricPromptEnabled || biometricPromptShown) return;
+
+    const hasAvailable =
+      (isNative && biometricAvailable && !biometricEnabled && !biometricLoading) ||
+      (!isNative && webAuthnAvailable);
+
+    if (!hasAvailable) return;
+
+    let biometricLabel: string;
+    if (isNative) {
+      if (biometryType === 'face') {
+        biometricLabel = t('biometricFaceID');
+      } else if (biometryType === 'fingerprint') {
+        biometricLabel = t('biometricFingerprint');
+      } else {
+        biometricLabel = t('biometric');
+      }
+    } else {
+      biometricLabel = getBiometricName(webAuthnType);
+    }
+
+    toast.info(
+      t('enableBiometricTitle')
+        ? t('enableBiometricTitle').replace('{biometric}', biometricLabel)
+        : `Activer ${biometricLabel} pour une connexion plus rapide`
+    );
+
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('biometricPromptShown', '1');
+      }
+    } catch {
+      // ignore storage errors
+    }
+    setBiometricPromptShown(true);
+  };
+
   // Complete login after biometric verification
   const completeLogin = async () => {
+    maybeShowBiometricPrompt();
     await BiometricService.updateStoredTokens();
     toast.success(t('loginSuccess'));
     navigate("/member-card");

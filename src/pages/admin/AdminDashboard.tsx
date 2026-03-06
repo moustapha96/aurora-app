@@ -86,7 +86,7 @@ const AdminDashboard = () => {
       // Get recent members
       const { data: recent } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, created_at')
+        .select('id, first_name, last_name, avatar_url, profile_image_base64, created_at')
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -210,31 +210,34 @@ const AdminDashboard = () => {
                 <p className="text-muted-foreground">{t('adminNoMembers')}</p>
               ) : (
                 <div className="space-y-4">
-                  {recentMembers.map((member) => (
-                    <div
-                      key={member.id}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer"
-                      onClick={() => navigate(`/profile/${member.id}`)}
-                    >
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                        {member.avatar_url ? (
-                          <img src={member.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-sm font-medium text-primary">
-                            {member.first_name?.[0]}{member.last_name?.[0]}
-                          </span>
-                        )}
+                  {recentMembers.map((member) => {
+                    const avatarSrc = (member as any).profile_image_base64 || member.avatar_url;
+                    return (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer"
+                        onClick={() => navigate(`/profile/${member.id}`)}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                          {avatarSrc ? (
+                            <img src={avatarSrc} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-sm font-medium text-primary">
+                              {member.first_name?.[0]}{member.last_name?.[0]}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">
+                            {member.first_name} {member.last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(member.created_at).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">
-                          {member.first_name} {member.last_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(member.created_at).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

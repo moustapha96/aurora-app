@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -23,19 +23,36 @@ const MarketplaceContent = () => {
     categories 
   } = useMarketplace();
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  // Catégories qui ont au moins un article (ordre conservé) et effectifs
+  const { categoriesWithItems, categoryCounts } = useMemo(() => {
+    const counts = items.reduce<Record<string, number>>((acc, item) => {
+      acc[item.category] = (acc[item.category] || 0) + 1;
+      return acc;
+    }, {});
+    const withItems = categories.filter((cat) => (counts[cat] ?? 0) > 0);
+    return { categoriesWithItems: withItems, categoryCounts: counts };
+  }, [items, categories]);
+
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+
+  // Au premier chargement, sélectionner par défaut une catégorie qui a des éléments
+  useEffect(() => {
+    if (loading || items.length === 0) return;
+    const currentHasItems = selectedCategory && (categoryCounts[selectedCategory] ?? 0) > 0;
+    if (!currentHasItems) {
+      setSelectedCategory(categoriesWithItems[0] || categories[0] || "");
+    }
+  }, [loading, items.length, selectedCategory, categoriesWithItems, categories, categoryCounts]);
 
   // Handle payment success redirect (e.g., from 3D Secure)
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
     if (paymentStatus === 'success') {
       toast.success(t('paymentSuccess'));
-      // Remove the query parameter from URL
       setSearchParams({}, { replace: true });
-      // Refresh items to show updated status
-      fetchItems(selectedCategory === 'all' ? undefined : selectedCategory);
+      fetchItems(undefined);
     }
-  }, [searchParams, setSearchParams, t, fetchItems, selectedCategory]);
+  }, [searchParams, setSearchParams, t, fetchItems]);
 
   const categoryIcons: Record<string, any> = {
     'immobilier': Home,
@@ -70,12 +87,11 @@ const MarketplaceContent = () => {
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
-    fetchItems(category === 'all' ? undefined : category);
   };
 
-  const filteredItems = selectedCategory === 'all' 
-    ? items 
-    : items.filter(item => item.category === selectedCategory);
+  const filteredItems = selectedCategory
+    ? items.filter((item) => item.category === selectedCategory)
+    : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -100,28 +116,31 @@ const MarketplaceContent = () => {
 
 
       <main className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-16">
-        {/* Filtres de catégories */}
+        {/* Filtres de catégories (sans "Toutes" ; colorées celles qui ont des éléments) */}
         <div className="flex flex-wrap gap-2 pb-4 overflow-x-auto">
-          <Button
-            variant={selectedCategory === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleCategoryChange('all')}
-            className="flex-shrink-0"
-          >
-            {t('allCategories')}
-          </Button>
           {categories.map((cat) => {
             const Icon = categoryIcons[cat] || Package;
+            const hasItems = (categoryCounts[cat] ?? 0) > 0;
+            const isSelected = selectedCategory === cat;
             return (
               <Button
                 key={cat}
-                variant={selectedCategory === cat ? 'default' : 'outline'}
+                variant={isSelected ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleCategoryChange(cat)}
-                className="flex-shrink-0 flex items-center gap-1.5"
+                className={`flex-shrink-0 flex items-center gap-1.5 ${
+                  hasItems
+                    ? isSelected
+                      ? "bg-primary text-primary-foreground"
+                      : "border-primary/50 text-primary hover:bg-primary/10"
+                    : "opacity-50 text-muted-foreground hover:opacity-70"
+                }`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">{getCategoryLabel(cat)}</span>
+                {hasItems && (
+                  <span className="text-[10px] opacity-80">({categoryCounts[cat]})</span>
+                )}
               </Button>
             );
           })}
@@ -144,9 +163,7 @@ const MarketplaceContent = () => {
                 key={item.id}
                 item={item}
                 isOwner={false}
-                onPurchaseSuccess={() => {
-                  fetchItems(selectedCategory === 'all' ? undefined : selectedCategory);
-                }}
+                onPurchaseSuccess={() => fetchItems()}
               />
             ))}
           </div>

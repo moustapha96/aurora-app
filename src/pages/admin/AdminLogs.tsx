@@ -75,11 +75,16 @@ export default function AdminLogs() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
+      // On limite la fenêtre temporelle et les colonnes pour éviter les timeouts
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
       const { data, error } = await supabase
         .from('activity_logs')
-        .select('*')
+        .select('id, user_id, table_name, operation, record_id, created_at')
+        .gte('created_at', thirtyDaysAgo.toISOString())
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(500);
 
       if (error) throw error;
 

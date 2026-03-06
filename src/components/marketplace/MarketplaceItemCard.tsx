@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MarketplaceCountdown } from './MarketplaceCountdown';
@@ -11,8 +12,9 @@ import { StripeCheckout } from './StripeCheckout';
 import { MarketplaceItem } from '@/hooks/useMarketplace';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Eye, ChevronLeft, ChevronRight, Package, MapPin, CreditCard, Maximize2, User, Phone, MessageCircle } from 'lucide-react';
+import { Eye, ChevronLeft, ChevronRight, Package, MapPin, CreditCard, Maximize2, User, Phone, MessageCircle, Mail, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 interface SellerProfile {
   id: string;
@@ -21,6 +23,16 @@ interface SellerProfile {
   avatar_url: string | null;
   account_number: string | null;
   mobile_phone?: string | null;
+}
+
+function getMarketplaceImageSrc(url: string | undefined | null): string | null {
+  if (!url || typeof url !== "string") return null;
+  const s = url.trim();
+  if (!s) return null;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("data:")) return s.replace(/\r?\n/g, "");
+  if (s.startsWith("/") || s.startsWith("./") || s.startsWith("../")) return s;
+  return `/${s.replace(/^\/*/, "")}`;
 }
 
 interface MarketplaceItemCardProps {
@@ -42,13 +54,25 @@ export const MarketplaceItemCard = ({
 }: MarketplaceItemCardProps) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [showDetails, setShowDetails] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showContactDialog, setShowContactDialog] = useState(false);
+  const [contactMessage, setContactMessage] = useState('');
+  const [sendingContact, setSendingContact] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [descriptionFullscreen, setDescriptionFullscreen] = useState(false);
   const [requestedReservationUntil, setRequestedReservationUntil] = useState<string>('');
   const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
   const [loadingSeller, setLoadingSeller] = useState(false);
+  const [cardImageErrored, setCardImageErrored] = useState(false);
+  const [galleryImageErrored, setGalleryImageErrored] = useState(false);
+
+  const defaultContactMessage = (() => {
+    const p = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: item.currency }).format(item.price);
+    const prefix = t('marketplaceContactMessagePrefix') || 'Je suis intéressé par le bien :';
+    return `${prefix} « ${item.title} » (${p}). `;
+  })();
 
   const offerEnded = item.offer_end_date ? new Date(item.offer_end_date) <= new Date() : false;
   const maxReservationDate = item.offer_end_date || null;
@@ -56,9 +80,10 @@ export const MarketplaceItemCard = ({
   useEffect(() => {
     if (!showDetails) {
       setRequestedReservationUntil('');
+      setGalleryImageErrored(false);
       return;
     }
-    
+    setGalleryImageErrored(false);
     // Fetch seller profile when dialog opens
     const fetchSellerProfile = async () => {
       if (!item.user_id || isOwner) return;
@@ -77,12 +102,12 @@ export const MarketplaceItemCard = ({
           return;
         }
         
-        // Try to get phone from profiles_private (may fail due to RLS)
+        // Try to get phone from profiles_private (RLS : seul le propriétaire peut lire ; on utilise maybeSingle pour éviter 406 si 0 ligne)
         const { data: privateData } = await supabase
           .from('profiles_private')
           .select('mobile_phone')
           .eq('user_id', item.user_id)
-          .single();
+          .maybeSingle();
         
         setSellerProfile({
           ...profileData,
@@ -101,7 +126,14 @@ export const MarketplaceItemCard = ({
   const allImages = [
     item.main_image_url,
     ...(item.additional_images || [])
-  ].filter(Boolean) as string[];
+  ]
+    .map((img) => getMarketplaceImageSrc(img as string | null))
+    .filter(Boolean) as string[];
+
+  // Réinitialiser l’erreur galerie quand on change de slide
+  useEffect(() => {
+    setGalleryImageErrored(false);
+  }, [currentImageIndex]);
 
   const formatPrice = (price: number, currency: string) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -147,22 +179,14 @@ export const MarketplaceItemCard = ({
       >
         {/* Image Section */}
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          {allImages.length > 0 ? (
+          {allImages.length > 0 && !cardImageErrored ? (
             <>
               <img
                 src={allImages[0]}
                 alt={item.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  target.style.display = 'none';
-                  const fallback = target.nextElementSibling as HTMLElement;
-                  if (fallback) fallback.style.display = 'flex';
-                }}
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                onError={() => setCardImageErrored(true)}
               />
-              <div className="hidden w-full h-full items-center justify-center absolute inset-0 bg-muted">
-                <Package className="w-12 h-12 text-muted-foreground/30" />
-              </div>
               {allImages.length > 1 && (
                 <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
                   +{allImages.length - 1}
@@ -235,16 +259,17 @@ export const MarketplaceItemCard = ({
             {/* Image Gallery */}
             {allImages.length > 0 && (
               <div className="relative">
-                <div className="aspect-video rounded-lg overflow-hidden bg-muted">
-                  <img
-                    src={allImages[currentImageIndex]}
-                    alt={`${item.title} - ${currentImageIndex + 1}`}
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      console.error('[Marketplace] Image load error:', allImages[currentImageIndex]);
-                      e.currentTarget.src = '/placeholder.svg';
-                    }}
-                  />
+                <div className="aspect-video rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                  {galleryImageErrored ? (
+                    <Package className="w-16 h-16 text-muted-foreground/40" />
+                  ) : (
+                    <img
+                      src={allImages[currentImageIndex]}
+                      alt={`${item.title} - ${currentImageIndex + 1}`}
+                      className="w-full h-full object-contain"
+                      onError={() => setGalleryImageErrored(true)}
+                    />
+                  )}
                 </div>
                 
                 {allImages.length > 1 && (
@@ -411,7 +436,7 @@ export const MarketplaceItemCard = ({
                   </div>
                 )}
                 
-                {/* Boutons alignés, même position, plus petits */}
+                {/* Boutons alignés : Payer ou Contacter l'admin */}
                 {isOwner ? (
                   <div className="flex flex-row flex-wrap justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={onEdit} className="h-7 text-xs px-2.5 min-w-[4rem]">
@@ -427,14 +452,26 @@ export const MarketplaceItemCard = ({
                     </Button>
                   </div>
                 ) : item.status === 'active' && !offerEnded ? (
-                  <div className="flex flex-row justify-end">
+                  <div className="flex flex-row flex-wrap justify-end gap-2">
                     <Button 
                       onClick={() => setShowCheckout(true)}
                       size="sm"
                       className="h-7 text-xs px-2.5 min-w-[4rem]"
                     >
                       <CreditCard className="w-3 h-3 mr-1" />
-                      {t('buyNow')}
+                      {t('marketplacePay')}
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setContactMessage(defaultContactMessage);
+                        setShowContactDialog(true);
+                      }}
+                      size="sm"
+                      className="h-7 text-xs px-2.5 min-w-[4rem]"
+                    >
+                      <Mail className="w-3 h-3 mr-1" />
+                      {t('marketplaceContactAdmin')}
                     </Button>
                   </div>
                 ) : null}
@@ -466,6 +503,62 @@ export const MarketplaceItemCard = ({
               className="h-7 text-xs px-2.5"
             >
               {t('close') || 'Fermer'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contact admin popup */}
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-lg">{t('marketplaceContactAdminTitle')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t('marketplaceContactAdminDesc')}</p>
+          <div className="space-y-2">
+            <Label htmlFor="contact-message">{t('marketplaceContactMessageLabel')}</Label>
+            <Textarea
+              id="contact-message"
+              value={contactMessage}
+              onChange={(e) => setContactMessage(e.target.value)}
+              placeholder={t('marketplaceContactMessagePlaceholder')}
+              rows={5}
+              className="resize-none"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setShowContactDialog(false)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              size="sm"
+              disabled={sendingContact || !contactMessage.trim()}
+              onClick={async () => {
+                setSendingContact(true);
+                try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (!user) {
+                    toast({ title: t('errorTitle'), description: t('notAuthenticated'), variant: 'destructive' });
+                    return;
+                  }
+                  const { error } = await supabase.from('marketplace_contact_requests').insert({
+                    user_id: user.id,
+                    item_id: item.id,
+                    message: contactMessage.trim(),
+                  });
+                  if (error) throw error;
+                  toast({ title: t('marketplaceContactSuccess') });
+                  setShowContactDialog(false);
+                  setShowDetails(false);
+                } catch (e: any) {
+                  toast({ title: t('errorTitle'), description: e?.message || t('marketplaceContactError'), variant: 'destructive' });
+                } finally {
+                  setSendingContact(false);
+                }
+              }}
+            >
+              {sendingContact ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Mail className="w-3 h-3 mr-1" />}
+              {t('marketplaceContactSend')}
             </Button>
           </div>
         </DialogContent>
