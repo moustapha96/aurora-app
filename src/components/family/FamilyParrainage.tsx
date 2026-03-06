@@ -1031,31 +1031,19 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
     <div className="w-full min-w-0 space-y-6">
       {/* Colonne : Codes d'invitation */}
       <div className="w-full min-w-0 space-y-5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Gift className="h-5 w-5 text-gold shrink-0" />
-            <h2 className="text-lg font-semibold text-foreground">
-              {t('singleUseInvitationCodes') || "Codes d'invitation"}
-            </h2>
-          </div>
 
-          
-          
-          {isEditable && !referralCode && (
-            <Button
-            variant="outline"
-            size="sm"
-            onClick={createInitialReferralCodeManually}
-            className="shrink-0 border-gold/40 text-gold hover:bg-gold/10"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            {t('generateReferralCode') || 'Générer un code'}
-          </Button>
-          )}
+         {/* Codes à usage unique — toujours affiché sur la page Parrainage */}
+         <div className="space-y-3">
+          <SingleUseInvitationCodes
+            isEditable={isEditable}
+            userId={userId}
+            onUpdate={onUpdate}
+            hasInitialCode={!!referralCode}
+            initialCodeUsed={referredMembers.length > 0}
+          />
         </div>
-       
-        
 
+      
         {/* Code de parrainage initial */}
         {referralCode ? (
           <div className={`rounded-lg border overflow-hidden p-4 sm:p-5 ${referredMembers.length > 0 ? 'bg-gold/5 border-gold/10' : 'bg-gold/5 border-gold/20'}`}>
@@ -1156,18 +1144,16 @@ export const FamilyParrainage = ({ isEditable = false, onUpdate, userId }: Famil
           </div>
         )}
 
-        {/* Codes à usage unique */}
-        {userId && (
-          <div className="space-y-3">
-            <SingleUseInvitationCodes
-              isEditable={isEditable}
-              userId={userId}
-              onUpdate={onUpdate}
-              hasInitialCode={!!referralCode}
-              initialCodeUsed={referredMembers.length > 0}
-            />
-          </div>
-        )}
+        {/* Codes à usage unique — toujours affiché sur la page Parrainage */}
+        {/* <div className="space-y-3">
+          <SingleUseInvitationCodes
+            isEditable={isEditable}
+            userId={userId}
+            onUpdate={onUpdate}
+            hasInitialCode={!!referralCode}
+            initialCodeUsed={referredMembers.length > 0}
+          />
+        </div> */}
 
         {/* Section Liens de Partage */}
         <div className="space-y-4">

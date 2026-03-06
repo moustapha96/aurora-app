@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -7,10 +7,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { 
   FolderKanban, Upload, X, Loader2, Plus, Trash2, ChevronLeft, ChevronRight, Edit2, Check 
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { uploadBusinessImage } from "@/lib/storageUploadUtils";
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Impossible de lire l'image"));
+    reader.readAsDataURL(file);
+  });
+}
 
 interface Project {
   id: string;
@@ -45,6 +52,49 @@ function getProjectImageSrc(url: string | undefined | null): string | null {
   return `/${s.replace(/^\/*/, "")}`;
 }
 
+function ProjectThumbnail({
+  thumbnail,
+  title,
+  onClick,
+  imagesCount,
+}: {
+  thumbnail: string | null;
+  title: string;
+  onClick: () => void;
+  imagesCount: number;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const showImage = thumbnail && !imgError;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative group aspect-square rounded-lg overflow-hidden border border-gold/20 bg-black/50 hover:border-gold/50 transition-all"
+    >
+      {showImage ? (
+        <img
+          src={thumbnail}
+          alt={title}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gold/5">
+          <FolderKanban className="w-8 h-8 text-gold/30" />
+        </div>
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-2">
+        <span className="text-white text-xs font-medium truncate w-full">{title}</span>
+      </div>
+      {imagesCount > 0 && (
+        <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+          +{imagesCount}
+        </div>
+      )}
+    </button>
+  );
+}
+
 export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = ({
   projects,
   editable = true,
@@ -62,6 +112,12 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [formData, setFormData] = useState({ title: "", description: "", status: "ongoing" });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [galleryImageError, setGalleryImageError] = useState(false);
+  const [thumbErrorByIndex, setThumbErrorByIndex] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    setGalleryImageError(false);
+  }, [currentImageIndex]);
 
   const compressImage = async (file: File): Promise<File> => {
     return new Promise((resolve) => {
@@ -112,14 +168,16 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
 
   const handleOpenProject = (project: Project) => {
     setSelectedProject(project);
-    setFormData({ 
-      title: project.title, 
-      description: project.description || "", 
-      status: project.status || "ongoing" 
+    setFormData({
+      title: project.title,
+      description: project.description || "",
+      status: project.status || "ongoing"
     });
     setCurrentImageIndex(0);
     setEditMode(false);
     setIsAdding(false);
+    setGalleryImageError(false);
+    setThumbErrorByIndex({});
     setIsDialogOpen(true);
   };
 
@@ -183,36 +241,20 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
 
     setIsUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error(t("notAuthenticated"));
-
-      const uploadedUrls: string[] = [];
+      const dataUrls: string[] = [];
 
       for (const file of filesToUpload) {
         const compressedFile = await compressImage(file);
-
-        // Use centralized upload utility with session check + retry
-        // subPath is the project ID for organizing project images
-        const result = await uploadBusinessImage(
-          compressedFile, 
-          user.id, 
-          'projects', 
-          selectedProject.id
-        );
-        
-        if (!result.success || !result.publicUrl) {
-          throw new Error(result.error || 'Failed to upload image');
-        }
-
-        uploadedUrls.push(result.publicUrl);
+        const dataUrl = await fileToDataUrl(compressedFile);
+        dataUrls.push(dataUrl);
       }
 
-      const newImages = [...currentImages, ...uploadedUrls];
+      const newImages = [...currentImages, ...dataUrls];
       const updatedProject = { ...selectedProject, images: newImages };
-      
+
       await onEdit(updatedProject);
       setSelectedProject(updatedProject);
-      
+
       toast({ title: t("businessImagesUploaded") });
     } catch (error: any) {
       console.error("Upload error:", error);
@@ -294,31 +336,13 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
                 const rawThumb = project.image_url || project.images?.[0];
                 const thumbnail = getProjectImageSrc(rawThumb);
                 return (
-                  <button
+                  <ProjectThumbnail
                     key={project.id}
+                    thumbnail={thumbnail}
+                    title={project.title}
                     onClick={() => handleOpenProject(project)}
-                    className="relative group aspect-square rounded-lg overflow-hidden border border-gold/20 bg-black/50 hover:border-gold/50 transition-all"
-                  >
-                    {thumbnail ? (
-                      <img
-                        src={thumbnail}
-                        alt={project.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gold/5">
-                        <FolderKanban className="w-8 h-8 text-gold/30" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-2">
-                      <span className="text-white text-xs font-medium truncate w-full">{project.title}</span>
-                    </div>
-                    {project.images && project.images.length > 0 && (
-                      <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-                        +{project.images.length}
-                      </div>
-                    )}
-                  </button>
+                    imagesCount={project.images?.length ?? 0}
+                  />
                 );
               })}
             </div>
@@ -358,12 +382,19 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
             {/* Image Gallery */}
             {!isAdding && allImages.length > 0 && (
               <div className="relative">
-                <div className="aspect-video rounded-lg overflow-hidden bg-black">
-                  <img
-                    src={allImages[currentImageIndex]}
-                    alt={formData.title}
-                    className="w-full h-full object-contain"
-                  />
+                <div className="aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
+                  {galleryImageError ? (
+                    <div className="w-full h-full flex items-center justify-center bg-gold/5">
+                      <FolderKanban className="w-16 h-16 text-gold/30" />
+                    </div>
+                  ) : (
+                    <img
+                      src={allImages[currentImageIndex]}
+                      alt={formData.title}
+                      className="w-full h-full object-contain"
+                      onError={() => setGalleryImageError(true)}
+                    />
+                  )}
                 </div>
                 
                 {allImages.length > 1 && (
@@ -409,12 +440,26 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
                 {allImages.map((img, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setCurrentImageIndex(idx)}
+                    onClick={() => {
+                      setCurrentImageIndex(idx);
+                      setGalleryImageError(false);
+                    }}
                     className={`flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-all ${
                       idx === currentImageIndex ? "border-gold" : "border-transparent opacity-60 hover:opacity-100"
                     }`}
                   >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    {thumbErrorByIndex[idx] ? (
+                      <div className="w-full h-full flex items-center justify-center bg-gold/10">
+                        <FolderKanban className="w-6 h-6 text-gold/30" />
+                      </div>
+                    ) : (
+                      <img
+                        src={img}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={() => setThumbErrorByIndex((prev) => ({ ...prev, [idx]: true }))}
+                      />
+                    )}
                   </button>
                 ))}
               </div>

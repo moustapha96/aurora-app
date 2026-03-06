@@ -249,17 +249,29 @@ export const SingleUseInvitationCodes = ({ isEditable = false, userId, onUpdate,
   return (
     <div className="space-y-4">
       {/* Header avec compteur (code initial + codes à usage unique) */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Gift className="h-5 w-5 text-gold" />
-          <h3 className="text-lg font-semibold text-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Gift className="h-5 w-5 text-gold flex-shrink-0" />
+          <h3 className="text-lg font-semibold text-foreground truncate">
             {t('singleUseInvitationCodes') || 'Codes d\'invitation'}
           </h3>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground flex-shrink-0">
             ({usedCodesCount}/{totalCodesWithInitial} {t('used') || 'utilisés'} • max {maxTotalCodes})
           </span>
         </div>
-       
+        {isEditable && (
+          <Button
+            onClick={() => canCreateMore && setCreateDialogOpen(true)}
+            variant="outline"
+            size="sm"
+            disabled={!canCreateMore}
+            title={!canCreateMore ? (t('invitationCodeLimitReached') || `Limite de ${maxTotalCodes} codes atteinte`) : undefined}
+            className="border-gold/30 text-gold hover:bg-gold/10 flex-shrink-0 w-full sm:w-auto"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {t('createInvitationCode') || 'Créer un code d\'invitation'}
+          </Button>
+        )}
       </div>
 
       {/* Message si limite atteinte */}

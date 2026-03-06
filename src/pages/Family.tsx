@@ -434,7 +434,7 @@ const FamilySocial = () => {
             <div className="col-span-1 lg:col-span-2">
               {/* Audio & Documents - mêmes dimensions et alignement */}
               {isOwnProfile && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                   <div className="h-full">
                     <FamilyAudio isOwnProfile={isOwnProfile} />
                   </div>
