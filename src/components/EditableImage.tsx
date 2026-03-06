@@ -266,7 +266,7 @@ export const EditableImage = ({
           {!pendingFile && (
             <Input
               type="file"
-              accept="image/*"
+              accept="image/png, image/jpeg, image/jpg"
               onChange={handleImageUpload}
               disabled={uploading || verificationStatus === 'verifying'}
             />
@@ -292,7 +292,7 @@ export const EditableImage = ({
           {pendingFile && verificationStatus === 'invalid' && (
             <Input
               type="file"
-              accept="image/*"
+              accept="image/png, image/jpeg, image/jpg"
               onChange={handleImageUpload}
               disabled={uploading}
             />

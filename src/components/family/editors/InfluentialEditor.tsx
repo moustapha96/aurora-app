@@ -240,7 +240,7 @@ export const InfluentialEditor = ({ people, onUpdate }: InfluentialEditorProps) 
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg, image/jpg"
                 onChange={handleImageUpload}
                 className="hidden"
               />

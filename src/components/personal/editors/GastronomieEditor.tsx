@@ -196,7 +196,7 @@ export const GastronomieEditor = ({ open, onOpenChange, entry, onSave, defaultCa
             <Label>{t("photo")}</Label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/png, image/jpeg, image/jpg"
               onChange={handleImageUpload}
               disabled={uploading}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"

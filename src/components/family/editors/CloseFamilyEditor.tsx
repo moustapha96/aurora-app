@@ -265,7 +265,7 @@ export const CloseFamilyEditor = ({ members, onUpdate }: CloseFamilyEditorProps)
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg, image/jpg"
                 className="hidden"
                 onChange={handleImageUpload}
               />

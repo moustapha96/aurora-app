@@ -219,7 +219,7 @@ export const MarketplaceItemForm = ({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg, image/jpg"
                 onChange={handleMainImageUpload}
                 className="hidden"
               />
@@ -257,7 +257,7 @@ export const MarketplaceItemForm = ({
               <input
                 ref={additionalFilesRef}
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg, image/jpg"
                 multiple
                 onChange={handleAdditionalImagesUpload}
                 className="hidden"

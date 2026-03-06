@@ -361,7 +361,7 @@ export const NetworkAmbitions = ({ data, isEditable, onUpdate }: NetworkAmbition
               <Label className="text-sm">{t('photo')}</Label>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg, image/jpg"
                 onChange={handleImageSelect}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />

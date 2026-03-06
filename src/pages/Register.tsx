@@ -800,7 +800,7 @@ const Register = () => {
               <div className="flex-1 space-y-2">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png, image/jpeg, image/jpg"
                   onChange={handleAvatarChange}
                   id="avatar-upload"
                   className="hidden"

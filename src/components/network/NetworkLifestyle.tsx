@@ -374,7 +374,7 @@ export const NetworkLifestyle = ({ data, isEditable, onUpdate }: NetworkLifestyl
                   <label className="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
                     <Image className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground mt-1">{t('add')}</span>
-                    <input type="file" className="hidden" accept="image/*" onChange={handleImageSelect} />
+                    <input type="file" className="hidden" accept="image/png, image/jpeg, image/jpg" onChange={handleImageSelect} />
                   </label>
                 )}
               </div>

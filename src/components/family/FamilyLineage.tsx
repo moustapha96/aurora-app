@@ -458,7 +458,7 @@ export const FamilyLineage = ({ entries, isEditable = false, onUpdate }: FamilyL
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg, image/jpg"
                 className="hidden"
                 onChange={handleImageUpload}
               />

@@ -471,7 +471,7 @@ export const BusinessProjectsGallery: React.FC<BusinessProjectsGalleryProps> = (
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/png, image/jpeg, image/jpg"
                   multiple
                   className="hidden"
                   onChange={handleImageUpload}

@@ -152,7 +152,7 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({ open: controlledOp
               <div className="flex-1">
                 <Input
                   type="file"
-                  accept="image/*"
+                  accept="image/png, image/jpeg, image/jpg"
                   onChange={handleImageUpload}
                   disabled={uploading}
                 />

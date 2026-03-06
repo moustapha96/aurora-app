@@ -338,7 +338,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
                       </button>
                     </div>
                   )}
-                  <Input type="file" accept="image/*" onChange={handlePortraitChange} />
+                  <Input type="file" accept="image/png, image/jpeg, image/jpg" onChange={handlePortraitChange} />
                 </div>
               </div>
 
@@ -377,7 +377,7 @@ export const FamilyContentEditor = ({ open, onOpenChange, content, onSave }: Fam
                     ))}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Input type="file" accept="image/*" multiple onChange={handleGalleryChange} />
+                    <Input type="file" accept="image/png, image/jpeg, image/jpg" multiple onChange={handleGalleryChange} />
                     <Upload className="h-5 w-5" />
                   </div>
                 </div>

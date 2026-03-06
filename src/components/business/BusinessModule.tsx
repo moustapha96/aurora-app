@@ -308,7 +308,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/png, image/jpeg, image/jpg"
                     className="hidden"
                     onChange={handleThumbnailUpload}
                   />
@@ -399,7 +399,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
               <input
                 ref={imagesInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg, image/jpg"
                 multiple
                 className="hidden"
                 onChange={handleImagesUpload}
@@ -492,7 +492,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/*"
+                      accept="image/png, image/jpeg, image/jpg"
                       className="hidden"
                       onChange={handleThumbnailUpload}
                     />

@@ -183,7 +183,7 @@ const GolfGallery: React.FC<GolfGalleryProps> = ({ userId, photos, isEditable, o
                     </span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/png, image/jpeg, image/jpg"
                       className="hidden"
                       onChange={handleFileSelect}
                     />

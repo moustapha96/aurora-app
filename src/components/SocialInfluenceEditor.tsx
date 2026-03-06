@@ -183,7 +183,7 @@ export function SocialInfluenceEditor({ open, onOpenChange, influence, onSave }:
           <Input
             id="image"
             type="file"
-            accept="image/*"
+            accept="image/png, image/jpeg, image/jpg"
             onChange={handleImageUpload}
             disabled={uploading}
             className="flex-1 bg-background/40 border-gold/20 text-xs sm:text-sm h-9 sm:h-10"

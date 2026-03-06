@@ -421,7 +421,7 @@ export const NetworkPortfolio = ({ data, isEditable, onUpdate }: NetworkPortfoli
               <label className="mt-1 flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-muted-foreground/30 rounded-lg cursor-pointer hover:bg-muted/50 hover:border-gold transition-colors">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png, image/jpeg, image/jpg"
                   onChange={handleImageSelect}
                   className="hidden"
                 />

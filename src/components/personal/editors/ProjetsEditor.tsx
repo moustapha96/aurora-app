@@ -215,7 +215,7 @@ export const ProjetsEditor = ({ open, onOpenChange, entry, onSave }: ProjetsEdit
             <Label>{t("photo")}</Label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/png, image/jpeg, image/jpg"
               onChange={handleImageSelect}
               disabled={uploadingImage}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"

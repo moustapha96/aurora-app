@@ -214,7 +214,7 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
                       <label className="cursor-pointer">
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/png, image/jpeg, image/jpg"
                           className="hidden"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
@@ -248,7 +248,7 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
                         <label className="cursor-pointer mt-2">
                           <input
                             type="file"
-                            accept="image/*"
+                            accept="image/png, image/jpeg, image/jpg"
                             className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
@@ -278,7 +278,7 @@ const PoloGallery: React.FC<PoloGalleryProps> = ({ userId, gallery, isEditable, 
               <label className="cursor-pointer">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png, image/jpeg, image/jpg"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];

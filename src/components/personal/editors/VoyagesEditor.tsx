@@ -228,7 +228,7 @@ export const VoyagesEditor = ({ open, onOpenChange, entry, onSave, defaultCatego
             </Label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/png, image/jpeg, image/jpg"
               onChange={handleImageSelect}
               disabled={uploading}
               className="flex h-9 sm:h-10 w-full rounded-md border border-gold/30 bg-background/40 px-3 py-1.5 text-xs sm:text-sm text-foreground"

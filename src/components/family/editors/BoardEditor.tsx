@@ -247,7 +247,7 @@ export const BoardEditor = ({ members, onUpdate }: BoardEditorProps) => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg, image/jpg"
                 onChange={handleImageUpload}
                 className="hidden"
               />

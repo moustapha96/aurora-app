@@ -241,7 +241,7 @@ export const BusinessMainImage: React.FC<BusinessMainImageProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png, image/jpeg, image/jpg"
           className="hidden"
           onChange={handleFileSelect}
         />

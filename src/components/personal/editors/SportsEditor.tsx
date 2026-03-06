@@ -281,7 +281,7 @@ export const SportsEditor = ({ open, onOpenChange, sport, onSave, defaultCategor
             <Label className="text-sm font-medium text-foreground">{t("photo")}</Label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/png, image/jpeg, image/jpg"
               onChange={handleImageUpload}
               disabled={uploading}
               className="flex h-10 w-full rounded-md border border-gold/20 bg-muted/30 px-3 py-2 text-sm text-foreground"

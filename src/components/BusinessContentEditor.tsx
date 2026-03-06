@@ -420,7 +420,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
                   {logoPreview && (
                     <img src={logoPreview} alt="Logo" className="w-32 h-32 object-cover rounded-lg" />
                   )}
-                  <Input type="file" accept="image/*" onChange={handleLogoChange} />
+                  <Input type="file" accept="image/png, image/jpeg, image/jpg" onChange={handleLogoChange} />
                 </div>
               </div>
 
@@ -485,7 +485,7 @@ export const BusinessContentEditor = ({ open, onOpenChange, content, onSave }: B
                   <div className="flex items-center gap-2">
                     <Input 
                       type="file" 
-                      accept="image/*" 
+                      accept="image/png, image/jpeg, image/jpg" 
                       multiple 
                       onChange={handlePhotosChange} 
                     />

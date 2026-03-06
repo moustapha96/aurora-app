@@ -472,7 +472,7 @@ const EditProfile = () => {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/png, image/jpeg, image/jpg"
                     capture="environment"
                     onChange={handleAvatarChange}
                     disabled={isVerifying || uploading}

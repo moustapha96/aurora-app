@@ -618,7 +618,7 @@ const MemberCard = () => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/png, image/jpeg, image/jpg"
                 capture="environment"
                 onChange={handleAvatarUpload}
                 className="hidden"
