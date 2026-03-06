@@ -1440,6 +1440,27 @@ export type Database = {
           },
         ]
       }
+      member_page_permissions: {
+        Row: {
+          id: string
+          user_id: string
+          page_key: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          page_key: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          page_key?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string

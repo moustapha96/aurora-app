@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage, languages } from "@/contexts/LanguageContext";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { useMemberPagePermissions } from "@/hooks/useMemberPagePermissions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserNotifications } from "./UserNotifications";
 import {
@@ -45,21 +46,21 @@ export const Header = () => {
   const { platform, isNative, isIOS, isAndroid, isWeb } = usePlatformContext();
   const { language, setLanguage, t } = useLanguage();
   const { isAdmin } = useAdminCheck();
+  const { isAllowed } = useMemberPagePermissions();
   const isMobile = useIsMobile();
 
-
-
-  const navigationItems = [
-    { label: t('home'), icon: Home, path: "/member-card" },
-    { label: t('business'), icon: Briefcase, path: "/business" },
-    { label: t('lineage'), icon: Heart, path: "/family" },
-    { label: t('passions'), icon: User, path: "/personal" },
-    { label: t('network'), icon: Users, path: "/network" },
-    { label: t('members'), icon: Compass, path: "/members" },
-    { label: t('referrals'), icon: Gift, path: "/referrals" },
-    { label: t('marketplace'), icon: ShoppingBag, path: "/marketplace" },
-    { label: t('concierge'), icon: Headphones, path: "/concierge" },
+  const allNavigationItems = [
+    { label: t('home'), icon: Home, path: "/member-card", pageKey: "home" as const },
+    { label: t('business'), icon: Briefcase, path: "/business", pageKey: "business" as const },
+    { label: t('lineage'), icon: Heart, path: "/family", pageKey: "family" as const },
+    { label: t('passions'), icon: User, path: "/personal", pageKey: "personal" as const },
+    { label: t('network'), icon: Users, path: "/network", pageKey: "network" as const },
+    { label: t('members'), icon: Compass, path: "/members", pageKey: "members" as const },
+    { label: t('referrals'), icon: Gift, path: "/referrals", pageKey: "referrals" as const },
+    { label: t('marketplace'), icon: ShoppingBag, path: "/marketplace", pageKey: "marketplace" as const },
+    { label: t('concierge'), icon: Headphones, path: "/concierge", pageKey: "concierge" as const },
   ];
+  const navigationItems = isAdmin ? allNavigationItems : allNavigationItems.filter((item) => isAllowed(item.pageKey));
 
   const getPlatformIcon = () => {
     if (isIOS) return <Apple className="w-3 h-3" />;
@@ -159,14 +160,16 @@ export const Header = () => {
                       </Button>
                     ))}
                     <div className="border-t border-border my-4" />
-                    <Button
-                      variant="ghost"
-                      className="justify-start gap-3 h-12"
-                      onClick={() => handleNavigate("/messages")}
-                    >
-                      <MessageSquare className="w-5 h-5" />
-                      {t('messages')}
-                    </Button>
+                    {(isAdmin || isAllowed("messages")) && (
+                      <Button
+                        variant="ghost"
+                        className="justify-start gap-3 h-12"
+                        onClick={() => handleNavigate("/messages")}
+                      >
+                        <MessageSquare className="w-5 h-5" />
+                        {t('messages')}
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       className="justify-start gap-3 h-12"
@@ -221,10 +224,12 @@ export const Header = () => {
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/messages")} className="gap-3">
-                    <MessageSquare className="w-4 h-4" />
-                    {t('messages')}
-                  </DropdownMenuItem>
+                  {(isAdmin || isAllowed("messages")) && (
+                    <DropdownMenuItem onClick={() => navigate("/messages")} className="gap-3">
+                      <MessageSquare className="w-4 h-4" />
+                      {t('messages')}
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => navigate("/edit-profile")} className="gap-3">
                     <User className="w-4 h-4" />
                     {t('myProfile')}

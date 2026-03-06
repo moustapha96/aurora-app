@@ -60,6 +60,7 @@ import AdminCron from "./pages/admin/AdminCron";
 import AdminReferrals from "./pages/admin/AdminReferrals";
 import AdminMarketplace from "./pages/admin/AdminMarketplace";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
+import AdminPagePermissions from "./pages/admin/AdminPagePermissions";
 
 // Optimized QueryClient with caching
 const queryClient = createOptimizedQueryClient();
@@ -117,6 +118,7 @@ const App = () => (
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/members" element={<AdminMembers />} />
           <Route path="/admin/users-security" element={<AdminUsersSecurity />} />
+          <Route path="/admin/page-permissions" element={<AdminPagePermissions />} />
           <Route path="/admin/roles" element={<AdminRoles />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/settings" element={<AdminSettings />} />

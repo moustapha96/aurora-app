@@ -23,6 +23,7 @@ import {
   UserPlus,
   CreditCard,
   ShoppingBag,
+  KeyRound,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -34,6 +35,7 @@ const getMenuItems = (t: (key: string) => string) => [
   { path: '/admin/subscriptions', label: t('adminMenuSubscriptions'), icon: CreditCard },
   { path: '/admin/marketplace', label: t('adminMenuMarketplace'), icon: ShoppingBag },
   { path: '/admin/users-security', label: t('adminMenuUsersSecurity'), icon: Shield },
+  { path: '/admin/page-permissions', label: t('adminMenuPagePermissions'), icon: KeyRound },
   { path: '/admin/roles', label: t('adminMenuRoles'), icon: Shield },
   { path: '/admin/document-verification', label: t('adminMenuDocumentVerification'), icon: FileText },
   { path: '/admin/moderation', label: t('adminMenuModeration'), icon: AlertTriangle },

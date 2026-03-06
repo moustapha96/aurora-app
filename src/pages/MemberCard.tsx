@@ -16,11 +16,15 @@ import { PageHeaderBackButton } from "@/components/BackButton";
 import { useProfileImageVerification } from "@/hooks/useProfileImageVerification";
 import { IdentityVerifiedBadge } from "@/components/VerificationBadge";
 import { useProgress } from "@/components/ui/progress-bar";
+import { useMemberPagePermissions } from "@/hooks/useMemberPagePermissions";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 
 const MemberCard = () => {
   const navigate = useNavigate();
   const { t, language, setLanguage } = useLanguage();
   const { done } = useProgress();
+  const { isAllowed } = useMemberPagePermissions();
+  const { isAdmin } = useAdminCheck();
   const [profile, setProfile] = useState<any>(null);
   const [privateData, setPrivateData] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
@@ -339,11 +343,12 @@ const MemberCard = () => {
 
   const MAX_ITEMS_PER_SECTION = 5;
 
-  const profileSections = [
+  const allProfileSections = [
     {
       title: t('business'),
       icon: Briefcase,
       route: "/business",
+      pageKey: "business" as const,
       items: (() => {
         const items: string[] = [];
         if (businessContent?.company_name?.trim()) items.push(businessContent.company_name.trim());
@@ -370,6 +375,7 @@ const MemberCard = () => {
       title: t('familySocial'),
       icon: Heart,
       route: "/family",
+      pageKey: "family" as const,
       items: (() => {
         const items: string[] = [];
         if (familyBoard?.length) {
@@ -399,6 +405,7 @@ const MemberCard = () => {
       title: t('personal'),
       icon: Users,
       route: "/personal",
+      pageKey: "personal" as const,
       items: personalContent ? (() => {
         const items: string[] = [];
         if (personalContent.sports && Array.isArray(personalContent.sports) && personalContent.sports.length > 0) {
@@ -445,21 +452,28 @@ const MemberCard = () => {
       title: t('influenceNetwork'),
       icon: Globe,
       route: "/network",
+      pageKey: "network" as const,
       items: [t('exclusiveClubs'), t('globalForums'), t('socialMediaLabel')].slice(0, MAX_ITEMS_PER_SECTION)
     },
     {
       title: t('integratedServices'),
       icon: Settings,
       route: "/services",
+      pageKey: null as null,
       items: [t('concierge'), t('metaverse'), t('marketplace')].slice(0, MAX_ITEMS_PER_SECTION)
     },
     {
       title: t('members'),
       icon: Users,
       route: "/members",
+      pageKey: "members" as const,
       items: [t('memberDirectory'), t('detailedProfiles')].slice(0, MAX_ITEMS_PER_SECTION)
     }
   ];
+  const profileSections = (isAdmin ? allProfileSections : allProfileSections.filter((s) => {
+    if (s.pageKey === null) return isAllowed("concierge") || isAllowed("marketplace");
+    return isAllowed(s.pageKey);
+  })) as typeof allProfileSections;
 
   if (!profile) {
     return (
@@ -673,39 +687,32 @@ const MemberCard = () => {
                   <div className="flex-1 flex flex-col min-h-0">
                     {section.title === t('integratedServices') ? (
                       <div className="flex flex-col gap-2 sm:gap-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate('/concierge');
-                          }}
-                        >
-                          {t('concierge')}
-                        </Button>
-                        {/* <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate('/metaverse');
-                          }}
-                        >
-                          {t('metaverse')}
-                        </Button> */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate('/marketplace');
-                          }}
-                        >
-                          {t('marketplace')}
-                        </Button>
+                        {(isAdmin || isAllowed("concierge")) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/concierge');
+                            }}
+                          >
+                            {t('concierge')}
+                          </Button>
+                        )}
+                        {(isAdmin || isAllowed("marketplace")) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-gold/40 text-gold hover:bg-gold hover:text-black w-full text-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/marketplace');
+                            }}
+                          >
+                            {t('marketplace')}
+                          </Button>
+                        )}
                       </div>
                     ) : (
                       <ul className="space-y-1.5 sm:space-y-2 flex-1">
