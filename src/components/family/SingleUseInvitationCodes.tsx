@@ -87,15 +87,15 @@ export const SingleUseInvitationCodes = ({ isEditable = false, userId, onUpdate,
         // Récupérer les profils des utilisateurs qui ont utilisé les codes
         const usedCodes = (codesData || []).filter((c: SingleUseCode) => c.used_by);
         const usedByIds = usedCodes.map((c: SingleUseCode) => c.used_by);
-        
+
         let profilesMap: Record<string, UsedByProfile> = {};
-        
+
         if (usedByIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
             .select('id, first_name, last_name, avatar_url, profile_image_base64')
             .in('id', usedByIds);
-          
+
           if (profiles) {
             profilesMap = profiles.reduce((acc: Record<string, UsedByProfile>, p: any) => {
               acc[p.id] = { ...p, avatar_url: p.profile_image_base64 || p.avatar_url };
@@ -103,13 +103,13 @@ export const SingleUseInvitationCodes = ({ isEditable = false, userId, onUpdate,
             }, {});
           }
         }
-        
+
         // Enrichir les codes avec les profils
         const enrichedCodes = (codesData || []).map((code: SingleUseCode) => ({
           ...code,
           used_by_profile: code.used_by ? profilesMap[code.used_by] || null : null
         }));
-        
+
         setCodes(enrichedCodes);
       }
     } catch (error) {
@@ -284,7 +284,7 @@ export const SingleUseInvitationCodes = ({ isEditable = false, userId, onUpdate,
       )}
 
       {/* Liste des codes */}
-      {codes.length === 0 ? (
+      {/* {codes.length === 0 ? (
         <Card className="bg-muted/30">
           <CardContent className="pt-6">
             <div className="text-center py-6">
@@ -409,7 +409,110 @@ export const SingleUseInvitationCodes = ({ isEditable = false, userId, onUpdate,
             </Card>
           ))}
         </div>
-      )}
+      )} */}
+
+      {codes && codes.length > 0 &&
+        (
+          <div className="space-y-3">
+            {codes.map((code) => (
+              <Card
+                key={code.id}
+                className={`bg-gradient-to-br ${code.is_used ? 'from-muted/20 to-transparent border-muted/40 opacity-70' : 'from-gold/5 to-transparent border-gold/20'}`}
+              >
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      {code.code_name && (
+                        <p className="text-sm font-medium text-foreground mb-1 truncate">{code.code_name}</p>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <p className={`text-base font-mono font-bold ${code.is_used ? 'text-muted-foreground line-through' : 'text-gold'}`}>
+                          {code.invitation_code}
+                        </p>
+                        {code.is_used ? (
+                          <Badge variant="secondary" className="text-xs">
+                            {t('used') || 'Utilisé'}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs border-green-500/50 text-green-600">
+                            {t('available') || 'Disponible'}
+                          </Badge>
+                        )}
+                      </div>
+                      {code.is_used && (
+                        <div className="mt-2 flex items-center gap-2 p-2 rounded-md bg-muted/30">
+                          {code.used_by_profile ? (
+                            <>
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={code.used_by_profile.avatar_url || undefined} />
+                                <AvatarFallback className="text-xs bg-gold/20 text-gold">
+                                  {code.used_by_profile.first_name?.[0]}{code.used_by_profile.last_name?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <p className="text-xs font-medium text-foreground">
+                                  {t('codeUsedBy') || 'Utilisé par'}: {code.used_by_profile.first_name} {code.used_by_profile.last_name}
+                                </p>
+                                {code.used_at && (
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(code.used_at).toLocaleDateString()}
+                                  </p>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground">
+                                {t('codeUsedBy') || 'Utilisé par'}: {t('unknownMember') || 'Membre inconnu'}
+                              </p>
+                              {code.used_at && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {new Date(code.used_at).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {!code.is_used && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyCode(code.invitation_code, code.id)}
+                          className="h-8 w-8 p-0 text-gold hover:bg-gold/10"
+                        >
+                          {copiedCodeId === code.id ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                      {isEditable && !code.is_used && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteCode(code.id)}
+                          disabled={!canDeleteSingleUseCodes}
+                          title={!canDeleteSingleUseCodes ? (t('mustKeepOneCode') || 'Il doit rester au moins un code') : undefined}
+                          className="h-8 w-8 p-0 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
       {/* Dialog de création */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -420,7 +523,7 @@ export const SingleUseInvitationCodes = ({ isEditable = false, userId, onUpdate,
               {t('createInvitationCodeDesc') || 'Ce code ne pourra être utilisé qu\'une seule fois pour parrainer un nouveau membre.'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="codeName">{t('codeName') || 'Nom du code'} ({t('optional') || 'optionnel'})</Label>
@@ -432,7 +535,7 @@ export const SingleUseInvitationCodes = ({ isEditable = false, userId, onUpdate,
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button
               variant="outline"
